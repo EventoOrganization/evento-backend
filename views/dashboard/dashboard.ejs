@@ -1,0 +1,75 @@
+<section class="section">
+    <div class="section-header">
+      <h1>Dashboard</h1>
+    </div>
+    <div class="row">
+      <div class="col-lg-3 col-md-6 col-sm-6 col-12">
+        <a href="/users">
+        <div class="card card-statistic-1">
+          <div class="card-icon bg-primary">
+            <i class="far fa-user"></i>
+          </div>
+          <div class="card-wrap">
+            <div class="card-header">
+              <h4>Total User</h4>
+            </div>
+            <div class="card-body">
+              <%=userCount%>
+            </div>
+          </div>
+        </div>
+      </a>
+      </div>
+      <div class="col-lg-3 col-md-6 col-sm-6 col-12">
+        <a href="/events">
+        <div class="card card-statistic-1">
+          <div class="card-icon bg-warning">
+            <i class="far fa-file"></i>
+          </div>
+          <div class="card-wrap">
+            <div class="card-header">
+              <h4>Events</h4>
+            </div>
+            <div class="card-body">
+              <%=EventCount%>
+            </div>
+          </div>
+        </div>
+      </a>
+      </div>
+      <div class="col-lg-3 col-md-6 col-sm-6 col-12">
+        <a href="/interests">
+        <div class="card card-statistic-1">
+          <div class="card-icon bg-success">
+            <i class="fas fa-circle"></i>
+          </div>
+          <div class="card-wrap">
+            <div class="card-header">
+              <h4>Interests</h4>
+            </div>
+            <div class="card-body">
+              <%=interestCount%>
+            </div>
+          </div>
+        </div>
+      </a>
+      </div>
+      <div class="col-lg-3 col-md-6 col-sm-6 col-12">
+        <a href="/co_host_list">
+        <div class="card card-statistic-1">
+          <div class="card-icon bg-success">
+            <i class="fas fa-user"></i>
+          </div>
+          <div class="card-wrap">
+            <div class="card-header">
+              <h4>Co-Host</h4>
+            </div>
+            <div class="card-body">
+              <%=co_host_count%>
+            </div>
+          </div>
+        </div>
+      </a>
+      </div>
+    </div>
+  </section>

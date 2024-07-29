@@ -1,0 +1,61 @@
+
+
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      content="width=device-width, initial-scale=1, maximum-scale=1, shrink-to-fit=no"
+      name="viewport"
+    />
+    <link rel="icon" type="image/x-icon" href="/images/profile/favicon.ico" />
+    <title>Evento</title>
+
+    <%- include('../common/header.ejs') %>
+  </head>
+
+  <body>
+    <div id="app">
+      <div class="main-wrapper">
+        <div class="navbar-bg"></div>
+        <%- include('../common/navbar.ejs') %>
+        <!-- sidebar -->
+        <%- include('../common/sidebar.ejs') %>
+        <div class="main-content"><%- body %></div>
+
+        <%- include('../common/footer.ejs') %>
+      </div>
+    </div>
+
+    <%- include('../common/script.ejs') %>
+
+  </body>
+
+  <script>
+    // disable right click
+    // document.addEventListener("contextmenu", (event) => event.preventDefault());
+
+    // document.onkeydown = function (e) {
+    //   // disable F12 key
+    //   if (e.keyCode == 123) {
+    //     return false;
+    //   }
+
+    //   // disable I key
+    //   if (e.ctrlKey && e.shiftKey && e.keyCode == 73) {
+    //     return false;
+    //   }
+
+    //   // disable J key
+    //   if (e.ctrlKey && e.shiftKey && e.keyCode == 74) {
+    //     return false;
+    //   }
+
+    //   // disable U key
+    //   if (e.ctrlKey && e.keyCode == 85) {
+    //     return false;
+    //   }
+    // };
+  </script>
+</html>

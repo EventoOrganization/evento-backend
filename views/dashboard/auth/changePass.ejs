@@ -1,0 +1,112 @@
+<!-- Main Content -->
+
+<div class="section">
+  <div class="section-header">
+    <h1>Change Password</h1>
+  </div>
+</div>
+<div class="row justify-content-center">
+  <div class="col-md-12">
+    <div class="card-body bg-white rounded-4 shadow">
+      <form id="myform" action="/admin/changePassword" method="post" enctype="multipart/form-data">
+        <div class="form-group">
+          <label>Currunt Password</label>
+          <input type="password" id="curruntPass" name="curruntPass" class="form-control noSpace" />
+        </div>
+
+        <div class="form-group">
+          <label>New Password</label>
+          <input type="password" id="newPass" name="newPass" class="form-control noSpace" />
+        </div>
+
+        <div class="form-group">
+          <label>Confirm New Password</label>
+          <input type="password" name="confirmNewPass" class="form-control noSpace" />
+        </div>
+
+        <button type="submit" class="btn btn-icon icon-left btn-success">
+          <i class="fas fa-check"></i> Update
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- main content End -->
+<script type="text/javascript">
+  function checkCurruntPass(e) {
+    const val = e.value;
+    console.log(val);
+    $.ajax({
+      url: "/admin/checkpass",
+      method: "POST",
+      data: { password: val },
+      success: (data) => {
+
+        if (data == 1) {
+        } else {
+          console.log(">>>>>>>>>>>0000000");
+          $("#myform").validate({
+            ignore: [],
+            rules: {
+              curruntPass: {
+                // required: true,
+              },
+            },
+            messages: {
+              curruntPass: {
+                required: "Password not matched",
+              },
+            },
+          });
+
+        }
+
+      },
+    });
+  }
+
+  $("#myform").validate({
+    rules: {
+      curruntPass: {
+        required: true,
+        remote: {
+          url: "/admin/checkpass",
+          type: "post",
+          data: {
+            curruntPass: function () {
+              return $("#curruntPass").val();
+            },
+          },
+        },
+      },
+      newPass: {
+        required: true,
+      },
+      confirmNewPass: {
+        required: true,
+        equalTo: "#newPass",
+      },
+    },
+    messages: {
+      curruntPass: {
+        required: "Please enter Password",
+        remote: "Current password not exist",
+      },
+      newPass: {
+        required: "This filed is required",
+      },
+      confirmNewPass: {
+        required: "This filed is required",
+        equalTo: "New password and confirm password does not match",
+      },
+    },
+
+    submitHandler: function (form) {
+      form.submit();
+    },
+    errorClass: "text-danger",
+    errorElement: "label",
+
+  });
+</script>

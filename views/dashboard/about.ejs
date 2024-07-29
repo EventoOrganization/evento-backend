@@ -1,0 +1,96 @@
+<% if(msg !='' ) { %>
+<div class="alert alert-success msg" style="position: absolute; z-index: 9999; color:white; background-color: #195780; right: 10px; top: 10px;">
+  <span style="font-size: 16px;">
+    <%= msg %>
+  </span>
+</div>
+<% } %>
+
+<div class="main-container">
+  <section class="section">
+    <div class="section-header">
+      <h1><%= result?.title%></h1>
+    </div>
+    <div class="row">
+      <div class="col-lg-12 col-md-12 col-12 col-sm-12">
+        <form method="post" action="/update" class="needs-validation" novalidate="">
+          <div class="card">
+            <div class="card-body pb-0">
+              <div class="form-group">
+                <label>Title</label>
+                <input type="text" name="title" value="<%= result?.title%>" class="form-control" readonly>
+              </div>
+
+              <div class="form-group row mb-4">
+                <label class="col-form-label col-12">Description</label>
+                <div class="form-group col-12">
+                  <input type="hidden" name="role" value="<%= result._id%>" />
+                  <!-- <textarea class="ckeditor form-control w-100" name="description" required>
+                    <%= result?.description%></textarea>
+                  <div class="invalid-feedback">
+                    Please fill in the description
+                  </div>
+                </div>
+              </div>
+
+              <div class="card-footer pt-0">
+                <button class="btn btn-primary">Submit</button>
+              </div> -->
+              <textarea id="descriptionEditor" class="ckeditor form-control w-100" name="description">
+                <%= result?.description %>
+              </textarea>
+              <div class="invalid-feedback" style="display: none;">
+                Please write the description
+              </div>
+              <button id="submitButton" class="btn btn-primary">Submit</button>
+            </div>
+        </form>
+      </div>
+      <div class="col-lg-7 col-md-12 col-12 col-sm-12">
+        <div class="card">
+        </div>
+      </div>
+    </div>
+    </main>
+</div>
+</section>
+
+
+<script src="//cdn.ckeditor.com/4.14.0/standard/ckeditor.js"></script>
+
+<script src="/assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+<script src="//cdn.ckeditor.com/4.14.0/standard/ckeditor.js"></script>
+<script src="/assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<!-- <script>
+  ClassicEditor
+    .create(document.querySelector('#editor'))
+    .catch(error => {
+      console.error(error);
+    });
+</script> -->
+<script>
+  $(document).ready(function () {
+    // Initialize CKEditor
+    CKEDITOR.replace('descriptionEditor');
+
+    // Validate the form on submit
+    $('#submitButton').click(function (event) {
+      // Prevent the default form submission
+      event.preventDefault();
+
+      // Get the CKEditor content
+      const description = CKEDITOR.instances.descriptionEditor.getData().trim();
+
+      // Check if the description is empty
+      if (!description) {
+        // Show the validation message
+        $('.invalid-feedback').show();
+      } else {
+        // If the description is not empty, hide the validation message and submit the form
+        $('.invalid-feedback').hide();
+        $('form').submit();
+      }
+    });
+  });
+</script>

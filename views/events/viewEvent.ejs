@@ -1,0 +1,139 @@
+<% if(msg !='' ) { %>
+  <div class="alert alert-success msg" style="position: absolute; z-index: 9999; color:white; background-color: #195780; right: 10px; top: 10px;">
+    <span style="font-size: 16px;">
+      <%= msg %>
+    </span>
+  </div>
+  <% } %>
+<section class="section">
+  <div class="section-header">
+    <h1>Events View</h1>
+  </div>
+  <div class="section-body">
+    <form action="#" method="post">
+      <div class="card-body">
+        <div class="form-group row mb-4">
+          <label class="col-form-label text-md-right col-12 col-md-3 col-lg-3">Name</label>
+          <div class="col-sm-12 col-md-7">
+            <input type="text" name="firstName" value="<%= data?.details.name%>" class="form-control" readonly>
+          </div>
+        </div>
+        <!-- <div class="form-group row mb-4">
+          <label class="col-form-label text-md-right col-12 col-md-3 col-lg-3">Title</label>
+          <div class="col-sm-12 col-md-7">
+            <input type="text" name="lastName" value=" <%= data?.title%>" class="form-control" readonly>
+          </div>
+        </div> -->
+        <div class="form-group row mb-4">
+          <label class="col-form-label text-md-right col-12 col-md-3 col-lg-3">Event Type</label>
+          <div class="col-sm-12 col-md-7">
+            <input type="email" name="email" value="<%= data?.eventType%>" class="form-control" readonly>
+          </div>
+        </div>
+        <div class="form-group row mb-4">
+          <label class="col-form-label text-md-right col-12 col-md-3 col-lg-3">Location</label>
+          <div class="col-sm-12 col-md-7">
+            <input type="text" value=" <%= data?.details.location %>" class="form-control" readonly>
+          </div>
+        </div>
+        <div class="form-group row mb-4">
+          <label class="col-form-label text-md-right col-12 col-md-3 col-lg-3">Mode </label>
+          <div class="col-sm-12 col-md-7">
+            <input type="text" value="<%= data?.details.mode%>" class="form-control" readonly>
+          </div>
+        </div>
+        <div class="form-group row mb-4">
+          <label class="col-form-label text-md-right col-12 col-md-3 col-lg-3">Start Date </label>
+          <div class="col-sm-12 col-md-7">
+            <input type="text" value="<%= moment(data?.details.date).format('DD-MM-YYYY')%>" class="form-control" readonly>
+          </div>
+        </div>
+        <div class="form-group row mb-4">
+          <label class="col-form-label text-md-right col-12 col-md-3 col-lg-3">End Date </label>
+          <div class="col-sm-12 col-md-7">
+            <input type="text" value="<%= moment(data?.details.endDate).format('DD-MM-YYYY')%>" class="form-control" readonly>
+          </div>
+        </div>
+        <div class="form-group row mb-4">
+          <label class="col-form-label text-md-right col-12 col-md-3 col-lg-3">Start Time </label>
+          <div class="col-sm-12 col-md-7">
+            <input type="text" value="<%= data?.details.startTime%>" class="form-control" readonly>
+          </div>
+        </div>
+        <div class="form-group row mb-4">
+          <label class="col-form-label text-md-right col-12 col-md-3 col-lg-3">End Time </label>
+          <div class="col-sm-12 col-md-7">
+            <input type="text" value="<%= data?.details.endTime%>" class="form-control" readonly>
+          </div>
+        </div>
+        <div class="form-group row mb-4">
+          <label class="col-form-label text-md-right col-12 col-md-3 col-lg-3">Description </label>
+          <div class="col-sm-12 col-md-7">
+            <input type="text" value="<%= data?.details.description%>" class="form-control" readonly>
+          </div>
+        </div>
+        <div class="form-group row mb-4">
+          <label class="col-form-label text-md-right col-12 col-md-3 col-lg-3">Include Chat </label>
+          <div class="col-sm-12 col-md-7">
+            <input type="text" value="<%= data.details.includeChat%>" class="form-control" readonly>
+          </div>
+        </div>
+        <!-- <div class="form-group row mb-4">
+          <label class="col-form-label text-md-right col-12 col-md-3 col-lg-3">Private Event Link </label>
+          <div class="col-sm-12 col-md-7">
+            <input type="text" value="<%= data?.details.privateEventLink%>" class="form-control" readonly>
+          </div>
+        </div> -->
+        <div class="form-group row mb-4">
+          <label class="col-form-label text-md-right col-12 col-md-3 col-lg-3">Co-Host</label>
+          <div class="col-sm-12 col-md-7">
+            <% data.coHosts.forEach(coHost => { %>
+            <input type="text" value="<%= coHost.name %>" class="form-control" readonly>
+            <%})%>
+          </div>
+        </div>
+        <div class="form-group row mb-4">
+          <label class="col-form-label text-md-right col-12 col-md-3 col-lg-3"> Image</label>
+          <div class="col-sm-12 col-md-4">
+              <% for (let i=0; i < data?.details.images.length; i++) { %>
+                  <img  src="/images/profile/<%= data?.details.images[i] %>" width="80px" height="80px" >
+                <% } %>
+          </div>
+        </div>
+        <div class="form-group row mb-4">
+          <label class="col-form-label text-md-right col-12 col-md-3 col-lg-3"> Video</label>
+          <div class="col-sm-12 col-md-4">
+              <% for (let i=0; i < data?.details.images.length; i++) { %>
+                  <video src="/images/videos/<%= data.details.video%>" width="80px" height="80px" ></video>
+                <% } %>
+          </div>
+        </div>
+        <input type="hidden" name="id" value="<%=data._id%>" alt="">
+          </div>
+        </div>
+
+        <!-- Initialize the carousel functionality -->
+        <!-- <script>
+          $(document).ready(function() {
+            Initialize the image carousel
+            $("#carouselExampleControls").carousel();
+
+            Initialize the video carousel
+            $("#carouselExampleControlsModal").carousel();
+          });
+        </script> -->
+
+        <div class="form-group row mb-4">
+          <label class="col-form-label text-md-right col-12 col-md-3 col-lg-3"></label>
+          <div class="col-sm-12 col-md-7">
+            <!-- <button type="submit" class="btn btn-primary">submit</button> -->
+            <a href="/events" class="btn btn-primary">Back</a>
+          </div>
+        </div>
+      </div>
+    </form>
+  </div>
+
+
+
+</section>

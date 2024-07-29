@@ -1,0 +1,97 @@
+<% if(msg !='' ) { %>
+  <div class="alert alert-success msg" style="position: absolute; z-index: 9999; color:white; background-color: #195780; right: 10px; top: 10px;">
+    <span style="font-size: 16px;">
+      <%= msg %>
+    </span>
+  </div>
+  <% } %>
+<main id="main" class="main">
+  <section class="section">
+    <div class="section-header">
+      <h1>Events</h1>
+      <div class="section-header-breadcrumb">
+        <!-- <div class="breadcrumb-item">Table</div> -->
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-body py-4 px-0 table-responsive">
+
+        <table id="myTable" class="table table-bordered">
+          <thead>
+            <tr>
+              <th scope="col">Sr No</th>
+              <th scope="col">Event Name</th>
+              <th scope="col">Location</th>
+              <th scope="col">Start Date</th>
+              <th scope="col">End Date</th>
+              <th scope="col">Event Type</th>
+              <th scope="col">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% data.forEach((result,i)=>{%>
+              <tr>
+                <td><%= i+1%></td>
+                <td><%= result?.details.name%></td>
+                <td><%= result?.details.location%></td>
+                <td><%= moment(result?.details.date).format("DD-MM-YYYY")%></td>
+                <td><%= moment(result?.details.endDate).format("DD-MM-YYYY")%></td>
+                <td><%= result?.eventType%></td>
+                <td>
+                  <a
+              class="btn btn-success text-white"
+              href="/viewEvent/<%= result._id%>"
+              ><i class="fas fa-eye"></i
+            ></a>
+               
+            <!-- <button
+            class="btn btn-danger"
+            onclick="deletuser('<%= result._id%>')"
+  
+            >
+              <i class="fas fa-trash"></i>
+            </button> -->
+                </td>
+              </tr>
+       
+              <%})%>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    </div>
+    </div>
+  </section>
+
+</main>
+<script>
+  function deletuser(id) {
+    // console.log(id);
+    // alert(id);
+    swal({
+      title: "Are you sure?",
+      text: "You won't be able to revert this!",
+      icon: "warning",
+      buttons: true,
+      confirmButtonColor: "#3085d6",
+      cancelButtonColor: "#d33",
+      buttons: ["Cancel", "Yes Delete it!"],
+    }).then((result) => {
+      if (result == true && id != "") {
+        $.ajax({
+          url: "/deleteEvent",
+          type: "post",
+          data: {
+            id: id
+          },
+
+          success: function (result) {
+            if (result) {
+              window.location.reload(true);
+            }
+          },
+        });
+      }
+    });
+  }
+</script>

@@ -1,0 +1,68 @@
+<div class="main-sidebar">
+  <aside id="sidebar-wrapper">
+    <div class="sidebar-brand">
+      
+      <a  href="/dashboard"><img src="/assets/img/Logo1.png" width="100px" height="70px" style="margin: 20px;" ></a>
+    </div>
+    <div class="sidebar-brand sidebar-brand-sm">
+      <a href="/dashboard"><img src="../../assets/img/favicon.png"></a>
+    </div> <br>
+
+
+    <ul class="sidebar-menu" >
+      <!-- <li class="menu-header">Dashboard</li> -->
+      
+      <% if (typeof title !== 'undefined') { %>
+        <li class="<%= (title === 'Dashboard' ? 'active' : '') %>">
+          <a class="nav-link" href="/dashboard"><i class="fas fa-fire"></i> <span>Dashboard</span></a>
+        </li>
+      <% } %>
+      
+      <% if (typeof title !== 'undefined') { %>
+        <li class="<%= (title === 'users' ? 'active' : '') %>">
+          <a class="nav-link" href="/users"><i class="fas fa-users"></i> <span>Users</span></a>
+        </li>
+      <% } %>
+      
+      <% if (typeof title !== 'undefined') { %>
+        <li class="<%= (title === 'events' ? 'active' : '') %>">
+          <a class="nav-link" href="/events"><i class="fas fa-calendar-week"></i> <span>Events</span></a>
+        </li>
+      <% } %>
+      
+      <% if (typeof title !== 'undefined') { %>
+        <li class="<%= (title === 'interests' ? 'active' : '') %>">
+          <a class="nav-link" href="/interests"><i class="fas fa-map-marker-alt"></i> <span>Interests</span></a>
+        </li>
+      <% } %>
+      
+      <% if (typeof title !== 'undefined') { %>
+        <li class="<%= (title === 'Co-host' ? 'active' : '') %>">
+          <a class="nav-link" href="/co_host_list"><i class="fas fa-user"></i> <span>Co-host</span></a>
+        </li>
+      <% } %>
+      <% if (typeof title !== 'undefined') { %>
+        <li class="<%= (title === 'Contact_Us' ? 'active' : '') %>">
+          <a class="nav-link" href="/contactUs"><i class="fa fa-address-book" aria-hidden="true"></i> <span>Contact Us</span></a>
+        </li>
+      <% } %>
+      
+      <% if (typeof title !== 'undefined') { %>
+        <li class="nav-item dropdown <%= (title === 'About Us' || title === 'Privacy Policy' || title === 'Terms') ? 'active' : '' %>">
+          <a href="#" class="nav-link has-dropdown" data-toggle="dropdown"><i class="fas fa-columns"></i> <span>CMS</span></a>
+          <ul class="dropdown-menu">
+            <li class="<%= (title === 'About Us' ? 'active' : '') %>"><a class="nav-link" href="/page/3">About Us</a></li>
+            <li class="<%= (title === 'Privacy Policy' ? 'active' : '') %>"><a class="nav-link" href="/page/2">Privacy Policy</a></li>
+            <li class="<%= (title === 'Terms' ? 'active' : '') %>"><a class="nav-link" href="/page/1">Terms and conditions</a></li>
+          </ul>
+        </li>
+      <% } %>
+      
+
+    
+      <!-- <li class="active"><a class="nav-link" href="blank.html"><i class="far fa-square"></i> <span>Blank Page</span></a></li> -->
+
+      
+    </ul>
+  </aside>
+</div>

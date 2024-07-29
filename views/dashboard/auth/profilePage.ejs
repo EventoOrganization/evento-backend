@@ -1,0 +1,106 @@
+<!-- Main Content -->
+
+<section class="section about-section gray-bg" id="about">
+
+  <!-- <div class="section-header">
+    <h1>Dashboard</h1>
+    
+  </div>
+   -->
+  <div class="section-header">
+    <h1>Profile Details</h1>
+
+  </div>
+  <div class="container ">
+
+    <div class="card border-0 shadow py-5 mt-5">
+      <div class="row align-items-center flex-row-reverse mr-5">
+        <a href="/admin/profileUpdate" class="btn btn-icon icon-left btn-primary"><i class="far fa-edit"></i>Update
+          Details</a>
+      </div>
+      <div class="row align-items-center ">
+        <div class="col-lg-4 ">
+          <div class="about-avatar px-3">
+            <img src="/images/profile/<%= admindata.image%>" height="250px" width="250" />
+          </div>
+        </div>
+        <div class="col-lg-8">
+          <div class="about-text px-3 px-lg-0 mt-lg-0 mt-4  go-to">
+            <h3 class="dark-color">Profile Page</h3>
+
+            <div class="row about-list">
+              <div class="col-md-6">
+                <div class="media">
+                  <label>Name</label>
+                  <p>
+                    <%= global.adminData.name%>
+                  </p>
+                </div>
+
+                <div class="media">
+                  <label>E-mail</label>
+                  <p>
+                    <%=global.adminData.email%>
+                  </p>
+                </div>
+                <div class="media">
+                  <label>Mobile</label>
+                  <p>
+                    <%= global.adminData.mobile%>
+                  </p>
+                </div>
+
+                <!-- <div class="media">
+                  <label>Gender</label>
+                  <% if (global.adminData.gender==1) { %>
+                    <p>Male</p>
+                    <% } else { %>
+                      <p>Female</p>
+                      </option>
+                      <% } %>
+
+                </div> -->
+
+              </div>
+              <div class="col-md-6">
+
+
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- <div class="counter mt-5">
+      <div class="row ">
+        <div class="col-6 col-lg-3">
+          <div class="count-data text-center">
+            <h6 class="count h2" data-to="500" data-speed="500">500</h6>
+            <p class="m-0px font-w-600">Happy Clients</p>
+          </div>
+        </div>
+        <div class="col-6 col-lg-3">
+          <div class="count-data text-center">
+            <h6 class="count h2" data-to="150" data-speed="150">150</h6>
+            <p class="m-0px font-w-600">Project Completed</p>
+          </div>
+        </div>
+        <div class="col-6 col-lg-3">
+          <div class="count-data text-center">
+            <h6 class="count h2" data-to="850" data-speed="850">850</h6>
+            <p class="m-0px font-w-600">Photo Capture</p>
+          </div>
+        </div>
+        <div class="col-6 col-lg-3">
+          <div class="count-data text-center">
+            <h6 class="count h2" data-to="190" data-speed="190">190</h6>
+            <p class="m-0px font-w-600">Telephonic Talk</p>
+          </div>
+        </div>
+      </div>
+    </div> -->
+    </div>
+  </div>
+
+</section>

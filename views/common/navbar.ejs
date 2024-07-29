@@ -1,0 +1,73 @@
+<div class="navbar-bg"></div>
+
+<nav class="navbar navbar-expand-lg main-navbar">
+  <form class="form-inline mr-auto">
+    <!-- <img src="/assets/img/Logo1.png" alt=""> -->
+    <ul class="navbar-nav mr-3">
+      <li><a href="#" data-toggle="sidebar" class="nav-link nav-link-lg"><i class="fas fa-bars"></i></a></li>
+      <li><a href="#" data-toggle="search" class="nav-link nav-link-lg d-sm-none"><i class="fas fa-search"></i></a></li>
+    </ul>
+  </form>
+  <ul class="navbar-nav navbar-right">
+   
+    <li class="dropdown"><a href="#" data-toggle="dropdown" class="nav-link dropdown-toggle nav-link-lg nav-link-user">
+      <% if (global.adminData) { %>
+        <img alt="image" src="/images/<%= global.adminData.profileImage %>" class="rounded-circle mr-1">
+      <% } else { %>
+        <img alt="image" src="" class="rounded-circle mr-1">
+      <% } %>
+      <% if (global.adminData) { %>
+        <div class="d-sm-none d-lg-inline-block"><%= global.adminData.name%></div>
+      <% } else { %>
+        <div class="d-sm-none d-lg-inline-block"></div>
+      <% } %>
+        
+      </a>
+      <div class="dropdown-menu dropdown-menu-right">
+        <div class="dropdown-title">Logged in 5 min ago</div>
+        <a href="/updateProfile" class="dropdown-item has-icon">
+          <i class="far fa-user"></i> Profile
+        </a>
+        <a href="/changePassword" class="dropdown-item has-icon">
+          <i class="fas fa-bolt"></i> Change Password
+        </a>
+        <div class="dropdown-divider"></div>
+        <!-- <a href="/logOut" class="dropdown-item has-icon text-danger">
+          <i class="fas fa-sign-out-alt"></i> Logout
+        </a> -->
+        <a  class="dropdown-item has-icon text-danger" onclick="confirmLogout()">
+          <i class="fas fa-sign-out-alt"></i> Logout
+        </a>
+      </div>
+    </li>
+  </ul>
+</nav>
+
+<script>
+  function confirmLogout() {
+    console.log("ankurr shakdkdd");
+    // console.log(id);
+    // alert(id);
+    swal({
+      title: "Are you sure?",
+      text: "You won't be able to revert this!",
+      icon: "warning",
+      buttons: true,
+      confirmButtonColor: "#3085d6",
+      cancelButtonColor: "#d33",
+      buttons: ["No, Cancel!", "Yes, Logout it!"],
+    }).then((result) => {
+      if (result == true) {
+        $.ajax({
+          url: "/logOut",
+          type: "post",
+          success: function (result) {
+            if (result) {
+              window.location.reload(true);
+            }
+          },
+        });
+      }
+    });
+  }
+</script>

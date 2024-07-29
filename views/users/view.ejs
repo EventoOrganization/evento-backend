@@ -1,0 +1,64 @@
+<% if(msg !='' ) { %>
+  <div class="alert alert-success msg" style="position: absolute; z-index: 9999; color:white; background-color: #195780; right: 10px; top: 10px;">
+    <span style="font-size: 16px;">
+      <%= msg %>
+    </span>
+  </div>
+  <% } %>
+<section class="section">
+  <div class="section-header">
+    <h1>User View</h1>
+  </div>
+  <div class="section-body">
+    <form action="#" method="post">
+      <div class="card-body">
+          <div class="form-group row mb-4">
+            <label class="col-form-label text-md-right col-12 col-md-3 col-lg-3">First Name</label>
+            <div class="col-sm-12 col-md-7">
+              <input type="text" name="firstName" value="<%= data?.firstName%>" class="form-control" readonly>
+            </div>
+          </div>
+          <div class="form-group row mb-4">
+              <label class="col-form-label text-md-right col-12 col-md-3 col-lg-3">Last Name</label>
+              <div class="col-sm-12 col-md-7">
+                <input type="text" name="lastName" value="<%= data?.lastName%>" class="form-control" readonly>
+              </div>
+            </div>
+            <div class="form-group row mb-4">
+              <label class="col-form-label text-md-right col-12 col-md-3 col-lg-3">Email</label>
+              <div class="col-sm-12 col-md-7">
+                <input type="email" name="email" value="<%=data?.email%>" class="form-control" readonly>
+              </div>
+            </div>
+            <div class="form-group row mb-4">
+              <label class="col-form-label text-md-right col-12 col-md-3 col-lg-3">Contact Number</label>
+              <div class="col-sm-12 col-md-7">
+                <input type="number" name="gender" value="<%= data?.phoneNumber%>" class="form-control" readonly>
+              </div>
+            </div>
+            <div class="form-group row mb-4">
+              <label class="col-form-label text-md-right col-12 col-md-3 col-lg-3">DOB </label>
+              <div class="col-sm-12 col-md-7">
+                <input type="text" value="<%= moment(data?.DOB).format('DD-MM-YYYY')%>" class="form-control" readonly>
+              </div>
+            </div>
+
+            <div class="form-group row mb-4">
+              <label class="col-form-label text-md-right col-12 col-md-3 col-lg-3">Image</label>
+              <div class="col-sm-12 col-md-7">
+                <!-- <input type="file" name="images" value="<%=data.images%>" class="form-control"> -->
+                <img src="/images/profile/<%= data?.profileImage%>" width="80px" height="80px" alt="">
+              </div>
+            </div>
+            <input type="hidden" name="id" value="<%=data._id%>" alt="">
+          <div class="form-group row mb-4">
+            <label class="col-form-label text-md-right col-12 col-md-3 col-lg-3"></label>
+            <div class="col-sm-12 col-md-7">
+              <!-- <button type="submit" class="btn btn-primary">submit</button> -->
+              <a href="/users" class="btn btn-primary">Back</a>
+            </div>
+          </div>
+        </div>
+      </form>
+  </div>
+</section>
