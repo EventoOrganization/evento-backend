@@ -101,8 +101,8 @@ Please refer to [Contributing](CONTRIBUTING.md) for guidelines on contributing t
 
 We have provided templates to help you report bugs and request new features.
 
-- [bug_report](https://github.com/EventoOrganization/evento_web/tree/main/ISSUE_TEMPLATE/bug_report.md)
-- [feature_request](https://github.com/EventoOrganization/evento_web/tree/main/ISSUE_TEMPLATE/feature_request.md)
+- [bug_report](.github/ISSUE_TEMPLATE/bug_report.md)
+- [feature_request](.github/ISSUE_TEMPLATE/feature_request.md)
 
 ## License
 

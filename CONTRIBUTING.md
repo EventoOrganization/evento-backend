@@ -56,7 +56,7 @@ Implement your feature or fix the bug.
 
 ## Reporting Issues
 
-If you encounter any issues, please open an issue on GitHub with detailed information on how to reproduce the problem. Use the [bug report template](./.github/ISSUE_TEMPLATE/bug_report.md) for reporting bugs and the [feature request template](./.github/ISSUE_TEMPLATE/feature_request.md) for suggesting new features.
+If you encounter any issues, please open an issue on GitHub with detailed information on how to reproduce the problem. Use the [bug report template](.github/ISSUE_TEMPLATE/bug_report.md) for reporting bugs and the [feature request template](.github/ISSUE_TEMPLATE/feature_request.md) for suggesting new features.
 
 ### .gitignore
 
