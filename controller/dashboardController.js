@@ -2,28 +2,35 @@ const bodyParser = require("body-parser");
 const bcrypt = require("bcrypt");
 const uuid = require("uuid").v4;
 const jwt = require("jsonwebtoken");
-const SECRET_KEY = "jnhdscoilwdeicdeswjdk";
+const JWT_SECRET_KEY = process.env.JWT_SECRET_KEY;
 const helper = require("../middleware/helpers");
 const user = require("../models/userModel");
 const cohost = require("../models/cohost");
-const contactUs=require("../models/contactUs")
+const contactUs = require("../models/contactUs");
 const interest = require("../models/interestModel");
 const events = require("../models/eventModel");
 const moment = require("moment");
 const path = require("path");
 const { ReportModel } = require("../models");
-const Models=require("../models")
+const Models = require("../models");
 module.exports = {
   //******************  Render dashboard page **************************** */
   dashboard: async (req, res) => {
     try {
-      var title = "Dashboard"
+      var title = "Dashboard";
       if (!req.session.user) return res.redirect("/login");
       let userCount = await user.count({ role: "user" });
       let EventCount = await events.count();
       let interestCount = await interest.count();
-      let co_host_count = await cohost.count()
-      res.render("dashboard/dashboard",{title,userCount,co_host_count,EventCount,interestCount,msg: req.flash("msg")});
+      let co_host_count = await cohost.count();
+      res.render("dashboard/dashboard", {
+        title,
+        userCount,
+        co_host_count,
+        EventCount,
+        interestCount,
+        msg: req.flash("msg"),
+      });
     } catch (error) {
       console.log("errr+++++++++++++++++", error);
     }
@@ -43,7 +50,7 @@ module.exports = {
       const { email, password } = req.body;
       console.log("+++++++", req.body);
 
-      const checkUser = await user.findOne({ email: email ,role:"admin"});
+      const checkUser = await user.findOne({ email: email, role: "admin" });
 
       if (!checkUser) {
         req.flash("msg", "Invalid credentials");
@@ -55,7 +62,7 @@ module.exports = {
           checkUser.password
         );
         if (checkPassword) {
-          const token = jwt.sign({ userId: checkUser._id }, SECRET_KEY, {
+          const token = jwt.sign({ userId: checkUser._id }, JWT_SECRET_KEY, {
             expiresIn: "5d",
           });
           let userData = await user
@@ -110,8 +117,6 @@ module.exports = {
   //   }
   // },
 
- 
-  
   UpdateProfile: async (req, res) => {
     try {
       const { name, email, phoneNumber } = req.body;
@@ -162,9 +167,9 @@ module.exports = {
       if (!req.session.user) return res.redirect("/login");
 
       const data = await user.findOne({ email: req.session.user.email });
-    
-      var title = "profile"
-      res.render("admin/editProfile", { msg: req.flash("msg"), data,title });
+
+      var title = "profile";
+      res.render("admin/editProfile", { msg: req.flash("msg"), data, title });
     } catch (error) {
       console.log("errr+++++++++++++++++", error);
     }
@@ -172,8 +177,8 @@ module.exports = {
   changePassword: async (req, res) => {
     try {
       if (!req.session.user) return res.redirect("/login");
-      var title = "change"
-      res.render("admin/changePassword", { msg: req.flash("msg"),title});
+      var title = "change";
+      res.render("admin/changePassword", { msg: req.flash("msg"), title });
     } catch (error) {
       console.log("errr+++++++++++++++++", error);
     }
@@ -220,7 +225,7 @@ module.exports = {
   },
   logOut: async (req, res) => {
     try {
-      console.log("Inside the logout method")
+      console.log("Inside the logout method");
       req.session.destroy();
       res.redirect("/login");
     } catch (error) {
@@ -233,8 +238,8 @@ module.exports = {
   addInterest: async (req, res) => {
     try {
       if (!req.session.user) return res.redirect("/login");
-      var title = "interests"
-      res.render("interest/addInterest", { msg: req.flash("msg"),title });
+      var title = "interests";
+      res.render("interest/addInterest", { msg: req.flash("msg"), title });
     } catch (error) {
       console.log("errr+++++++++++++++++", error);
     }
@@ -243,7 +248,7 @@ module.exports = {
     try {
       if (!req.session.user) return res.redirect("/login");
       const { name } = req.body; // Get the name and image from req.body
-  
+
       if (req.files && req.files.image) {
         // Access the file using the correct name attribute
         var extension = path.extname(req.files.image.name);
@@ -261,8 +266,7 @@ module.exports = {
         image: fileImage, // Use the correct variable containing the image file name
       });
 
-
-      req.flash("msg", "Interst Add Successfully")
+      req.flash("msg", "Interst Add Successfully");
       res.redirect("/interests");
     } catch (error) {
       console.log("errr+++++++++++++++++", error);
@@ -272,8 +276,8 @@ module.exports = {
     try {
       if (!req.session.user) return res.redirect("/login");
       const data = await interest.findById({ _id: req.params.id });
-      var title = "interests"
-      res.render("interest/update", { msg: req.flash("msg"), data,title });
+      var title = "interests";
+      res.render("interest/update", { msg: req.flash("msg"), data, title });
     } catch (error) {
       console.log("errr+++++++++++++++++", error);
     }
@@ -282,8 +286,8 @@ module.exports = {
     try {
       if (!req.session.user) return res.redirect("/login");
       const data = await interest.findById({ _id: req.params.id });
-      var title = "interests"
-      res.render("interest/view", { msg: req.flash("msg"), data,title });
+      var title = "interests";
+      res.render("interest/view", { msg: req.flash("msg"), data, title });
     } catch (error) {
       console.log("errr+++++++++++++++++", error);
     }
@@ -292,8 +296,12 @@ module.exports = {
     try {
       if (!req.session.user) return res.redirect("/login");
       const data = await interest.find({}).sort({ createdAt: -1 });
-      var title = "interests"
-      res.render("interest/interestList", { msg: req.flash("msg"), data ,title});
+      var title = "interests";
+      res.render("interest/interestList", {
+        msg: req.flash("msg"),
+        data,
+        title,
+      });
     } catch (error) {
       console.log("errr+++++++++++++++++", error);
     }
@@ -318,7 +326,7 @@ module.exports = {
         name: name,
         image: fileImage,
       };
-     
+
       await interest.findOneAndUpdate(
         { _id: req.body.id },
         { $set: updateFields },
@@ -327,8 +335,7 @@ module.exports = {
       const result = await interest.findOne({ _id: req.body.id });
       // console.log("++++++++++++++++", result);
 
-     
-      req.flash("msg", "Interst Update Successfully")
+      req.flash("msg", "Interst Update Successfully");
       res.redirect("/interests");
     } catch (err) {
       console.log(err);
@@ -358,8 +365,13 @@ module.exports = {
         .findById({ _id: req.params.id })
         .populate("coHosts");
       // console.log(data,"JJJJJJJJJJJJJJJJJ");return
-      var title = "events"
-      res.render("events/viewEvent", { msg: req.flash("msg"), data, moment,title });
+      var title = "events";
+      res.render("events/viewEvent", {
+        msg: req.flash("msg"),
+        data,
+        moment,
+        title,
+      });
     } catch (error) {
       console.log("errr+++++++++++++++++", error);
     }
@@ -367,7 +379,10 @@ module.exports = {
   events: async (req, res) => {
     try {
       // if (!req.session.user) return res.redirect("/login");
-      const data = await events.find({}).sort({ createdAt: -1 }).populate("coHosts");
+      const data = await events
+        .find({})
+        .sort({ createdAt: -1 })
+        .populate("coHosts");
       // data.forEach(event => {
       //   event.coHosts.forEach(coHost => {
       //     console.log("Co-host name:", coHost.name);
@@ -375,8 +390,13 @@ module.exports = {
 
       //   });
       // });
-      var title = "events"
-      res.render("events/eventList", { msg: req.flash("msg"), data, moment,title });
+      var title = "events";
+      res.render("events/eventList", {
+        msg: req.flash("msg"),
+        data,
+        moment,
+        title,
+      });
     } catch (error) {
       console.log("errr+++++++++++++++++", error);
     }
@@ -440,8 +460,8 @@ module.exports = {
     try {
       if (!req.session.user) return res.redirect("/login");
       const data = await user.find({ role: "user" }).sort({ createdAt: -1 });
-      var title = "users"
-      res.render("users/userList", { msg: req.flash("msg"), data,title });
+      var title = "users";
+      res.render("users/userList", { msg: req.flash("msg"), data, title });
     } catch (error) {
       console.log("errr+++++++++++++++++", error);
     }
@@ -450,9 +470,9 @@ module.exports = {
     try {
       if (!req.session.user) return res.redirect("/login");
       const data = await user.findById({ _id: req.params.id });
-      console.log("this is user",data)
-      var title = "users"
-      res.render("users/view", { msg: req.flash("msg"), data, moment,title });
+      console.log("this is user", data);
+      var title = "users";
+      res.render("users/view", { msg: req.flash("msg"), data, moment, title });
     } catch (error) {
       console.log("errr+++++++++++++++++", error);
     }
@@ -478,10 +498,10 @@ module.exports = {
   },
   Edituser: async (req, res) => {
     try {
-      var title = "users"
+      var title = "users";
       if (!req.session.user) return res.redirect("/login");
       let data = await user.findByIdAndUpdate({ _id: req.params.id });
-      res.render("users/edit", {title, data, moment, msg: req.flash("msg")});
+      res.render("users/edit", { title, data, moment, msg: req.flash("msg") });
     } catch (error) {
       console.log(error.message);
     }
@@ -489,7 +509,7 @@ module.exports = {
   updateUser: async (req, res) => {
     try {
       const { firstName, lastName, email, phoneNumber, DOB } = req.body;
-    
+
       if (req.files && req.files.profileImage) {
         var extension = path.extname(req.files.profileImage.name);
         var fileImage = uuid() + extension;
@@ -507,17 +527,17 @@ module.exports = {
         phoneNumber: phoneNumber,
         profileImage: fileImage,
         // DOB: DOB,
-        DOB:moment(DOB, 'DD-MM-YYYY').toDate()
+        DOB: moment(DOB, "DD-MM-YYYY").toDate(),
       };
-      console.log("this is user update==>",updateFields)
+      console.log("this is user update==>", updateFields);
       await user.findOneAndUpdate(
         { _id: req.body.id },
         { $set: updateFields },
         { new: true }
       );
       const result = await user.findOne({ _id: req.body.id });
-      
-     req.flash('msg', "User Update Successfully")
+
+      req.flash("msg", "User Update Successfully");
       res.redirect("/users");
     } catch (err) {
       console.log(err);
@@ -532,31 +552,28 @@ module.exports = {
         user: req.body.id,
       });
       await Models.EventPhotoVideosModel.deleteOne({
-             userId:req.body.id
-          })
+        userId: req.body.id,
+      });
       await Models.RSVPSubmission.deleteMany({
-        userId:req.body.id
-      })
+        userId: req.body.id,
+      });
       await Models.eventAttendesUserModel.deleteMany({
-        userId:req.body.id
-      })
+        userId: req.body.id,
+      });
       await Models.eventFavouriteUserModel.deleteMany({
-        userId:req.body.id
-      })
+        userId: req.body.id,
+      });
       await Models.eventNotificationModel.deleteMany({
-        reciverId:req.body.id
-      }) 
+        reciverId: req.body.id,
+      });
       await Models.userFollowModel.deleteMany({
-        $or: [
-          { follower: req.body.id },
-          { following: req.body.id }
-        ]
+        $or: [{ follower: req.body.id }, { following: req.body.id }],
       });
       await Models.coHostModel.updateMany(
         { cohost_id: req.body.id },
         { $pull: { cohost_id: req.body.id } }
       );
-      
+
       // await restaurent.findOneAndDelete({ userId: req.body.id });
 
       res.json(1);
@@ -569,7 +586,7 @@ module.exports = {
   deleteuser1: async (req, res) => {
     try {
       const userId = req.body.id;
-  
+
       // Define an array of delete operations
       const deleteOperations = [
         user.findByIdAndDelete({ _id: userId }),
@@ -580,49 +597,57 @@ module.exports = {
         Models.eventFavouriteUserModel.deleteMany({ userId }),
         Models.eventNotificationModel.deleteMany({ reciverId: userId }),
         Models.userFollowModel.deleteMany({
-          $or: [
-            { follower: userId },
-            { following: userId }
-          ]
+          $or: [{ follower: userId }, { following: userId }],
         }),
-        Models.coHostModel.updateMany({ cohost_id: userId }, { $pull: { cohost_id: userId } })
+        Models.coHostModel.updateMany(
+          { cohost_id: userId },
+          { $pull: { cohost_id: userId } }
+        ),
       ];
-  
+
       // Run all delete operations concurrently
       await Promise.all(deleteOperations);
-  
+
       res.json(1);
     } catch (error) {
       console.error(error);
       res.json(0);
     }
   },
-  
-/****************************Co-Host******************************/
 
-  co_host:async(req,res)=>{
+  /****************************Co-Host******************************/
+
+  co_host: async (req, res) => {
     try {
-      let create_cohost = await cohost.create(req.body)
-      res.json(create_cohost)
+      let create_cohost = await cohost.create(req.body);
+      res.json(create_cohost);
     } catch (error) {
       console.log(error);
     }
   },
-  co_host_list:async(req,res)=>{
+  co_host_list: async (req, res) => {
     try {
       if (!req.session.user) return res.redirect("/login");
-      let getList = await cohost.find().populate('user_id').populate('cohost_id').populate('event_id')
-      console.log("this is cohost-->",getList);
-      console.log("this is the result====?",getList[0].cohost_id)
-      title ='Co-host'
-      res.render("cohost/cohostList",{getList, msg: req.flash("msg"),title})
+      let getList = await cohost
+        .find()
+        .populate("user_id")
+        .populate("cohost_id")
+        .populate("event_id");
+      console.log("this is cohost-->", getList);
+      console.log("this is the result====?", getList[0].cohost_id);
+      title = "Co-host";
+      res.render("cohost/cohostList", {
+        getList,
+        msg: req.flash("msg"),
+        title,
+      });
     } catch (error) {
       console.log(error);
     }
   },
-  delete_cohost:async(req,res)=>{
+  delete_cohost: async (req, res) => {
     try {
-     let del_cohost= await cohost.findByIdAndDelete({
+      let del_cohost = await cohost.findByIdAndDelete({
         _id: req.body.id,
       });
       res.json(1);
@@ -633,20 +658,24 @@ module.exports = {
       console.log(error);
     }
   },
-  contactUs:async(req,res)=>{
+  contactUs: async (req, res) => {
     try {
       if (!req.session.user) return res.redirect("/login");
       let data = await contactUs.find();
-      console.log("this is data-->",data);
-      title ='Contact_Us'
-      res.render("contactUs/contactUsList",{data, msg: req.flash("msg"),title})
+      console.log("this is data-->", data);
+      title = "Contact_Us";
+      res.render("contactUs/contactUsList", {
+        data,
+        msg: req.flash("msg"),
+        title,
+      });
     } catch (error) {
       console.log(error);
     }
   },
-  delete_contactUs:async(req,res)=>{
+  delete_contactUs: async (req, res) => {
     try {
-     let del_contactUs= await contactUs.findByIdAndDelete({
+      let del_contactUs = await contactUs.findByIdAndDelete({
         _id: req.body.id,
       });
       res.json(1);
@@ -657,33 +686,42 @@ module.exports = {
       console.log(error);
     }
   },
-  getReport:async(req,res)=>{
+  getReport: async (req, res) => {
     try {
       if (!req.session.user) return res.redirect("/login");
-      let data = await ReportModel.find().populate("senderId").populate('reciverId');
-      console.log("this is data-->",data);
-      title ='Contact_Us'
-      res.render("contactUs/contactUsList",{data, msg: req.flash("msg"),title})
+      let data = await ReportModel.find()
+        .populate("senderId")
+        .populate("reciverId");
+      console.log("this is data-->", data);
+      title = "Contact_Us";
+      res.render("contactUs/contactUsList", {
+        data,
+        msg: req.flash("msg"),
+        title,
+      });
     } catch (error) {
       console.log(error);
     }
   },
-  blockUser:async(req,res)=>{
+  blockUser: async (req, res) => {
     try {
       if (!req.session.user) return res.redirect("/login");
-      let criteria={
-        _id:req.body.reciverId
+      let criteria = {
+        _id: req.body.reciverId,
       };
-      let updatedata={
-        is_block:1
-      }
-      let data = await ReportModel.findOneAndUpdate(criteria,updatedata);
-      console.log("this is data-->",data);
-      title ='Contact_Us'
-      res.render("contactUs/contactUsList",{data, msg: req.flash("msg"),title})
+      let updatedata = {
+        is_block: 1,
+      };
+      let data = await ReportModel.findOneAndUpdate(criteria, updatedata);
+      console.log("this is data-->", data);
+      title = "Contact_Us";
+      res.render("contactUs/contactUsList", {
+        data,
+        msg: req.flash("msg"),
+        title,
+      });
     } catch (error) {
       console.log(error);
     }
   },
 };
-

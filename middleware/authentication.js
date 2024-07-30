@@ -1,19 +1,17 @@
-var users=require("../models/userModel")
+var users = require("../models/userModel");
 var jwt = require("jsonwebtoken");
 const { Validator } = require("node-input-validator");
 const helper = require("../helper/helper");
-const SECRETS_KEY = "jnhdscoilwdeicdeswjdk";
-const SECRET_KEY =
-  "U2FsdGVkX19aDKvxj/Nr/Cp6cb70gK7mBnJzVQ0WYNand9iM1LlcvIRe8qzC44RdN4VPefFG5o2/Q031Mxwv7A==";
-const PUBLISH_KEY =
-  "U2FsdGVkX1/vYsCHDLw74pt+ZfQPJuOWK2w+l9AMgUfMNVXCXpvz7TDpx6xKd0T1PG8WRFgYy5aaawoo2IDO/g==";
+const JWT_SECRET_KEY = process.env.JWT_SECRET_KEY;
+const API_SECRET_KEY = process.env.API_SECRET_KEY;
+const PUBLISH_KEY = process.env.PUBLISH_KEY;
 
 module.exports = {
   authenticateJWT: async (req, res, next) => {
     const authHeader = req.headers.authorization;
     if (authHeader) {
       const token = authHeader.split(" ")[1];
-      jwt.verify(token, SECRETS_KEY, async (err, user) => {
+      jwt.verify(token, JWT_SECRET_KEY, async (err, user) => {
         if (err) {
           return res.status(403).json({
             success: false,
@@ -22,9 +20,9 @@ module.exports = {
           });
         }
         const existingUser = await users.findOne({
-            _id: user.data.id,
-            loginTime: user.data.loginTime,
-            role: "user",
+          _id: user.data.id,
+          loginTime: user.data.loginTime,
+          role: "user",
         });
 
         if (!existingUser) {
@@ -32,7 +30,7 @@ module.exports = {
             success: false,
             code: 403,
             body: {},
-            message:"Authentication error"
+            message: "Authentication error",
           });
         }
         req.user = existingUser;
@@ -55,7 +53,7 @@ module.exports = {
     }
 
     if (
-      req.headers.secret_key !== SECRET_KEY ||
+      req.headers.secret_key !== API_SECRET_KEY ||
       req.headers.publish_key !== PUBLISH_KEY
     ) {
       return helper.failed(res, "Key not matched!");
