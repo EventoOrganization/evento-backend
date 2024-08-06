@@ -1,15 +1,14 @@
-const { FlatCompat } = require("@eslint/eslintrc");
-const prettierPlugin = require("eslint-plugin-prettier");
-const {
-  configs: { recommended },
-} = require("@eslint/js");
+import { FlatCompat } from "@eslint/eslintrc";
+import { recommended } from "@eslint/js";
+import prettierPlugin from "eslint-plugin-prettier";
+import { __dirname } from "./utils";
 
 const compat = new FlatCompat({
   baseDirectory: __dirname,
   recommendedConfig: recommended,
 });
 
-module.exports = [
+export default [
   {
     ignores: ["node_modules/**", "dist/**"],
     files: ["**/*.js", "**/*.ts"],
@@ -17,8 +16,10 @@ module.exports = [
       ecmaVersion: 2020,
       sourceType: "module",
       globals: {
-        node: true,
-        es6: true,
+        process: "readonly",
+        console: "readonly",
+        module: "readonly",
+        require: "readonly",
       },
     },
     plugins: {
@@ -26,6 +27,8 @@ module.exports = [
     },
     rules: {
       "prettier/prettier": "error",
+      "no-undef": "error",
+      "no-console": "off",
     },
   },
   ...compat.extends("eslint:recommended"),

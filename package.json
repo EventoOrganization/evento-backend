@@ -4,7 +4,6 @@
   "private": true,
   "scripts": {
     "start": "nodemon evento.js",
-    "prepare": "husky install",
     "lint": "eslint . --cache",
     "commit": "cz",
     "test": "jest",
@@ -12,7 +11,10 @@
     "test:coverage": "jest --coverage"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.623.0",
+    "@aws-sdk/client-ses": "^3.623.0",
     "apn": "^2.2.0",
+    "aws-sdk": "^2.1667.0",
     "bcrypt": "^5.1.0",
     "bcryptjs": "^2.4.3",
     "body-parser": "^1.20.2",
@@ -34,6 +36,7 @@
     "moment": "^2.29.4",
     "mongoose": "^7.3.1",
     "morgan": "~1.9.1",
+    "multer": "1.4.5-lts.1",
     "node-input-validator": "^4.5.1",
     "node-schedule": "^2.1.1",
     "nodemailer": "^6.9.4",
