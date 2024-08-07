@@ -73,7 +73,7 @@ We use `migrate-mongo` for database migrations. Follow these steps to run and ma
    ```sh
    migrate-mongo down
 
-For more details, refer to the (migrate-mongo documentation)[https://github.com/seppevs/migrate-mongo]
+For more details, refer to the [migrate-mongo documentation](https://github.com/seppevs/migrate-mongo)
 
 ## Examples
 
