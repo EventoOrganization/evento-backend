@@ -178,13 +178,14 @@ module.exports = {
       const isEmailExist = await Models.userModel.findOne({
         email: req.body.email,
       });
+
       const isNameExist = await Models.userModel.findOne({
         name: { $regex: new RegExp(req.body.name, "i") }, // Case-insensitive search for name
       });
       if (isNameExist) {
         return helper.failed(
           res,
-          "Sorry this username already exists, please choose another one"
+          "Sorry this username already exists, please choose another one",
         );
       }
       if (isEmailExist) {
@@ -226,6 +227,7 @@ module.exports = {
         aboutMe: "",
         profileImage: images ? images : "",
       });
+      console.log(dataEnter);
 
       if (dataEnter) {
         let token = jwt.sign(
@@ -238,7 +240,7 @@ module.exports = {
             },
           },
           API_SECRET_KEY,
-          { expiresIn: "30d" }
+          { expiresIn: "30d" },
         );
         let responseData = {
           ...dataEnter.toObject(), // Convert Mongoose document to plain object
@@ -248,6 +250,10 @@ module.exports = {
         return helper.success(res, "Signup Successfully", responseData);
       }
     } catch (error) {
+      console.log(
+        "*******************************************HEREHERHERHERHERHEHREHREHREHREHREH******************************",
+        error,
+      );
       return res.status(401).json({ status: false, message: error.message });
     }
   },
@@ -268,21 +274,21 @@ module.exports = {
       if (!logData) {
         return helper.failed(
           res,
-          "Sorry we don’t recognise your user please create account"
+          "Sorry we don’t recognise your user please create account",
         );
       }
       if (logData) {
         if (logData.is_block == 1) {
           return helper.failed(
             res,
-            "Your account is block by admin please contant with admin."
+            "Your account is block by admin please contant with admin.",
           );
         }
       }
 
       const checkPassword = await bcrypt.compare(
         v.inputs.password,
-        logData.password
+        logData.password,
       );
       let time = helper.unixTimestamp();
       if (!checkPassword) {
@@ -298,7 +304,7 @@ module.exports = {
             deviceToken: req.body.deviceToken,
           },
         },
-        { new: true }
+        { new: true },
       );
 
       let token = jwt.sign(
@@ -311,7 +317,7 @@ module.exports = {
           },
         },
         API_SECRET_KEY,
-        { expiresIn: "30d" }
+        { expiresIn: "30d" },
       );
       delete logData.password;
       logData = JSON.stringify(logData);
@@ -330,7 +336,7 @@ module.exports = {
         {
           $set: { loginTime: "0", deviceToken: "" },
         },
-        { new: true }
+        { new: true },
       );
       return helper.success(res, "Logout successfully");
     } catch (error) {
@@ -371,16 +377,14 @@ module.exports = {
       });
       const { oldPassword, newPassword, confirmPassword } = req.body;
       if (newPassword !== confirmPassword) {
-        return res
-          .status(401)
-          .json({
-            status: false,
-            message: "New password and confirm password not match",
-          });
+        return res.status(401).json({
+          status: false,
+          message: "New password and confirm password not match",
+        });
       }
       let comparePassword = await bcrypt.compare(
         oldPassword,
-        userInfo.password
+        userInfo.password,
       );
       if (comparePassword) {
         let hash = await bcrypt.hashSync(newPassword, 10);
@@ -389,7 +393,7 @@ module.exports = {
           {
             $set: { password: hash },
           },
-          { new: true }
+          { new: true },
         );
         return helper.success(res, "Password Changed successfully");
       } else {
@@ -427,7 +431,7 @@ module.exports = {
         {
           $set: { forgotPasswordToken: ran_token },
         },
-        { new: true }
+        { new: true },
       );
       let forgotPasswordUrl = "" + ran_token;
       var baseUrl =
@@ -541,7 +545,7 @@ module.exports = {
           {
             $set: { password: hash, forgotPasswordToken: "" },
           },
-          { new: true }
+          { new: true },
         );
 
         res.redirect("/user/success");
@@ -606,7 +610,7 @@ module.exports = {
           {
             $set: { loginTime: time },
           },
-          { new: true }
+          { new: true },
         );
 
         let emailData = await Models.userModel.findOne({
@@ -621,7 +625,7 @@ module.exports = {
             },
           },
           API_SECRET_KEY,
-          { expiresIn: "30d" }
+          { expiresIn: "30d" },
         );
 
         const values = JSON.parse(JSON.stringify(emailData));
@@ -646,7 +650,7 @@ module.exports = {
             },
           },
           API_SECRET_KEY,
-          { expiresIn: "30d" }
+          { expiresIn: "30d" },
         );
         userData.token = token;
         userData.allreadyExist = 0;
@@ -686,14 +690,14 @@ module.exports = {
       if (isNameExist) {
         return helper.failed(
           res,
-          "Sorry this username already exists, please choose another one"
+          "Sorry this username already exists, please choose another one",
         );
       }
       if (req.body && req.body.interest && req.body.interest.length > 0) {
         objToSave.interest = JSON.parse(req.body.interest);
         await Models.userModel.updateOne(
           { _id: req.user._id },
-          { $set: { interest: [] } }
+          { $set: { interest: [] } },
         );
       }
       let dataUpdate = await Models.userModel.findByIdAndUpdate(
@@ -701,7 +705,7 @@ module.exports = {
         {
           $set: objToSave,
         },
-        { new: true }
+        { new: true },
       );
       return helper.success(res, "Profile updated successfully", dataUpdate);
     } catch (error) {
@@ -766,7 +770,7 @@ module.exports = {
         {
           $set: { otp: otp, is_otp_verify: 0 },
         },
-        { new: true }
+        { new: true },
       );
       SendOtp(checkEmail.email, otp, checkEmail.name);
       return helper.success(res, "Mail sent successfully.");
@@ -798,7 +802,7 @@ module.exports = {
                 is_otp_verify: 1,
               },
             },
-            { new: true }
+            { new: true },
           );
 
           const userDetail = await Models.userModel.findOne(
@@ -811,14 +815,14 @@ module.exports = {
               mobile: 1,
               profileImage: 1,
               otp: 1,
-            }
+            },
           );
 
           userDetail.is_otp_verify == 1;
           return await helper.success(
             res,
             "Verify OTP successfully",
-            userDetail
+            userDetail,
           );
         } else {
           return helper.failed(res, "Otp doesn't Matched!");
@@ -849,7 +853,7 @@ module.exports = {
             otp: otp,
           },
         },
-        { new: true }
+        { new: true },
       );
 
       if (update_otp) {
@@ -999,7 +1003,7 @@ module.exports = {
         var n = newTime / 1000;
         newTime = Math.floor(n);
         const coHostFound = event.coHosts.some(
-          (coHost) => coHost._id.toString() == ID
+          (coHost) => coHost._id.toString() == ID,
         );
         event.coHostStatus = coHostFound;
         return newTime > moment(eventDateTime, "YYYY-MM-DD HH:mm:ss").unix();
@@ -1054,11 +1058,11 @@ module.exports = {
           var n = newTime / 1000;
           newTime = Math.floor(n);
           const coHostFound = event.coHosts.some(
-            (coHost) => coHost._id.toString() == ID
+            (coHost) => coHost._id.toString() == ID,
           );
           event.coHostStatus = coHostFound;
           return newTime > moment(eventDateTime, "YYYY-MM-DD HH:mm:ss").unix();
-        }
+        },
       );
 
       const filteredUpcomingEventsAttened = filteredEventsPast55.filter(
@@ -1080,7 +1084,7 @@ module.exports = {
           var n = newTime / 1000;
           newTime = Math.floor(n);
           return newTime < moment(eventDateTime, "YYYY-MM-DD HH:mm:ss").unix();
-        }
+        },
       );
 
       // Now filteredPastEvents contains only past events
@@ -1110,6 +1114,8 @@ module.exports = {
     }
   },
   getInterestsListing: async (req, res) => {
+    console.log("req.body", req.body);
+
     try {
       let interestList = await Models.interestModel.find();
       return helper.success(res, "Interest list", interestList);
@@ -1342,7 +1348,7 @@ module.exports = {
             }
           } catch (error) {
             console.error(
-              `Error fetching device token for userId ${userId}: ${error}`
+              `Error fetching device token for userId ${userId}: ${error}`,
             );
           }
         }
@@ -1527,7 +1533,7 @@ module.exports = {
       }
       const updateEvents = await Models.eventModel.updateOne(
         criteria,
-        objToUpdate
+        objToUpdate,
       );
       const sendNotifications = async (userIds, notificationTo) => {
         const deviceTokens = [];
@@ -1539,7 +1545,7 @@ module.exports = {
             }
           } catch (error) {
             console.error(
-              `Error fetching device token for userId ${userId}: ${error}`
+              `Error fetching device token for userId ${userId}: ${error}`,
             );
           }
         }
@@ -1705,7 +1711,7 @@ module.exports = {
       var senderData = await Models.userModel.findOne({ _id: req.user._id });
       const updateEvents = await Models.eventModel.updateOne(
         criteria,
-        objToUpdate
+        objToUpdate,
       );
       const updateEvents1 = await Models.eventModel.findOne(criteria);
 
@@ -1719,7 +1725,7 @@ module.exports = {
             }
           } catch (error) {
             console.error(
-              `Error fetching device token for userId ${userId}: ${error}`
+              `Error fetching device token for userId ${userId}: ${error}`,
             );
           }
         }
@@ -1769,7 +1775,7 @@ module.exports = {
                 notificationTo: notificationTo,
                 eventName: req.body.name,
               },
-            }
+            },
           );
         }
       };
@@ -1785,12 +1791,12 @@ module.exports = {
         .filter((id) => id !== req.user._id.toString());
       if (coHosts.includes(req.user._id.toString())) {
         var updatedCoHosts = coHosts.filter(
-          (id) => id !== req.user._id.toString()
+          (id) => id !== req.user._id.toString(),
         );
       }
       if (guests.includes(req.user._id.toString())) {
         var updatedguests = guests.filter(
-          (id) => id !== req.user._id.toString()
+          (id) => id !== req.user._id.toString(),
         );
       }
       coHosts = Array.from(new Set(coHosts));
@@ -1924,18 +1930,18 @@ module.exports = {
         virtualEvent?.user?._id.toString() === req.user._id.toString()
           ? true
           : virtualEvent?.guestsAllowFriend === true
-          ? virtualEvent?.guests.some(
-              (guest) => guest._id.toString() === req?.user?._id.toString()
-            )
-            ? true
-            : false
-          : false;
+            ? virtualEvent?.guests.some(
+                (guest) => guest._id.toString() === req?.user?._id.toString(),
+              )
+              ? true
+              : false
+            : false;
       // const uploadSectionHideShow=virtualEvent.details.date>=currentDate?true:false;
       const uploadSectionHideShow = eventTimestamp < currentTimestamp;
       let guestsData = virtualEvent.guestsCohostAdd;
       let ID = req.user._id.toString();
       const coHostIds = virtualEvent1.coHosts.map((coHost) =>
-        coHost.toString()
+        coHost.toString(),
       );
       const guestsIds = virtualEvent1.guests.map((guest) => guest.toString());
       var accessPermission = true;
@@ -2021,7 +2027,7 @@ module.exports = {
             $addToSet: {
               users: { $each: userIdArray },
             },
-          }
+          },
         );
       }
 
@@ -2045,7 +2051,7 @@ module.exports = {
 
       const result = await Models.eventModel.updateMany(
         { _id: req.body.eventId },
-        updateQuery
+        updateQuery,
       );
       const sendNotifications = async (userIds, notificationTo) => {
         const deviceTokens = [];
@@ -2057,7 +2063,7 @@ module.exports = {
             }
           } catch (error) {
             console.error(
-              `Error fetching device token for userId ${userId}: ${error}`
+              `Error fetching device token for userId ${userId}: ${error}`,
             );
           }
         }
@@ -2130,7 +2136,7 @@ module.exports = {
       await Models.eventModel.findByIdAndUpdate(
         req.body.eventId,
         { $pull: { guests: req.body.guestId } },
-        { new: true }
+        { new: true },
       );
       return helper.success(res, "Guest remove from event successfully");
     } catch (error) {
@@ -2193,12 +2199,12 @@ module.exports = {
       if (event) {
         if (event.guests && Array.isArray(event.guests)) {
           userIds1 = event.guests.filter(
-            (id) => id.toString() !== loggedInUserId
+            (id) => id.toString() !== loggedInUserId,
           );
         }
         if (event.coHosts && Array.isArray(event.coHosts)) {
           userIds2 = event.coHosts.filter(
-            (id) => id.toString() !== loggedInUserId
+            (id) => id.toString() !== loggedInUserId,
           );
         }
       }
@@ -2215,7 +2221,7 @@ module.exports = {
       return helper.success(
         res,
         "List of users and their follow status",
-        filteredData
+        filteredData,
       );
     } catch (error) {
       return res.status(401).json({ status: false, message: error.message });
@@ -2453,7 +2459,7 @@ module.exports = {
       userAttendances.forEach((attendance) => {
         attendanceStatusMap.set(
           attendance.eventId.toString(),
-          attendance.attendEvent === 1
+          attendance.attendEvent === 1,
         );
       });
       //For Favourite
@@ -2469,7 +2475,7 @@ module.exports = {
       userFavourite.forEach((attendance) => {
         FavouriteStatusMap.set(
           attendance.eventId.toString(),
-          attendance.favourite === 1
+          attendance.favourite === 1,
         );
       });
       // Loop through each event in the result array
@@ -2485,20 +2491,20 @@ module.exports = {
           ? event.user._id.toString() === req.user._id.toString()
             ? true
             : event.guestsAllowFriend === true
-            ? event.guests.some(
-                (guest) => guest._id.toString() === req.user._id.toString()
-              )
-            : false
+              ? event.guests.some(
+                  (guest) => guest._id.toString() === req.user._id.toString(),
+                )
+              : false
           : false;
         const eventReturn = event.user
           ? event.user._id.toString() === req.user._id.toString()
             ? true
             : event.guests.some(
-                (guest) => guest._id.toString() === req.user._id.toString()
+                (guest) => guest._id.toString() === req.user._id.toString(),
               )
           : false;
         const eventReturn1 = event.coHosts.some(
-          (guest) => guest._id.toString() === req.user._id.toString()
+          (guest) => guest._id.toString() === req.user._id.toString(),
         )
           ? true
           : eventReturn;
@@ -2987,7 +2993,7 @@ module.exports = {
           const eventIdStr = event.eventId ? event.eventId._id.toString() : "";
           const rsvpEventIdsArray = Array.from(rsvpEventIds);
           const hasRSVP = rsvpEventIdsArray.some(
-            (rsvpId) => eventIdStr === rsvpId
+            (rsvpId) => eventIdStr === rsvpId,
           );
           return {
             ...event.toObject(),
@@ -3015,7 +3021,7 @@ module.exports = {
       const filteredUpcomingEvents = upcomingEvents1.filter((event) => {
         let ID = req.user._id.toString();
         const coHostIds = event.eventId?.coHosts.map((coHost) =>
-          coHost.toString()
+          coHost.toString(),
         );
         if (coHostIds.includes(ID)) {
           event.coHostStatus = coHostIds.includes(ID);
@@ -3186,7 +3192,7 @@ module.exports = {
           profileImage: 1,
           aboutMe: 1,
           bio: 1,
-        }
+        },
       );
       let upcomingEvents = await Models.eventModel
         .find({
@@ -3308,7 +3314,7 @@ module.exports = {
         var n = newTime / 1000;
         newTime = Math.floor(n);
         const coHostFound = event.coHosts.some(
-          (coHost) => coHost._id.toString() == ID
+          (coHost) => coHost._id.toString() == ID,
         );
         event.coHostStatus = coHostFound;
         return newTime > moment(eventDateTime, "YYYY-MM-DD HH:mm:ss").unix();
@@ -3406,7 +3412,7 @@ module.exports = {
                 .on("error", (err) => {
                   console.error(
                     `Error generating thumbnail for ${videoNameUrl}:`,
-                    err
+                    err,
                   );
                   reject(err);
                 });
@@ -3430,9 +3436,8 @@ module.exports = {
         let checkPermission = {
           _id: req.body.eventId,
         };
-        let checkPermissionUpload = await Models.eventModel.findById(
-          checkPermission
-        );
+        let checkPermissionUpload =
+          await Models.eventModel.findById(checkPermission);
         if (checkPermissionUpload.allUploadPhotoVideo == 1) {
           let findBeforeAdd = await Models.EventPhotoVideosModel.find({
             userId: req.user._id,
@@ -3457,7 +3462,7 @@ module.exports = {
                   video: { $each: videoName },
                   thumbnailVideo: { $each: thumbnail },
                 },
-              }
+              },
             );
             result = await Models.EventPhotoVideosModel.findOne({
               eventId: req.body.eventId,
@@ -3474,7 +3479,7 @@ module.exports = {
         } else {
           return helper.failed(
             res,
-            "No permission to upload video/Image for this event"
+            "No permission to upload video/Image for this event",
           );
         }
       } else {
@@ -3529,13 +3534,13 @@ module.exports = {
           await Models.groupChatModel.findByIdAndUpdate(
             checkGroupHas._id,
             update,
-            { new: true } // This option returns the updated document
+            { new: true }, // This option returns the updated document
           );
         }
         return helper.success(
           res,
           "Event attendees confirmation sent successfully",
-          save
+          save,
         );
       } else {
         let save = await Models.eventAttendesUserModel.deleteOne(objToSave);
@@ -3543,13 +3548,13 @@ module.exports = {
           await Models.groupChatModel.findByIdAndUpdate(
             checkGroupHas._id,
             { $pull: { users: req.user._id } }, // Changed data.userId to req.user._id
-            { new: true }
+            { new: true },
           );
         }
         return helper.success(
           res,
           "Event attendees confirmation deleted successfully",
-          save
+          save,
         );
       }
     } catch (error) {
@@ -3584,11 +3589,9 @@ module.exports = {
         title: "Privacy Policy",
       });
       if (existingDoc) {
-        return res
-          .status(409)
-          .json({
-            message: "Document with title 'Privacy Policy' already exists",
-          });
+        return res.status(409).json({
+          message: "Document with title 'Privacy Policy' already exists",
+        });
       }
       let objToSave = {
         title: "Privacy Policy",
@@ -3617,23 +3620,19 @@ module.exports = {
         title: "Term and Condition",
       });
       if (existingDoc) {
-        return res
-          .status(409)
-          .json({
-            message: "Document with title 'Term and Condition' already exists",
-          });
+        return res.status(409).json({
+          message: "Document with title 'Term and Condition' already exists",
+        });
       }
       let objToSave = {
         title: "Term and Condition",
         content: req.body.content,
       };
       let save = await Models.cmsModel.create(objToSave);
-      return res
-        .status(200)
-        .json({
-          message: "Term and Condition create  successfully",
-          save: save,
-        });
+      return res.status(200).json({
+        message: "Term and Condition create  successfully",
+        save: save,
+      });
     } catch (error) {
       return res.status(401).json({ status: false, message: error.message });
     }
@@ -3835,7 +3834,7 @@ module.exports = {
       return helper.success(
         res,
         "List of users and their follow status",
-        resultList
+        resultList,
       );
     } catch (error) {
       return res.status(401).json({ status: false, message: error.message });
@@ -3895,7 +3894,7 @@ module.exports = {
       return helper.success(
         res,
         "List of users who attended the event with follow status",
-        resultList
+        resultList,
       );
     } catch (error) {
       return res.status(401).json({ status: false, message: error.message });
@@ -3945,13 +3944,13 @@ module.exports = {
         .filter(
           (result) =>
             result.status === "follow-each-other" ||
-            result.status === "following"
+            result.status === "following",
         );
 
       return helper.success(
         res,
         "List of users and their follow status",
-        resultList
+        resultList,
       );
     } catch (error) {
       return res.status(401).json({ status: false, message: error.message });
@@ -4003,13 +4002,13 @@ module.exports = {
             result.status === "follow-each-other" ||
             result.status === "followed" ||
             result.status === "following" ||
-            result.status == "not-followed"
+            result.status == "not-followed",
         );
 
       return helper.success(
         res,
         "List of users and their follow status",
-        resultList
+        resultList,
       );
     } catch (error) {
       return res.status(401).json({ status: false, message: error.message });
@@ -4067,7 +4066,7 @@ module.exports = {
 
         await Models.chatconstant.updateOne(
           { _id: checkChatConstant._id },
-          { lastmessage: saveMsg._id }
+          { lastmessage: saveMsg._id },
         );
 
         let getMsg = await Models.message
@@ -4103,7 +4102,7 @@ module.exports = {
 
         await Models.chatconstant.updateOne(
           { _id: createChatConstant._id },
-          { lastmessage: saveMsg._id }
+          { lastmessage: saveMsg._id },
         );
 
         let getMsg = await Models.message
@@ -4153,7 +4152,7 @@ module.exports = {
       };
       let block = await Models.chatconstant.findOneAndUpdate(
         criteria,
-        objToUpdate
+        objToUpdate,
       );
       socket.emit("block_user_emit", block);
     } catch (error) {
@@ -4268,12 +4267,12 @@ module.exports = {
       };
       let save = await Models.followingNotificationModel.updateOne(
         criteria,
-        objToUpdate
+        objToUpdate,
       );
       return helper.success(
         res,
         "Following notification read status change",
-        save
+        save,
       );
     } catch (error) {
       return res.status(401).json({ status: false, message: error.message });
@@ -4299,7 +4298,7 @@ module.exports = {
       };
       let save = await Models.eventNotificationModel.updateOne(
         criteria,
-        objToUpdate
+        objToUpdate,
       );
       return helper.success(res, "Event notification read status change", save);
     } catch (error) {
@@ -4360,7 +4359,7 @@ module.exports = {
             rsvpForm: hasRSVP, // Set rsvpForm to true if there is an RSVP submission, false otherwise
             coHostStatus: coHostStatus,
           };
-        })
+        }),
       );
       console.log("notificationsWithRSVP", notificationsWithRSVP);
       let followingNotification = await Models.followingNotificationModel.find({
@@ -4497,7 +4496,7 @@ module.exports = {
       return helper.success(
         res,
         "List of user_event_create_list",
-        uniqueResult
+        uniqueResult,
       );
     } catch (error) {
       throw error;

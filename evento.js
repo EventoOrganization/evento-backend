@@ -15,10 +15,16 @@ var expressLayouts = require("express-ejs-layouts");
 var indexRouter = require("./routes/dashBoardRoutes");
 var usersRouter = require("./routes/users");
 const cmsRoutes = require("./routes/cmsRoutes ");
-
+const cors = require("cors");
 // Create an instance of the Express application
 var app = express();
-
+app.use(
+  cors({
+    origin: "*",
+    methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
+    credentials: true,
+  }),
+);
 // Set up view engine
 app.set("views", path.join(__dirname, "views"));
 app.set("view engine", "ejs");
@@ -53,7 +59,7 @@ app.use(
     cookie: {
       maxAge: 24 * 60 * 60 * 365 * 1000,
     },
-  })
+  }),
 );
 app.use(flash());
 app.use(basemiddleware);
