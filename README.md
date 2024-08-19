@@ -44,6 +44,37 @@ Welcome to the Evento Backend project. This project serves as the backend for th
 
 2. **The server should now be running on http://localhost:8747**:
 
+## Migrations
+
+We use `migrate-mongo` for database migrations. Follow these steps to run and manage migrations.
+
+### Initial Setup
+
+1. **Install migrate-mongo**:
+   ```sh
+   npm install -g migrate-mongo
+
+2. **Initialize migrate-mongo**:
+   ```sh
+   migrate-mongo init
+   
+3. **Configure migrate-mongo**:
+   Update `migrate-mongo-config.js` with your MongoDB connection details.
+
+### Running Migrations
+
+1. **Create a new migration**:
+   ```sh
+   migrate-mongo create <migration-name>
+2. **Apply migrations**:
+   ```sh
+   migrate-mongo up
+3. **Rollback migrations**:
+   ```sh
+   migrate-mongo down
+
+For more details, refer to the [migrate-mongo documentation](https://github.com/seppevs/migrate-mongo)
+
 ## Examples
 
 We have included some examples to help you get started with dependencies.
