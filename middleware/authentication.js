@@ -8,22 +8,30 @@ const PUBLISH_KEY = process.env.PUBLISH_KEY;
 
 module.exports = {
   authenticateJWT: async (req, res, next) => {
+    console.log(req.headers);
     const authHeader = req.headers.authorization;
+    console.log(authHeader);
     if (authHeader) {
       const token = authHeader.split(" ")[1];
       jwt.verify(token, JWT_SECRET_KEY, async (err, user) => {
+        console.log(token);
         if (err) {
+          console.log(err);
+
           return res.status(403).json({
             success: false,
             code: 403,
             body: {},
           });
         }
+
+        console.log("user", user);
         const existingUser = await users.findOne({
           _id: user.data.id,
           loginTime: user.data.loginTime,
           role: "user",
         });
+        console.log("existingUser", existingUser);
 
         if (!existingUser) {
           return res.status(403).json({

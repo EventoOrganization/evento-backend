@@ -1,6 +1,6 @@
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
-const API_SECRET_KEY = process.env.API_SECRET_KEY;
+const JWT_SECRET_KEY = process.env.JWT_SECRET_KEY;
 const helper = require("../helper/helper");
 const Models = require("../models/index");
 const moment = require("moment");
@@ -11,6 +11,9 @@ const ffmpeg = require("fluent-ffmpeg");
 // const mongoose = require('mongoose');
 const socket = require("socket.io");
 const mongoose = require("mongoose");
+const { uploadFileToS3 } = require("../services/s3Service");
+const fs = require("fs");
+
 const schedule = require("node-schedule");
 // const cronSchedule="* * * * *";
 const cronSchedule = "0 0 * * *"; // Runs every night at 12:00 AM
@@ -157,6 +160,9 @@ schedule.scheduleJob(cronSchedule1, async function () {
 
 module.exports = {
   signup: async (req, res) => {
+    console.log(
+      "*****************************SIGNUP REQUEST*****************************",
+    );
     try {
       const v = new Validator(req.body, {
         name: "required",
@@ -252,7 +258,7 @@ module.exports = {
               loginTime: time,
             },
           },
-          API_SECRET_KEY,
+          JWT_SECRET_KEY,
           { expiresIn: "30d" },
         );
         let responseData = {
@@ -344,7 +350,7 @@ module.exports = {
             loginTime: time,
           },
         },
-        API_SECRET_KEY,
+        JWT_SECRET_KEY,
         { expiresIn: "30d" },
       );
 
@@ -658,7 +664,7 @@ module.exports = {
               ...emailData,
             },
           },
-          API_SECRET_KEY,
+          JWT_SECRET_KEY,
           { expiresIn: "30d" },
         );
 
@@ -683,7 +689,7 @@ module.exports = {
               ...userData,
             },
           },
-          API_SECRET_KEY,
+          JWT_SECRET_KEY,
           { expiresIn: "30d" },
         );
         userData.token = token;
@@ -1173,9 +1179,10 @@ module.exports = {
   createEventAndRSVPform: async (req, res) => {
     console.log("reqw.body", req.body);
     try {
-      let imageUrls = [];
-      let videoName;
-      // let thumbnail=[]
+      let imageUrls = []; // To store image URLs
+      let videoName; // To store video URL
+      let thumbnail; // To store thumbnail URL
+
       const {
         name,
         email,
@@ -1185,20 +1192,29 @@ module.exports = {
         questions,
         additionalField,
       } = req.body;
+
+      // Fetching user data from the database
       var senderData = await Models.userModel.findOne({ _id: req.user._id });
+
+      // Check if there's a video file in the request
       if (req.files && req.files.video) {
         let video = req.files.video;
         if (Array.isArray(video)) {
           if (video.length > 0) {
-            video = video[0];
+            video = video[0]; // Handling multiple files (though typically not required here)
           }
         } else {
-          video = req.files.video;
+          video = req.files.video; // Handling a single file
         }
-        if (req.body.type == 1) {
-          videoName = await helper.fileUpload(video, "videos");
-        } else if (req.body.type == 2) {
-          videoName = await helper.fileUpload(video, "videos");
+
+        // Upload video to S3 and get the URL
+        videoName = await helper.fileUpload(video, "videos");
+
+        // If type is 2, generate and upload a thumbnail
+        if (req.body.type == 2) {
+          const thumbnailPath = `${process.cwd()}/public/images/videos/${videoName}thumbnail.jpg`;
+
+          // Generate thumbnail using ffmpeg
           await new Promise((resolve, reject) => {
             ffmpeg(`${process.cwd()}/public/images/videos/${videoName}`)
               .screenshots({
@@ -1214,10 +1230,23 @@ module.exports = {
                 reject(err);
               });
           });
-          var thumbnail = `${videoName}thumbnail.jpg`;
+
+          // Upload thumbnail to S3 and get the URL
+          thumbnail = await helper.fileUpload(
+            {
+              name: `${videoName}thumbnail.jpg`,
+              data: fs.readFileSync(thumbnailPath),
+              mimetype: "image/jpeg",
+            },
+            "videos",
+          );
+
+          // Delete the local thumbnail file after upload
+          fs.unlinkSync(thumbnailPath);
         }
       }
 
+      // Check if there are images in the request and upload them to S3
       if (req.files && req.files.images) {
         const uploadedImages = Array.isArray(req.files.images)
           ? req.files.images
@@ -1225,42 +1254,20 @@ module.exports = {
 
         for (const image of uploadedImages) {
           const imageName = await helper.fileUpload(image, "profile");
-          imageUrls.push(imageName);
-          // if(req.body&&req.body.type==1){
-          //   const imageName = await helper.fileUpload(image, 'profile');
-          //   imageUrls.push(imageName);
-          // }else{
-          //  let  videoNamedata = await helper.fileUpload(image, 'videos');
-          //  videoName.push(videoNamedata)
-          //   await new Promise((resolve, reject) => {
-          //     ffmpeg(`${process.cwd()}/public/images/videos/${videoName}`)
-          //       .screenshots({
-          //         timestamps: ['05%'],
-          //         filename: `${videoName}thumbnail.jpg`,
-          //         folder: `${process.cwd()}/public/images/videos/`,
-          //         size: '320x240',
-          //       })
-          //       .on('end', () => {
-          //         resolve();
-          //       })
-          //       .on('error', (err) => {
-          //         reject(err);
-          //       });
-          //   });
-          //   var thumbnails = `${videoName}thumbnail.jpg`;
-          //   thumbnail.push(thumbnails)
-          // }
+          imageUrls.push(imageName); // Add image URL to the list
         }
       }
+
+      // Prepare the event object to save in the database
       let objToSave = {
         user: req.user._id,
         title: req.body.title,
         eventType: req.body.eventType,
         details: {
           name: req.body.name,
-          video: videoName,
-          thumbnailVideo: req.body.type == 2 ? thumbnail : "",
-          images: imageUrls,
+          video: videoName, // Store video URL
+          thumbnailVideo: req.body.type == 2 ? thumbnail : "", // Store thumbnail URL if type is 2
+          images: imageUrls, // Store image URLs
           mode: req.body.mode,
           date: req.body.date,
           endDate: req.body.endDate,
@@ -1278,34 +1285,38 @@ module.exports = {
         coHostStatus: false,
       };
 
-      // Check if latitude and longitude are present in the request body
+      // Handle location details if provided
       if (req.body && req.body.latitude && req.body.longitude) {
-        // Merge loc object with the existing details object
         objToSave.details.location = req.body.location;
         objToSave.details.loc = {
           type: "Point",
           coordinates: [
-            req.body.longitude, //longitude
-            req.body.latitude, //latitude
+            req.body.longitude, // longitude
+            req.body.latitude, // latitude
           ],
         };
       }
 
+      // Handle co-hosts if provided
       if (req.body.coHosts) {
-        // objToSave.coHosts=(JSON.parse(req.body.coHosts)).push(req.user._id);
         const parsedCoHosts = JSON.parse(req.body.coHosts);
-        parsedCoHosts.push(req.user._id.toString());
+        parsedCoHosts.push(req.user._id.toString()); // Add current user as co-host
         objToSave.coHosts = parsedCoHosts;
-      }
-      if (!req.body.coHosts) {
+      } else {
         objToSave.coHosts = req.user._id.toString();
       }
+
+      // Handle guests if provided
       if (req.body.guests) {
         objToSave.guests = JSON.parse(req.body.guests);
       }
+
+      // Handle interests if provided
       if (req.body.interestId) {
         objToSave.interest = JSON.parse(req.body.interestId);
       }
+
+      // Handle RSVP form if required
       if (req.body.createRSVP && req.body.createRSVP == "true") {
         objToSave.rsvpForm = {
           name: "",
@@ -1324,13 +1335,15 @@ module.exports = {
           });
         }
       }
+
+      // Create the event in the database
       var createEvents = await Models.eventModel.create(objToSave);
 
+      // Additional logic for public/private events with chat inclusion
       if (
         (req.body && req.body.eventType == "private") ||
         req.body.eventType == "public"
       ) {
-        // if(req.body.coHosts||req.body.guests){
         if (req.body.includeChat && req.body.includeChat === "true") {
           const coHostsArray = req.body.coHosts
             ? JSON.parse(req.body.coHosts)
@@ -1357,21 +1370,22 @@ module.exports = {
               uniqueArray.push(users[i]);
             }
           }
+
           let saveData = {
             eventId: createEvents._id,
             admin: req.user._id,
             users: uniqueArray,
             groupName: req.body.name,
-            image: imageUrls.length > 0 ? imageUrls[0] : thumbnail,
+            image: imageUrls.length > 0 ? imageUrls[0] : thumbnail, // Use either the first image or the thumbnail
             date: moment().format("YYYY-MM-DD"),
             time: moment().format("LTS"),
           };
           console.log("saveData", saveData);
           var coHostGroup = await Models.groupChatModel.create(saveData);
         }
-        // }
       }
 
+      // Function to send notifications
       const sendNotifications = async (userIds, notificationTo) => {
         const deviceTokens = [];
         for (const userId of userIds) {
@@ -1400,14 +1414,12 @@ module.exports = {
             reciverId: userIds,
             deviceToken: deviceTokens,
             message: `You are invited as a ${notificationTo} for ${createEvents.details.name} event`,
-            // message: `${createEvents.details.name} for this event you are ${notificationTo}`,
           };
 
           for (const userId of userIds) {
             const notificationDataSave = {
               senderId: req.user._id,
               reciverId: userId,
-              // message: ` ${createEvents.details.name} for this event you are ${notificationTo}`,
               message: `You are invited as a ${notificationTo} for ${createEvents.details.name} event`,
               notificationTo: notificationTo,
               is_read: 0,
@@ -1428,6 +1440,7 @@ module.exports = {
         }
       };
 
+      // Send notifications to co-hosts and guests
       if (req.body.coHosts && req.body.coHosts.length > 0) {
         const objToSave1 = {
           user_id: req.user._id,
@@ -1441,11 +1454,13 @@ module.exports = {
       if (req.body.guests && req.body.guests.length > 0) {
         await sendNotifications(JSON.parse(req.body.guests), "guest");
       }
+
       return helper.success(res, "Event created successfully", createEvents);
     } catch (error) {
       return res.status(401).json({ status: false, message: error.message });
     }
   },
+
   updateEventALl: async (req, res) => {
     try {
       let imageUrls = [];
@@ -3411,11 +3426,123 @@ module.exports = {
       return res.status(401).json({ status: false, message: error.message });
     }
   },
+  // uploadPhotoVideo: async (req, res) => {
+  //   try {
+  //     let imageUrls = [];
+  //     let videoName = [];
+  //     let thumbnail = [];
+  //     let checkUserGuestsOrNot = await Models.eventModel.findOne({
+  //       _id: req.body.eventId,
+  //     });
+  //     var exitsUser =
+  //       checkUserGuestsOrNot != null
+  //         ? checkUserGuestsOrNot.guests.includes(req.user._id) ||
+  //           checkUserGuestsOrNot.coHosts.includes(req.user._id)
+  //         : false;
+  //     if (exitsUser) {
+  //       if (req.files && req.files.video) {
+  //         const uploadedvideos = Array.isArray(req.files.video)
+  //           ? req.files.video
+  //           : [req.files.video];
+  //         for (const video of uploadedvideos) {
+  //           const videoNameUrl = await helper.fileUpload(video, "events");
+  //           videoName.push(videoNameUrl);
+  //           await new Promise((resolve, reject) => {
+  //             ffmpeg(`${process.cwd()}/public/images/events/${videoNameUrl}`)
+  //               .screenshots({
+  //                 timestamps: ["05%"],
+  //                 filename: `${videoNameUrl}thumbnail.jpg`,
+  //                 folder: `${process.cwd()}/public/images/events/`,
+  //                 size: "320x240",
+  //               })
+  //               .on("end", () => {
+  //                 resolve();
+  //               })
+  //               .on("error", (err) => {
+  //                 console.error(
+  //                   `Error generating thumbnail for ${videoNameUrl}:`,
+  //                   err,
+  //                 );
+  //                 reject(err);
+  //               });
+  //           });
+  //           thumbnail.push(`${videoNameUrl}thumbnail.jpg`);
+  //         }
+  //       }
+
+  //       if (req.files && req.files.images) {
+  //         const uploadedImages = Array.isArray(req.files.images)
+  //           ? req.files.images
+  //           : [req.files.images];
+
+  //         for (const image of uploadedImages) {
+  //           const imageName = await helper.fileUpload(image, "events");
+  //           imageUrls.push(imageName);
+  //         }
+  //       }
+  //       //Find already images and video upload by user in same event then update other wise create
+  //       let result;
+  //       let checkPermission = {
+  //         _id: req.body.eventId,
+  //       };
+  //       let checkPermissionUpload =
+  //         await Models.eventModel.findById(checkPermission);
+  //       if (checkPermissionUpload.allUploadPhotoVideo == 1) {
+  //         let findBeforeAdd = await Models.EventPhotoVideosModel.find({
+  //           userId: req.user._id,
+  //           eventId: req.body.eventId,
+  //         });
+  //         let criteria = {
+  //           userId: req.user._id,
+  //           eventId: req.body.eventId,
+  //         };
+  //         let objToUpdate = {
+  //           images: imageUrls,
+  //           video: videoName,
+  //           thumbnailVideo: thumbnail,
+  //         };
+  //         if (findBeforeAdd.length > 0) {
+  //           // result=await Models.EventPhotoVideosModel.updateOne(criteria,objToUpdate)
+  //           result = await Models.EventPhotoVideosModel.updateOne(
+  //             { eventId: req.body.eventId, userId: req.user._id },
+  //             {
+  //               $addToSet: {
+  //                 images: { $each: imageUrls },
+  //                 video: { $each: videoName },
+  //                 thumbnailVideo: { $each: thumbnail },
+  //               },
+  //             },
+  //           );
+  //           result = await Models.EventPhotoVideosModel.findOne({
+  //             eventId: req.body.eventId,
+  //             userId: req.user._id,
+  //           });
+  //         } else {
+  //           let objToSave = {
+  //             ...criteria,
+  //             ...objToUpdate,
+  //           };
+  //           result = await Models.EventPhotoVideosModel.create(objToSave);
+  //         }
+  //         return helper.success(res, "Added Successfully", result);
+  //       } else {
+  //         return helper.failed(
+  //           res,
+  //           "No permission to upload video/Image for this event",
+  //         );
+  //       }
+  //     } else {
+  //       return helper.failed(res, "You are not coHost or guest in this event");
+  //     }
+  //   } catch (error) {
+  //     return res.status(401).json({ status: false, message: error.message });
+  //   }
+  // },
   uploadPhotoVideo: async (req, res) => {
     try {
       let imageUrls = [];
-      let videoName = [];
-      let thumbnail = [];
+      let videoUrls = [];
+      let thumbnailUrls = [];
       let checkUserGuestsOrNot = await Models.eventModel.findOne({
         _id: req.body.eventId,
       });
@@ -3430,28 +3557,44 @@ module.exports = {
             ? req.files.video
             : [req.files.video];
           for (const video of uploadedvideos) {
-            const videoNameUrl = await helper.fileUpload(video, "events");
-            videoName.push(videoNameUrl);
+            const videoName = video.name;
+            const videoPath = video.path;
+
+            // Upload video to S3
+            const videoUrl = await uploadFileToS3(videoPath, videoName);
+            videoUrls.push(videoUrl);
+
+            // Generate thumbnail and upload to S3
+            const thumbnailName = `${videoName}-thumbnail.jpg`;
             await new Promise((resolve, reject) => {
-              ffmpeg(`${process.cwd()}/public/images/events/${videoNameUrl}`)
+              ffmpeg(videoPath)
                 .screenshots({
                   timestamps: ["05%"],
-                  filename: `${videoNameUrl}thumbnail.jpg`,
-                  folder: `${process.cwd()}/public/images/events/`,
+                  filename: thumbnailName,
+                  folder: "/tmp/", // Use temp folder to generate the thumbnail locally
                   size: "320x240",
                 })
-                .on("end", () => {
+                .on("end", async () => {
+                  const thumbnailPath = `/tmp/${thumbnailName}`;
+                  const thumbnailUrl = await uploadFileToS3(
+                    thumbnailPath,
+                    thumbnailName,
+                  );
+                  thumbnailUrls.push(thumbnailUrl);
+                  fs.unlinkSync(thumbnailPath); // Clean up the local thumbnail
                   resolve();
                 })
                 .on("error", (err) => {
                   console.error(
-                    `Error generating thumbnail for ${videoNameUrl}:`,
+                    `Error generating thumbnail for ${videoName}:`,
                     err,
                   );
                   reject(err);
                 });
             });
-            thumbnail.push(`${videoNameUrl}thumbnail.jpg`);
+
+            // Clean up the local video file
+            fs.unlinkSync(videoPath);
           }
         }
 
@@ -3461,11 +3604,19 @@ module.exports = {
             : [req.files.images];
 
           for (const image of uploadedImages) {
-            const imageName = await helper.fileUpload(image, "events");
-            imageUrls.push(imageName);
+            const imageName = image.name;
+            const imagePath = image.path;
+
+            // Upload image to S3
+            const imageUrl = await uploadFileToS3(imagePath, imageName);
+            imageUrls.push(imageUrl);
+
+            // Clean up the local image file
+            fs.unlinkSync(imagePath);
           }
         }
-        //Find already images and video upload by user in same event then update other wise create
+
+        // Rest of the code remains the same, except you now work with URLs from S3
         let result;
         let checkPermission = {
           _id: req.body.eventId,
@@ -3483,18 +3634,17 @@ module.exports = {
           };
           let objToUpdate = {
             images: imageUrls,
-            video: videoName,
-            thumbnailVideo: thumbnail,
+            video: videoUrls,
+            thumbnailVideo: thumbnailUrls,
           };
           if (findBeforeAdd.length > 0) {
-            // result=await Models.EventPhotoVideosModel.updateOne(criteria,objToUpdate)
             result = await Models.EventPhotoVideosModel.updateOne(
               { eventId: req.body.eventId, userId: req.user._id },
               {
                 $addToSet: {
                   images: { $each: imageUrls },
-                  video: { $each: videoName },
-                  thumbnailVideo: { $each: thumbnail },
+                  video: { $each: videoUrls },
+                  thumbnailVideo: { $each: thumbnailUrls },
                 },
               },
             );

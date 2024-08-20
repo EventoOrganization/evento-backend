@@ -1,7 +1,17 @@
 var apn = require("apn");
+const { S3Client, PutObjectCommand } = require("@aws-sdk/client-s3");
 // var ffmpeg = require("fluent-ffmpeg");
 // const schedule = require("node-schedule");
 // ffmpeg.setFfprobePath("../public/images/videos");
+// Configuration du client S3
+const s3 = new S3Client({
+  region: process.env.AWS_REGION,
+  credentials: {
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+  },
+});
+
 module.exports = {
   scheduler: function (data) {
     console.log(data, "DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDdd");
@@ -125,7 +135,7 @@ module.exports = {
       console.log(note, "---note--");
       const status = await apnProvider.send(
         note,
-        notification_data.deviceToken
+        notification_data.deviceToken,
       );
       console.log("status", status);
       return status;
@@ -137,25 +147,9 @@ module.exports = {
   sendPushToIosForEvent: async function (notification_data) {
     console.log(
       "sendPushToIosForEvent In helper----------->>",
-      notification_data
+      notification_data,
     );
     try {
-      var options = {
-        token: {
-          key: __dirname + "/AuthKey_C39J4VR3G3.p8",
-          keyId: "C39J4VR3G3",
-          teamId: "2XY788382M",
-        },
-        production: true,
-      };
-
-      // let notification = {
-      //   message: notification_data.message,
-      //   type: notification_data.deviceType,
-      //   senderId: notification_data.senderId,
-      //   message_type: notification_data.message_type,
-      // };
-
       const deviceTokens = Array.isArray(notification_data.deviceToken)
         ? notification_data.deviceToken
         : [notification_data.deviceToken];
@@ -164,16 +158,12 @@ module.exports = {
         ? notification_data.receiverId
         : [notification_data.receiverId];
 
-      var apnProvider = new apn.Provider(options);
-
       for (let i = 0; i < deviceTokens.length; i++) {
         const deviceToken = deviceTokens[i];
-        const receiverId = receiverIds[i]; // Get the corresponding receiverId
+        const receiverId = receiverIds[i];
 
         let notification = {
           message: notification_data.message,
-          // type: notification_data.deviceType=="IOS"?1:2,
-          type: 1,
           eventId: notification_data.eventId,
           senderId: notification_data.senderId,
           senderName: notification_data.senderName,
@@ -182,31 +172,66 @@ module.exports = {
           notificationType: 3,
         };
 
-        var note = new apn.Notification();
+        if (notification_data.deviceType === "IOS") {
+          // iOS Notification
+          const note = new apn.Notification();
+          note.expiry = Math.floor(Date.now() / 1000) + 3600;
+          note.badge = 3;
+          note.sound = "ping.aiff";
+          note.alert = notification_data.message;
+          note.payload = { body: notification };
+          note.topic = "com.live.EventoAPP";
+          note.senderId = notification_data.senderId;
+          note.receiverId = receiverId;
 
-        note.expiry = Math.floor(Date.now() / 1000) + 3600; // Expires 1 hour from now.
-        note.badge = 3;
-        note.sound = "ping.aiff";
-        note.alert = notification_data.message;
-        note.aps.alert = notification_data.message;
-        note.payload = { body: notification };
-        note.topic = "com.live.EventoAPP";
-        note.senderId = notification_data.senderId;
-        note.receiverId = receiverId; // Use the corresponding receiverId
+          var apnProvider = new apn.Provider({
+            token: {
+              key: __dirname + "/AuthKey_C39J4VR3G3.p8",
+              keyId: "C39J4VR3G3",
+              teamId: "2XY788382M",
+            },
+            production: true,
+          });
 
-        console.log(note, "---note--");
+          const status = await apnProvider.send(note, deviceToken);
+          console.log("status", status);
 
-        const status = await apnProvider.send(note, deviceToken);
-        console.log("status", status);
-        console.log("status", status.failed[0].response);
+          apnProvider.shutdown(); // Close the APN provider
+        } else if (notification_data.deviceType === "WEB") {
+          // Web Notification
+          const webNotificationData = {
+            title: "Evento Notification",
+            body: notification_data.message,
+            icon: notification_data.senderImage,
+            url: `https://yourwebsite.com/event/${notification_data.eventId}`,
+          };
+
+          // Here you need to call your method to send web notification
+          // Example: await sendWebNotification(receiverId, webNotificationData);
+          console.log("Web notification data", webNotificationData);
+        } else if (notification_data.deviceType === "ANDROID") {
+          // Android Notification
+          const androidNotificationData = {
+            title: "Evento Notification",
+            body: notification_data.message,
+            data: {
+              eventId: notification_data.eventId,
+              senderId: notification_data.senderId,
+            },
+          };
+
+          // Call a method to send the FCM notification
+          // Example: await sendAndroidNotification(deviceToken, androidNotificationData);
+          console.log("Android notification data", androidNotificationData);
+        } else {
+          console.log("Unhandled device type:", notification_data.deviceType);
+        }
       }
-
-      // Close the APN provider when done sending notifications
-      apnProvider.shutdown();
 
       return true;
     } catch (error) {
-      console.log("Inside catch in send push to IOS in helper--->", error);
+      console.log("Error in sending notifications", error);
+      return false;
     }
   },
 
@@ -275,7 +300,7 @@ module.exports = {
       console.log(note, "---note--");
       const status = await apnProvider.send(
         note,
-        notification_data.deviceToken
+        notification_data.deviceToken,
       );
       console.log("status", status);
       return status;
@@ -301,16 +326,23 @@ module.exports = {
     }
     console.log("result====>", result);
     var resultExt = `${result}.${file_ext}`;
-    await file.mv(
-      `public/images/${folder}/${result}.${file_ext}`,
-      function (err) {
-        if (err) {
-          throw err;
-        }
-      }
-    );
 
-    return resultExt;
+    const uploadParams = {
+      Bucket: process.env.S3_BUCKET_NAME,
+      Key: `${folder}/${resultExt}`,
+      Body: file.data,
+      ContentType: file.mimetype,
+    };
+
+    try {
+      const s3Result = await s3.send(new PutObjectCommand(uploadParams));
+      console.log("s3Result", s3Result);
+
+      return `https://${process.env.S3_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${folder}/${resultExt}`;
+    } catch (error) {
+      console.log("Error uploading to S3:", error);
+      throw new Error("S3 upload failed");
+    }
   },
 
   //   uploadThumbAndVideo: async (file, folder = "users") => {
