@@ -324,7 +324,7 @@ module.exports = {
       var rand_chr = letters[rand_int];
       if (result.substr(-1, 1) != rand_chr) result += rand_chr;
     }
-    console.log("result====>", result);
+    // console.log("result====>", result);
     var resultExt = `${result}.${file_ext}`;
 
     const uploadParams = {
@@ -336,8 +336,7 @@ module.exports = {
 
     try {
       const s3Result = await s3.send(new PutObjectCommand(uploadParams));
-      console.log("s3Result", s3Result);
-
+      // console.log("s3Result", s3Result);
       return `https://${process.env.S3_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${folder}/${resultExt}`;
     } catch (error) {
       console.log("Error uploading to S3:", error);

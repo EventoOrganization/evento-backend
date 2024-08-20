@@ -1177,7 +1177,7 @@ module.exports = {
   },
 
   createEventAndRSVPform: async (req, res) => {
-    console.log("reqw.body", req.body);
+    console.log("Received request body:", req.body);
     try {
       let imageUrls = []; // To store image URLs
       let videoName; // To store video URL
@@ -1194,72 +1194,126 @@ module.exports = {
       } = req.body;
 
       // Fetching user data from the database
-      var senderData = await Models.userModel.findOne({ _id: req.user._id });
+      const senderData = await Models.userModel.findOne({ _id: req.user._id });
+      if (!senderData) {
+        console.error("User not found:", req.user._id);
+        return res
+          .status(404)
+          .json({ status: false, message: "User not found" });
+      }
 
       // Check if there's a video file in the request
       if (req.files && req.files.video) {
-        let video = req.files.video;
-        if (Array.isArray(video)) {
-          if (video.length > 0) {
-            video = video[0]; // Handling multiple files (though typically not required here)
-          }
-        } else {
-          video = req.files.video; // Handling a single file
-        }
+        console.log("Processing video file...");
+        let video = Array.isArray(req.files.video)
+          ? req.files.video[0]
+          : req.files.video;
 
         // Upload video to S3 and get the URL
         videoName = await helper.fileUpload(video, "videos");
+        console.log("Video uploaded to S3:", videoName);
 
-        // If type is 2, generate and upload a thumbnail
+        // Generate and upload a thumbnail if needed
         if (req.body.type == 2) {
-          const thumbnailPath = `${process.cwd()}/public/images/videos/${videoName}thumbnail.jpg`;
+          try {
+            const thumbnailPath = `${process.cwd()}/public/images/videos/${videoName}thumbnail.jpg`;
 
-          // Generate thumbnail using ffmpeg
-          await new Promise((resolve, reject) => {
-            ffmpeg(`${process.cwd()}/public/images/videos/${videoName}`)
-              .screenshots({
-                timestamps: ["05%"],
-                filename: `${videoName}thumbnail.jpg`,
-                folder: `${process.cwd()}/public/images/videos/`,
-                size: "320x240",
-              })
-              .on("end", () => {
-                resolve();
-              })
-              .on("error", (err) => {
-                reject(err);
-              });
-          });
+            // Generate thumbnail using ffmpeg
+            console.log("Starting thumbnail generation...");
+            await new Promise((resolve, reject) => {
+              ffmpeg(`${process.cwd()}/public/images/videos/${videoName}`)
+                .screenshots({
+                  timestamps: ["05%"],
+                  filename: `${videoName}thumbnail.jpg`,
+                  folder: `${process.cwd()}/public/images/videos/`,
+                  size: "320x240",
+                })
+                .on("end", () => {
+                  console.log("Thumbnail generated successfully.");
+                  resolve();
+                })
+                .on("error", (err) => {
+                  console.error("Error generating thumbnail:", err);
+                  reject(err);
+                });
+            });
 
-          // Upload thumbnail to S3 and get the URL
-          thumbnail = await helper.fileUpload(
-            {
-              name: `${videoName}thumbnail.jpg`,
-              data: fs.readFileSync(thumbnailPath),
-              mimetype: "image/jpeg",
-            },
-            "videos",
-          );
+            // Upload thumbnail to S3
+            console.log("Uploading thumbnail to S3...");
+            thumbnail = await helper.fileUpload(
+              {
+                name: `${videoName}thumbnail.jpg`,
+                data: fs.readFileSync(thumbnailPath),
+                mimetype: "image/jpeg",
+              },
+              "videos",
+            );
+            console.log("Thumbnail uploaded to S3:", thumbnail);
 
-          // Delete the local thumbnail file after upload
-          fs.unlinkSync(thumbnailPath);
+            // Delete the local thumbnail file after upload
+            fs.unlinkSync(thumbnailPath);
+          } catch (error) {
+            console.error(
+              "Error during thumbnail generation or upload:",
+              error,
+            );
+            throw new Error("Thumbnail generation or upload failed");
+          }
         }
       }
 
       // Check if there are images in the request and upload them to S3
       if (req.files && req.files.images) {
+        console.log("Processing image files...");
         const uploadedImages = Array.isArray(req.files.images)
           ? req.files.images
           : [req.files.images];
 
         for (const image of uploadedImages) {
-          const imageName = await helper.fileUpload(image, "profile");
+          const imageName = await helper.fileUpload(image, "events");
           imageUrls.push(imageName); // Add image URL to the list
+          console.log("Image uploaded to S3:", imageName);
         }
       }
 
+      // Preparing the RSVP form if required
+      let rsvpForm = {};
+      if (req.body.createRSVP && req.body.createRSVP == "true") {
+        try {
+          const parsedQuestions = JSON.parse(questions);
+          const parsedAdditionalFields = JSON.parse(additionalField);
+          console.log("Parsed questions:", parsedQuestions);
+          console.log("Parsed additional fields:", parsedAdditionalFields);
+          rsvpForm = {
+            name: "",
+            email: email || "",
+            firstName: firstName || "",
+            lastName: lastName || "",
+            attendEvent: attendEvent || "",
+            questions: parsedQuestions, // Default to an empty array if undefined
+            additionalField: parsedAdditionalFields, // Default to an empty array if undefined
+          };
+          if (
+            rsvpForm.additionalField &&
+            Array.isArray(rsvpForm.additionalField)
+          ) {
+            rsvpForm.additionalField.forEach((field) => {
+              rsvpForm.additionalField[field.name] = field.required ? "" : null;
+            });
+          }
+        } catch (error) {
+          console.error(
+            "Error parsing RSVP questions or additional fields:",
+            error.message,
+          );
+          return res.status(400).json({
+            status: false,
+            message: "Invalid JSON format in RSVP data",
+          });
+        }
+      }
       // Prepare the event object to save in the database
-      let objToSave = {
+      const objToSave = {
         user: req.user._id,
         title: req.body.title,
         eventType: req.body.eventType,
@@ -1286,7 +1340,7 @@ module.exports = {
       };
 
       // Handle location details if provided
-      if (req.body && req.body.latitude && req.body.longitude) {
+      if (req.body.latitude && req.body.longitude) {
         objToSave.details.location = req.body.location;
         objToSave.details.loc = {
           type: "Point",
@@ -1318,74 +1372,68 @@ module.exports = {
 
       // Handle RSVP form if required
       if (req.body.createRSVP && req.body.createRSVP == "true") {
-        objToSave.rsvpForm = {
-          name: "",
-          email: email ? email : "",
-          firstName: firstName ? firstName : "",
-          lastName: lastName ? lastName : "",
-          attendEvent: attendEvent ? attendEvent : "",
-          questions: JSON.parse(questions),
-          additionalField: JSON.parse(additionalField),
-        };
-        if (additionalField && Array.isArray(additionalField)) {
-          additionalField.forEach((field) => {
-            objToSave.rsvpForm.additionalField[field.name] = field.required
-              ? ""
-              : null; // Set empty or null value based on required
+        try {
+          objToSave.rsvpForm = {
+            name: "",
+            email: email ? email : "",
+            firstName: firstName ? firstName : "",
+            lastName: lastName ? lastName : "",
+            attendEvent: attendEvent ? attendEvent : "",
+            questions: JSON.parse(questions),
+            additionalField: JSON.parse(additionalField),
+          };
+          if (additionalField && Array.isArray(additionalField)) {
+            additionalField.forEach((field) => {
+              objToSave.rsvpForm.additionalField[field.name] = field.required
+                ? ""
+                : null;
+            });
+          }
+        } catch (error) {
+          console.error(
+            "Error parsing RSVP questions or additional fields:",
+            error,
+          );
+          return res.status(400).json({
+            status: false,
+            message: "Invalid JSON format in RSVP data",
           });
         }
       }
 
       // Create the event in the database
-      var createEvents = await Models.eventModel.create(objToSave);
+      const createEvents = await Models.eventModel.create(objToSave);
+      console.log("Event created successfully:", createEvents);
 
       // Additional logic for public/private events with chat inclusion
       if (
-        (req.body && req.body.eventType == "private") ||
-        req.body.eventType == "public"
+        (req.body.eventType == "private" || req.body.eventType == "public") &&
+        req.body.includeChat === "true"
       ) {
-        if (req.body.includeChat && req.body.includeChat === "true") {
-          const coHostsArray = req.body.coHosts
-            ? JSON.parse(req.body.coHosts)
-            : "";
-          let guestsArray = req.body.guests ? JSON.parse(req.body.guests) : "";
+        const coHostsArray = req.body.coHosts
+          ? JSON.parse(req.body.coHosts)
+          : [];
+        const guestsArray = req.body.guests ? JSON.parse(req.body.guests) : [];
 
-          const userId = req.user._id.toString();
-          let users = [userId];
-          if (coHostsArray.length > 0) {
-            coHostsArray.forEach((coHost) => {
-              users.push(coHost);
-            });
-          }
-          if (guestsArray.length > 0) {
-            guestsArray.forEach((guest) => {
-              users.push(guest);
-            });
-          }
+        const userId = req.user._id.toString();
+        let users = [userId, ...coHostsArray, ...guestsArray];
 
-          let uniqueArray = [];
+        let uniqueArray = [...new Set(users)]; // Remove duplicates
 
-          for (let i = 0; i < users.length; i++) {
-            if (!uniqueArray.includes(users[i])) {
-              uniqueArray.push(users[i]);
-            }
-          }
-
-          let saveData = {
-            eventId: createEvents._id,
-            admin: req.user._id,
-            users: uniqueArray,
-            groupName: req.body.name,
-            image: imageUrls.length > 0 ? imageUrls[0] : thumbnail, // Use either the first image or the thumbnail
-            date: moment().format("YYYY-MM-DD"),
-            time: moment().format("LTS"),
-          };
-          console.log("saveData", saveData);
-          var coHostGroup = await Models.groupChatModel.create(saveData);
-        }
+        const saveData = {
+          eventId: createEvents._id,
+          admin: req.user._id,
+          users: uniqueArray,
+          groupName: req.body.name,
+          image: imageUrls.length > 0 ? imageUrls[0] : thumbnail, // Use either the first image or the thumbnail
+          date: moment().format("YYYY-MM-DD"),
+          time: moment().format("LTS"),
+        };
+        console.log("Creating group chat with data:", saveData);
+        await Models.groupChatModel.create(saveData);
       }
 
-      // Function to send notifications
+      // Send notifications to co-hosts and guests
       const sendNotifications = async (userIds, notificationTo) => {
         const deviceTokens = [];
         for (const userId of userIds) {
@@ -1405,12 +1453,10 @@ module.exports = {
           const sendNotification = {
             eventId: createEvents._id,
             senderId: req.user._id,
-            senderName: senderData.name
-              ? senderData.name
-              : senderData.firstName + senderData.lastName,
-            senderImage: senderData.profileImage
-              ? senderData.profileImage
-              : senderData.image,
+            senderName:
+              senderData.name ||
+              `${senderData.firstName} ${senderData.lastName}`,
+            senderImage: senderData.profileImage || senderData.image,
             reciverId: userIds,
             deviceToken: deviceTokens,
             message: `You are invited as a ${notificationTo} for ${createEvents.details.name} event`,
@@ -1440,23 +1486,17 @@ module.exports = {
         }
       };
 
-      // Send notifications to co-hosts and guests
+      // Send notifications
       if (req.body.coHosts && req.body.coHosts.length > 0) {
-        const objToSave1 = {
-          user_id: req.user._id,
-          cohost_id: JSON.parse(req.body.coHosts),
-          event_id: createEvents._id,
-        };
-        await Models.coHostModel.create(objToSave1);
         await sendNotifications(JSON.parse(req.body.coHosts), "co-host");
       }
-
       if (req.body.guests && req.body.guests.length > 0) {
         await sendNotifications(JSON.parse(req.body.guests), "guest");
       }
 
       return helper.success(res, "Event created successfully", createEvents);
     } catch (error) {
+      console.error("Error in createEventAndRSVPform:", error);
       return res.status(401).json({ status: false, message: error.message });
     }
   },
