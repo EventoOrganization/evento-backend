@@ -166,15 +166,19 @@ module.exports = {
       });
 
       const values = JSON.parse(JSON.stringify(v));
-
       let errorsResponse = await helper.checkValidation(v);
 
       if (errorsResponse) {
+        console.log("Validation errors:", errorsResponse);
         return helper.failed(res, errorsResponse);
       }
+
       if (req.body.password !== req.body.confirmPassword) {
-        return helper.failed(res, "Password and confirm password not match");
+        const errorMessage = "Password and confirm password do not match";
+        console.log(errorMessage);
+        return helper.failed(res, errorMessage);
       }
+
       const isEmailExist = await Models.userModel.findOne({
         email: req.body.email,
       });
@@ -182,28 +186,36 @@ module.exports = {
       const isNameExist = await Models.userModel.findOne({
         name: { $regex: new RegExp(req.body.name, "i") }, // Case-insensitive search for name
       });
+
       if (isNameExist) {
-        return helper.failed(
-          res,
-          "Sorry this username already exists, please choose another one",
-        );
-      }
-      if (isEmailExist) {
-        return helper.failed(res, "Email already registered");
-      }
-      let isMobileExist = await Models.userModel.findOne({
-        where: {
-          phoneNumber: req.body.phoneNumber,
-        },
-      });
-      if (isMobileExist) {
-        return helper.failed(res, "Mobile already registered.");
+        const errorMessage =
+          "Sorry, this username already exists. Please choose another one.";
+        console.log(errorMessage);
+        return helper.failed(res, errorMessage);
       }
 
+      if (isEmailExist) {
+        const errorMessage = "Email already registered";
+        console.log(errorMessage);
+        return helper.failed(res, errorMessage);
+      }
+
+      let isMobileExist = await Models.userModel.findOne({
+        phoneNumber: req.body.phoneNumber,
+      });
+
+      if (isMobileExist) {
+        const errorMessage = "Mobile number already registered";
+        console.log(errorMessage);
+        return helper.failed(res, errorMessage);
+      }
+
+      let images = "";
       if (req.files && req.files.image) {
         var image = req.files.image;
-        var images = await helper.fileUpload(image, "profile");
+        images = await helper.fileUpload(image, "profile");
       }
+
       let hash = bcrypt.hashSync(req.body.password, 10);
       let time = helper.unixTimestamp();
 
@@ -227,7 +239,8 @@ module.exports = {
         aboutMe: "",
         profileImage: images ? images : "",
       });
-      console.log(dataEnter);
+
+      console.log("User created successfully:", dataEnter);
 
       if (dataEnter) {
         let token = jwt.sign(
@@ -250,14 +263,22 @@ module.exports = {
         return helper.success(res, "Signup Successfully", responseData);
       }
     } catch (error) {
-      console.log(
-        "*******************************************HEREHERHERHERHERHEHREHREHREHREHREH******************************",
-        error,
-      );
-      return res.status(401).json({ status: false, message: error.message });
+      console.log("Signup error:", error.message);
+      return res.status(500).json({ status: false, message: error.message });
     }
   },
+
   login: async (req, res) => {
+    console.log(
+      "***************************************************************",
+    );
+    console.log(
+      "************************NEW LOGIN******************************",
+    );
+    console.log(req.body);
+    console.log(
+      "***************************************************************",
+    );
     try {
       const v = new Validator(req.body, {
         email: "required",
@@ -265,36 +286,43 @@ module.exports = {
       });
       const values = JSON.parse(JSON.stringify(v));
       let errorsResponse = await helper.checkValidation(v);
+
       if (errorsResponse) {
+        console.log("Validation errors:", errorsResponse);
         return helper.failed(res, errorsResponse);
       }
+
       let logData = await Models.userModel.findOne({
         email: v.inputs.email,
       });
+
       if (!logData) {
-        return helper.failed(
-          res,
-          "Sorry we don’t recognise your user please create account",
-        );
+        const errorMessage =
+          "Sorry, we don’t recognize your user. Please create an account.";
+        console.log(errorMessage);
+        return helper.failed(res, errorMessage);
       }
-      if (logData) {
-        if (logData.is_block == 1) {
-          return helper.failed(
-            res,
-            "Your account is block by admin please contant with admin.",
-          );
-        }
+
+      if (logData.is_block == 1) {
+        const errorMessage =
+          "Your account is blocked by admin. Please contact the admin.";
+        console.log(errorMessage);
+        return helper.failed(res, errorMessage);
       }
 
       const checkPassword = await bcrypt.compare(
         v.inputs.password,
         logData.password,
       );
-      let time = helper.unixTimestamp();
+
       if (!checkPassword) {
-        return helper.failed(res, "Password is incorrect");
+        const errorMessage = "Password is incorrect";
+        console.log(errorMessage);
+        return helper.failed(res, errorMessage);
       }
-      //   const firstTimeLogin = logData.firstTimeLogin == null ? 0 : 1;
+
+      let time = helper.unixTimestamp();
+
       await Models.userModel.findByIdAndUpdate(
         { _id: logData._id },
         {
@@ -319,16 +347,22 @@ module.exports = {
         API_SECRET_KEY,
         { expiresIn: "30d" },
       );
+
       delete logData.password;
       logData = JSON.stringify(logData);
       logData = JSON.parse(logData);
       logData.token = token;
       delete logData.password;
+
+      console.log("User login successful:", logData);
+
       return helper.success(res, "User Login Successfully", logData);
     } catch (error) {
-      return res.status(401).json({ status: false, message: error.message });
+      console.log("Login error:", error.message);
+      return res.status(500).json({ status: false, message: error.message });
     }
   },
+
   logOut: async (req, res) => {
     try {
       await Models.userModel.findByIdAndUpdate(

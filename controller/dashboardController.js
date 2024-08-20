@@ -54,40 +54,33 @@ module.exports = {
 
       if (!checkUser) {
         req.flash("msg", "Invalid credentials");
-        res.redirect("/login");
         console.log("++++++++++++", checkUser);
-      } else {
-        const checkPassword = await bcrypt.compare(
-          password,
-          checkUser.password
-        );
-        if (checkPassword) {
-          const token = jwt.sign({ userId: checkUser._id }, JWT_SECRET_KEY, {
-            expiresIn: "5d",
-          });
-          let userData = await user
-            .findOne({
-              email: email,
-            })
-            .select("name phone token email image profileImage ");
-          userData = JSON.parse(JSON.stringify(userData));
-          userData.token = token;
-
-          if (userData) {
-            req.session.user = userData;
-            // console.log( req.session.user,"JJJJJJJJJJJJJJJJJJJJJJ");return
-            req.flash("msg", "Login Successfully");
-            return res.redirect("/dashboard");
-          }
-        } else {
-          req.flash("msg", "Incorrect password");
-          return res.redirect("/login");
-        }
+        return res.redirect("/login"); // Utilisez return pour arrêter l'exécution ici
       }
-      req.flash("msg", "Invalid credentials");
-      res.redirect("/login");
+
+      const checkPassword = await bcrypt.compare(password, checkUser.password);
+      if (checkPassword) {
+        const token = jwt.sign({ userId: checkUser._id }, JWT_SECRET_KEY, {
+          expiresIn: "5d",
+        });
+
+        let userData = await user
+          .findOne({ email: email })
+          .select("name phone token email image profileImage");
+        userData = JSON.parse(JSON.stringify(userData));
+        userData.token = token;
+
+        req.session.user = userData;
+        req.flash("msg", "Login Successfully");
+        return res.redirect("/dashboard"); // Utilisez return ici aussi
+      } else {
+        req.flash("msg", "Incorrect password");
+        return res.redirect("/login"); // Utilisez return ici également
+      }
     } catch (err) {
       console.log("Error:", err);
+      req.flash("msg", "An error occurred during login.");
+      return res.redirect("/login"); // Assurez-vous que l'exécution se termine après une erreur
     }
   },
 
@@ -129,7 +122,7 @@ module.exports = {
           process.cwd() + "/public/images/" + fileImage,
           function (err) {
             if (err) console.log(err);
-          }
+          },
         );
       }
 
@@ -143,13 +136,13 @@ module.exports = {
       const fetchProfile = await user.findOneAndUpdate(
         { _id: req.session.user._id },
         { $set: updateFields },
-        { new: true }
+        { new: true },
       );
       console.log(req.session.user._id);
       const result = await user.findOne({ _id: req.session.user._id });
       console.log(
         "🚀 ~ file: dashboardController.js:123 ~ UpdateProfile: ~ result:",
-        result
+        result,
       );
 
       req.session.user = result;
@@ -194,7 +187,7 @@ module.exports = {
         // cl
         const isPasswordValid = await bcrypt.compare(
           password,
-          userObj.password
+          userObj.password,
         );
 
         if (isPasswordValid) {
@@ -203,7 +196,7 @@ module.exports = {
             { _id: userObj._id },
             {
               password: new_password,
-            }
+            },
           );
           // console.log(create,"HHHHHHHHHHHHHHHHHHHHHHH");return
           req.session.user = create;
@@ -257,7 +250,7 @@ module.exports = {
           process.cwd() + "/public/images/" + fileImage,
           function (err) {
             if (err) console.log(err);
-          }
+          },
         );
       }
 
@@ -318,7 +311,7 @@ module.exports = {
           process.cwd() + "/public/images/" + fileImage,
           function (err) {
             if (err) console.log(err);
-          }
+          },
         );
       }
 
@@ -330,7 +323,7 @@ module.exports = {
       await interest.findOneAndUpdate(
         { _id: req.body.id },
         { $set: updateFields },
-        { new: true }
+        { new: true },
       );
       const result = await interest.findOne({ _id: req.body.id });
       // console.log("++++++++++++++++", result);
@@ -348,7 +341,7 @@ module.exports = {
       });
       console.log(
         "🚀 ~ file: dashboardController.js:322 ~ deleteuser: ~ deldata:",
-        deldata
+        deldata,
       );
 
       res.json(1);
@@ -445,7 +438,7 @@ module.exports = {
       });
       console.log(
         "🚀 ~ file: dashboardController.js:322 ~ deleteuser: ~ deldata:",
-        deldata
+        deldata,
       );
 
       res.json(1);
@@ -517,7 +510,7 @@ module.exports = {
           process.cwd() + "/public/images/" + fileImage,
           function (err) {
             if (err) console.log(err);
-          }
+          },
         );
       }
       const updateFields = {
@@ -533,7 +526,7 @@ module.exports = {
       await user.findOneAndUpdate(
         { _id: req.body.id },
         { $set: updateFields },
-        { new: true }
+        { new: true },
       );
       const result = await user.findOne({ _id: req.body.id });
 
@@ -571,7 +564,7 @@ module.exports = {
       });
       await Models.coHostModel.updateMany(
         { cohost_id: req.body.id },
-        { $pull: { cohost_id: req.body.id } }
+        { $pull: { cohost_id: req.body.id } },
       );
 
       // await restaurent.findOneAndDelete({ userId: req.body.id });
@@ -601,7 +594,7 @@ module.exports = {
         }),
         Models.coHostModel.updateMany(
           { cohost_id: userId },
-          { $pull: { cohost_id: userId } }
+          { $pull: { cohost_id: userId } },
         ),
       ];
 
