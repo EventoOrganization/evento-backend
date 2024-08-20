@@ -626,7 +626,7 @@ module.exports = {
         .populate("user_id")
         .populate("cohost_id")
         .populate("event_id");
-      console.log("this is cohost-->", getList);
+      // console.log("this is cohost-->", getList);
       console.log("this is the result====?", getList[0].cohost_id);
       title = "Co-host";
       res.render("cohost/cohostList", {
