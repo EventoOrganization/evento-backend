@@ -19,10 +19,10 @@ module.exports = {
     try {
       var title = "Dashboard";
       if (!req.session.user) return res.redirect("/login");
-      let userCount = await user.count({ role: "user" });
-      let EventCount = await events.count();
-      let interestCount = await interest.count();
-      let co_host_count = await cohost.count();
+      let userCount = await user.countDocuments({ role: "user" });
+      let EventCount = await events.countDocuments();
+      let interestCount = await interest.countDocuments();
+      let co_host_count = await cohost.countDocuments();
       res.render("dashboard/dashboard", {
         title,
         userCount,

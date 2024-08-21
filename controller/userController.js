@@ -163,6 +163,8 @@ module.exports = {
     console.log(
       "*****************************SIGNUP REQUEST*****************************",
     );
+    console.log("req.body", req.body);
+
     try {
       const v = new Validator(req.body, {
         name: "required",
@@ -2019,12 +2021,12 @@ module.exports = {
         virtualEvent?.user?._id.toString() === req.user._id.toString()
           ? true
           : virtualEvent?.guestsAllowFriend === true
-            ? virtualEvent?.guests.some(
-                (guest) => guest._id.toString() === req?.user?._id.toString(),
-              )
-              ? true
-              : false
-            : false;
+          ? virtualEvent?.guests.some(
+              (guest) => guest._id.toString() === req?.user?._id.toString(),
+            )
+            ? true
+            : false
+          : false;
       // const uploadSectionHideShow=virtualEvent.details.date>=currentDate?true:false;
       const uploadSectionHideShow = eventTimestamp < currentTimestamp;
       let guestsData = virtualEvent.guestsCohostAdd;
@@ -3461,8 +3463,9 @@ module.exports = {
         let checkPermission = {
           _id: req.body.eventId,
         };
-        let checkPermissionUpload =
-          await Models.eventModel.findById(checkPermission);
+        let checkPermissionUpload = await Models.eventModel.findById(
+          checkPermission,
+        );
         if (checkPermissionUpload.allUploadPhotoVideo == 1) {
           let findBeforeAdd = await Models.EventPhotoVideosModel.find({
             userId: req.user._id,
