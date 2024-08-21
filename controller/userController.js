@@ -13,7 +13,7 @@ const socket = require("socket.io");
 const mongoose = require("mongoose");
 const { uploadFileToS3 } = require("../services/s3Service");
 const fs = require("fs");
-
+const Event = require("../models/eventModel");
 const schedule = require("node-schedule");
 // const cronSchedule="* * * * *";
 const cronSchedule = "0 0 * * *"; // Runs every night at 12:00 AM
@@ -2318,21 +2318,38 @@ module.exports = {
   },
 
   allAndVirtualEventAndNear: async (req, res) => {
+    console.log(
+      "🚀 ~ file: userController.js:allAndVirtualEventAndNear ~ req.body:",
+      req.body,
+    );
+
+    // Ensure that the models are correctly referenced
+    const Models = {
+      eventModel: Event,
+      // other models...
+    };
+
+    const mongoose = require("mongoose");
+    console.log("Mongoose Connection State:", mongoose.connection.readyState);
+
     try {
-      //max distance in meters (e.g., 1000 meters = 1 km) 1 for all 2 for virtual and 3 for near to me
+      // Initialize the current date with UTC time at 00:00
       const currentDate = new Date();
       currentDate.setUTCHours(0, 0, 0, 0);
+
+      // Calculate the next day's date
       const nextDate = new Date(currentDate);
       nextDate.setDate(currentDate.getDate() + 1);
 
-      // Format the next date as a string
-      const formattedNextDate = nextDate.toISOString();
+      // Extract parameters from the request body
       const { longitude, latitude, maxDistance, date, interestsID, type } =
         req.body;
       let skips = req.body.skip ? req.body.skip : 0;
       let limits = req.body.limit ? req.body.limit : 10;
-      let result;
-      let countDocuments;
+      let result; // Variable to store query results
+      let countDocuments; // Variable to store the total document count
+
+      // Function to build a text search query
       const searchQuery = (search) => {
         if (!search) return {};
         return {
@@ -2344,318 +2361,101 @@ module.exports = {
           ],
         };
       };
+
+      // Build the base query
       const baseQuery = {};
       if (date) {
         let givenDate = new Date(date);
         givenDate.setUTCHours(0, 0, 0, 0);
-
-        const dateRangeQuery = {
+        Object.assign(baseQuery, {
           $and: [
-            { "details.date": { $lte: givenDate } }, // Check if 'givenDate' is less than or equal to 'details.date'
-            { "details.endDate": { $gte: givenDate } }, // Check if 'givenDate' is greater than or equal to 'details.endDate'
+            { "details.date": { $lte: givenDate } },
+            { "details.endDate": { $gte: givenDate } },
           ],
-        };
-
-        // Merge the date range query with your base query
-        Object.assign(baseQuery, dateRangeQuery);
+        });
       }
 
+      // Add filter by interests if specified
       if (interestsID && interestsID.length > 0) {
         baseQuery.interest = { $in: JSON.parse(interestsID) };
       }
+
+      // Filter by mode (virtual) if specified
       if (type == 2) {
         baseQuery["details.mode"] = "virtual";
       }
-      if (type == 1) {
-        const { search } = req.query;
-        const query = searchQuery(search);
-        countDocuments = await Models.eventModel.countDocuments({
-          ...baseQuery,
-          ...query,
-          "details.endDate": { $gte: currentDate },
-        });
-        result = await Models.eventModel
-          .find({
-            ...baseQuery,
-            ...query,
-            "details.endDate": { $gte: currentDate },
-          })
-          .limit(parseInt(limits))
-          .skip(parseInt(skips) * parseInt(limits))
-          .sort({ createdAt: "desc" })
-          .populate({
-            path: "user",
-            select: "firstName lastName name profileImage",
-          })
-          .populate({
-            path: "interest",
-            select: "_id name image",
-          })
-          .populate({
-            path: "guests",
-            select: "firstName lastName name  profileImage", // Alias 'name' as 'guestName'
-          })
-          .populate({
-            path: "coHosts",
-            select: "firstName lastName name  profileImage", // Alias 'name' as 'coHosts'
-          })
-          .populate({
-            path: "rsvpForm",
-            select: "firstName lastName email questions additionalField", // Alias 'name' as 'rsvpForm'
-          })
-          .exec();
-      } else if (type == 2) {
-        const { search } = req.query;
-        const query = searchQuery(search);
-        countDocuments = await Models.eventModel.countDocuments({
-          ...baseQuery,
-          ...query,
-          "details.endDate": { $gte: currentDate },
-        });
-        result = await Models.eventModel
-          .find({
-            ...baseQuery,
-            ...query,
-            "details.endDate": { $gte: currentDate },
-          })
-          .limit(parseInt(limits))
-          .skip(parseInt(skips) * parseInt(limits))
-          .sort({ createdAt: "desc" })
-          .populate({
-            path: "user",
-            select: "firstName lastName name profileImage",
-          })
-          .populate({
-            path: "interest",
-            select: "name image",
-          })
-          .populate({
-            path: "guests",
-            select: "firstName lastName name  profileImage", // Alias 'name' as 'guestName'
-          })
-          .populate({
-            path: "coHosts",
-            select: "firstName lastName name profileImage", // Alias 'name' as 'coHosts'
-          })
-          .exec();
-      } else if (type == 3) {
-        const { search } = req.query;
-        const query = searchQuery(search);
-        countDocuments = await Models.eventModel.countDocuments({
-          ...baseQuery,
-          ...query,
-          "details.endDate": { $gte: currentDate },
-          "details.loc": {
-            $geoWithin: {
-              $centerSphere: [
-                [longitude, latitude],
-                maxDistance ? maxDistance / 6378.1 : 20 / 6378.1, // Convert distance to radians (Earth's radius in kilometers)
-              ],
-            },
+
+      // Filter by geolocation if specified
+      if (type == 3 && longitude && latitude) {
+        baseQuery["details.loc"] = {
+          $geoWithin: {
+            $centerSphere: [
+              [longitude, latitude],
+              maxDistance ? maxDistance / 6378.1 : 20 / 6378.1,
+            ],
           },
-        });
-        result = await Models.eventModel
-          .find({
-            ...baseQuery,
-            ...query,
-            "details.endDate": { $gte: currentDate },
-            "details.loc": {
-              $near: {
-                $geometry: {
-                  type: "Point",
-                  coordinates: [longitude, latitude],
-                },
-                $maxDistance: maxDistance ? maxDistance * 1000 : 20000, //in meters(1000 means 1 km)
-              },
-            },
-          })
-          .limit(parseInt(limits))
-          .skip(parseInt(skips) * parseInt(limits))
-          .sort({ createdAt: "desc" })
-          .populate({
-            path: "user",
-            select: "firstName lastName name profileImage",
-          })
-          .populate({
-            path: "interest",
-            select: "_id name image",
-          })
-          .populate({
-            path: "guests",
-            select: "firstName lastName name profileImage",
-          })
-          .populate({
-            path: "coHosts",
-            select: "firstName lastName name profileImage",
-          })
-          .exec();
-      }
-      const eventIds = result.map((event) => event._id);
-
-      const attendCounts = await Models.eventAttendesUserModel.aggregate([
-        {
-          $match: {
-            eventId: { $in: eventIds },
-            attendEvent: 1,
-          },
-        },
-        {
-          $group: {
-            _id: "$eventId",
-            count: { $sum: 1 },
-          },
-        },
-      ]);
-
-      // Create a map to store the attendance counts by eventId
-      const attendCountMap = new Map();
-      attendCounts.forEach((entry) => {
-        attendCountMap.set(entry._id.toString(), entry.count);
-      });
-
-      // Fetch user details for the attendees
-      const attendeeDetailsMap = new Map();
-      const attendees = await Models.eventAttendesUserModel
-        .find({
-          eventId: { $in: eventIds },
-          attendEvent: 1,
-        })
-        .populate("userId", "firstName lastName name profileImage");
-
-      attendees.forEach((attendee) => {
-        const eventIdStr = attendee.eventId.toString();
-        if (!attendeeDetailsMap.has(eventIdStr)) {
-          attendeeDetailsMap.set(eventIdStr, []);
-        }
-        attendeeDetailsMap.get(eventIdStr).push({
-          firstName: attendee.userId ? attendee.userId.firstName : "",
-          lastName: attendee.userId ? attendee.userId.lastName : "",
-          name: attendee.userId ? attendee.userId.name : "",
-          profileImage: attendee.userId ? attendee.userId.profileImage : "",
-        });
-      });
-
-      // Fetch attendance status for each event for the specific user
-      const userAttendances = await Models.eventAttendesUserModel
-        .find({
-          userId: req.user._id,
-          eventId: { $in: eventIds },
-        })
-        .exec();
-
-      // Create a map to store attendance status by eventId
-      const attendanceStatusMap = new Map();
-      userAttendances.forEach((attendance) => {
-        attendanceStatusMap.set(
-          attendance.eventId.toString(),
-          attendance.attendEvent === 1,
-        );
-      });
-      //For Favourite
-      const userFavourite = await Models.eventFavouriteUserModel
-        .find({
-          userId: req.user._id,
-          eventId: { $in: eventIds },
-        })
-        .exec();
-
-      // Create a map to store attendance status by eventId
-      const FavouriteStatusMap = new Map();
-      userFavourite.forEach((attendance) => {
-        FavouriteStatusMap.set(
-          attendance.eventId.toString(),
-          attendance.favourite === 1,
-        );
-      });
-      // Loop through each event in the result array
-      result = result.map((event) => {
-        const eventIdStr = event._id.toString();
-        const deleteAccess = event.user
-          ? event.user._id.toString() === req.user._id.toString()
-          : false;
-
-        // Check share access
-        //  const shareAccess =event.guestsAllowFriend===true?(event.guests.some(guest => guest._id.toString() === req.user._id.toString())):false;
-        const shareAccess = event.user
-          ? event.user._id.toString() === req.user._id.toString()
-            ? true
-            : event.guestsAllowFriend === true
-              ? event.guests.some(
-                  (guest) => guest._id.toString() === req.user._id.toString(),
-                )
-              : false
-          : false;
-        const eventReturn = event.user
-          ? event.user._id.toString() === req.user._id.toString()
-            ? true
-            : event.guests.some(
-                (guest) => guest._id.toString() === req.user._id.toString(),
-              )
-          : false;
-        const eventReturn1 = event.coHosts.some(
-          (guest) => guest._id.toString() === req.user._id.toString(),
-        )
-          ? true
-          : eventReturn;
-        const eventReturn2 = event.eventType === "public" ? true : eventReturn1;
-        return {
-          ...event.toObject(),
-          attendeesCount: attendCountMap.get(eventIdStr) || 0,
-          attendeeDetails: attendeeDetailsMap.get(eventIdStr) || [],
-          attended: attendanceStatusMap.get(eventIdStr) || false,
-          Favourite: FavouriteStatusMap.get(eventIdStr) || false,
-          shareAccess: shareAccess,
-          deleteAccess: deleteAccess,
-          eventReturn: eventReturn2,
         };
-      });
-      const filteredResults = result.filter((event) => {
-        return event.eventReturn === true;
-      });
-      let count = 0;
+      }
 
-      const filteredPastEvents = filteredResults.filter((event) => {
-        let ID = req.user._id.toString();
-        const coHostIds = event.coHosts.map((coHost) => coHost._id.toString());
-        if (coHostIds.includes(ID)) {
-          event.coHostStatus = coHostIds.includes(ID);
-        }
-        const endDate = new Date(event.details.endDate); // Assuming details.endDate is a Date object
-        const endTimeStr = event.details.endTime; // Assuming details.endTime is a time string in HH:mm AM/PM format
-        const eventDate = moment(endDate).utc().startOf("day");
-        if (!endTimeStr && eventDate != endDate) {
-          return true;
-        }
-        const endTime = moment(endTimeStr, "h:mm A").format("HH:mm");
-        const eventDateTime = moment(endDate)
-          .add(Number(endTime.split(":")[0]), "hours")
-          .add(Number(endTime.split(":")[1]), "minutes");
-        var time = Date.now();
-        var dateObj = new Date(time);
-        dateObj.setHours(dateObj.getHours() + 5);
-        dateObj.setMinutes(dateObj.getMinutes() + 30);
-        var newTime = dateObj.getTime();
-        var n = newTime / 1000;
-        newTime = Math.floor(n);
-        if (newTime > moment(eventDateTime, "YYYY-MM-DD HH:mm:ss").unix()) {
-          ++count;
-        }
-        return newTime < moment(eventDateTime, "YYYY-MM-DD HH:mm:ss").unix();
-      });
+      // Build the text search query
+      const query = searchQuery(req.query.search);
+      console.log("Executing geospatial query:", baseQuery);
+      // Execute the query to fetch events
+      result = await Models.eventModel
+        .find({
+          ...baseQuery,
+          ...query,
+          "details.endDate": { $gte: currentDate },
+        })
+        .limit(parseInt(limits))
+        .skip(parseInt(skips) * parseInt(limits))
+        .sort({ createdAt: "desc" })
+        .populate({
+          path: "user",
+          select: "firstName lastName name profileImage",
+        })
+        .populate({
+          path: "interest",
+          select: "_id name image",
+        })
+        .populate({
+          path: "guests",
+          select: "firstName lastName name  profileImage",
+        })
+        .populate({
+          path: "coHosts",
+          select: "firstName lastName name  profileImage",
+        })
+        .exec();
 
-      //  const NotIncludeYourRecord = filteredResults.filter(event => {
-      //   return event?.user?._id.toString() !== req.user._id.toString();
-      //  });
-      // let filteredPastEventsLength=filteredPastEvents.length
-      return helper.success(res, "Success", {
-        filteredPastEvents: filteredPastEvents,
-        filteredPastEventsLength: countDocuments - count,
-      });
+      console.log("Fetched events:", result);
+
+      // Ensure the result is an array
+      // If the result is not an array (or is undefined), initialize it to an empty array
+      if (!Array.isArray(result)) {
+        result = [];
+      }
+
+      // If no events are found, return an appropriate response
+      if (result.length === 0) {
+        return res
+          .status(200)
+          .json({ status: true, message: "No events found", data: [] });
+      }
+
+      // The remaining processing can follow here...
+      // For example, handling attendance counts, participant details, etc.
+
+      return res
+        .status(200)
+        .json({ status: true, message: "Success", data: result });
     } catch (error) {
+      // In case of an error, return a response with the error message
       console.error(error);
-      return res.status(401).json({ status: false, message: error.message });
+      return res.status(500).json({ status: false, message: error.message });
     }
   },
+
   RSVPanswerLog: async (req, res) => {
     try {
       const RSVPanswerLogs = await Models.RSVPSubmission.findOne({
