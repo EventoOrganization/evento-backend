@@ -363,7 +363,13 @@ module.exports = {
       delete logData.password;
 
       console.log("User login successful:", logData);
-
+      res.cookie("token", token, {
+        httpOnly: true,
+        // secure: process.env.NODE_ENV === "production",
+        secure: false,
+        sameSite: "Strict",
+        maxAge: 1000 * 60 * 60 * 24 * 7,
+      });
       return helper.success(res, "User Login Successfully", logData);
     } catch (error) {
       console.log("Login error:", error.message);

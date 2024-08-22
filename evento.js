@@ -18,13 +18,16 @@ const cmsRoutes = require("./routes/cmsRoutes ");
 const cors = require("cors");
 // Create an instance of the Express application
 var app = express();
-app.use(
-  cors({
-    origin: "*",
-    methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
-    credentials: true,
-  }),
-);
+
+const corsOptions = {
+  origin: true,
+  methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
+  credentials: true, // Permet les cookies et les en-têtes d'authentification
+  allowedHeaders: "Content-Type,Authorization",
+};
+
+app.use(cors(corsOptions));
+app.options("*", cors(corsOptions));
 // Set up view engine
 app.set("views", path.join(__dirname, "views"));
 app.set("view engine", "ejs");
