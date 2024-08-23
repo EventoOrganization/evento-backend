@@ -1331,12 +1331,12 @@ module.exports = {
           thumbnailVideo: req.body.type == 2 ? thumbnail : "", // Store thumbnail URL if type is 2
           images: imageUrls, // Store image URLs
           mode: req.body.mode,
-          date: req.body.date,
-          endDate: req.body.endDate,
+          date: req.body.date || null, // Set to null if not provided
+          endDate: req.body.endDate || null, // Set to null if not provided
           tages: req.body.tages,
           URLlink: req.body.URLlink,
-          startTime: req.body.startTime,
-          endTime: req.body.endTime,
+          startTime: req.body.startTime || null, // Set to null if not provided
+          endTime: req.body.endTime || null, // Set to null if not provided
           description: req.body.description,
           includeChat: req.body.includeChat,
           createRSVP: req.body.createRSVP,
@@ -1377,7 +1377,22 @@ module.exports = {
       if (req.body.interestId) {
         objToSave.interest = JSON.parse(req.body.interestId);
       }
-
+      // Handle time slots if provided (for multi-day events with different time slots)
+      if (req.body.timeSlots) {
+        try {
+          const parsedTimeSlots = JSON.parse(req.body.timeSlots);
+          objToSave.details.timeSlots = parsedTimeSlots;
+          // Remove the single startTime and endTime if time slots are provided
+          delete objToSave.details.startTime;
+          delete objToSave.details.endTime;
+        } catch (error) {
+          console.error("Error parsing time slots:", error);
+          return res.status(400).json({
+            status: false,
+            message: "Invalid JSON format in time slots data",
+          });
+        }
+      }
       // Handle RSVP form if required
       if (req.body.createRSVP && req.body.createRSVP == "true") {
         try {
