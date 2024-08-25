@@ -1033,7 +1033,9 @@ module.exports = {
         return uniqueEventsArrayPast.includes(event._id.toString());
       });
       const filteredPastEvents = filteredEventsPast.filter((event) => {
-        const endDate = new Date(event.details.endDate); // Assuming details.endDate is a Date object
+        const endDate = event.details.endDate
+          ? new Date(event.details.endDate)
+          : new Date();
         const endTimeStr = event.details.endTime; // Assuming details.endTime is a time string in HH:mm AM/PM format
 
         const endTime = moment(endTimeStr, "h:mm A").format("HH:mm");
@@ -1050,6 +1052,7 @@ module.exports = {
         var newTime = dateObj.getTime();
         var n = newTime / 1000;
         newTime = Math.floor(n);
+
         const coHostFound = event.coHosts.some(
           (coHost) => coHost._id.toString() == ID,
         );
@@ -1156,6 +1159,7 @@ module.exports = {
         delete userInfo.otp;
         return helper.success(res, "Profile get Successfully", obj);
       }
+
       return helper.success(res, "Profile get Successfully", obj);
     } catch (error) {
       return res.status(401).json({ status: false, message: error.message });
@@ -1186,6 +1190,8 @@ module.exports = {
 
   createEventAndRSVPform: async (req, res) => {
     console.log("Received request body:", req.body);
+    console.log("Fichiers reçus dans req.files:", req.files.images);
+
     try {
       let imageUrls = []; // To store image URLs
       let videoName; // To store video URL
@@ -1283,6 +1289,19 @@ module.exports = {
           console.log("Image uploaded to S3:", imageName);
         }
       }
+      if (req.files) {
+        const imageFiles = Object.keys(req.files)
+          .filter((key) => key.startsWith("images"))
+          .map((key) => req.files[key]);
+
+        console.log("Fichiers image:", imageFiles);
+
+        for (const image of imageFiles) {
+          const imageName = await helper.fileUpload(image, "events");
+          imageUrls.push(imageName);
+          console.log("Image uploaded to S3:", imageName);
+        }
+      }
 
       // Preparing the RSVP form if required
       let rsvpForm = {};
@@ -1331,12 +1350,12 @@ module.exports = {
           thumbnailVideo: req.body.type == 2 ? thumbnail : "", // Store thumbnail URL if type is 2
           images: imageUrls, // Store image URLs
           mode: req.body.mode,
-          date: req.body.date || null, // Set to null if not provided
-          endDate: req.body.endDate || null, // Set to null if not provided
+          date: req.body.date,
+          endDate: req.body.endDate,
           tages: req.body.tages,
           URLlink: req.body.URLlink,
-          startTime: req.body.startTime || null, // Set to null if not provided
-          endTime: req.body.endTime || null, // Set to null if not provided
+          startTime: req.body.startTime,
+          endTime: req.body.endTime,
           description: req.body.description,
           includeChat: req.body.includeChat,
           createRSVP: req.body.createRSVP,
@@ -1377,22 +1396,7 @@ module.exports = {
       if (req.body.interestId) {
         objToSave.interest = JSON.parse(req.body.interestId);
       }
-      // Handle time slots if provided (for multi-day events with different time slots)
-      if (req.body.timeSlots) {
-        try {
-          const parsedTimeSlots = JSON.parse(req.body.timeSlots);
-          objToSave.details.timeSlots = parsedTimeSlots;
-          // Remove the single startTime and endTime if time slots are provided
-          delete objToSave.details.startTime;
-          delete objToSave.details.endTime;
-        } catch (error) {
-          console.error("Error parsing time slots:", error);
-          return res.status(400).json({
-            status: false,
-            message: "Invalid JSON format in time slots data",
-          });
-        }
-      }
+
       // Handle RSVP form if required
       if (req.body.createRSVP && req.body.createRSVP == "true") {
         try {
