@@ -1190,8 +1190,6 @@ module.exports = {
 
   createEventAndRSVPform: async (req, res) => {
     console.log("Received request body:", req.body);
-    console.log("Fichiers reçus dans req.files:", req.files.images);
-
     try {
       let imageUrls = []; // To store image URLs
       let videoName; // To store video URL
