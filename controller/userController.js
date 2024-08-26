@@ -365,7 +365,8 @@ module.exports = {
       console.log("User login successful:", logData);
       res.cookie("token", token, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
+        // secure: process.env.NODE_ENV === "production",
+        secure: false,
         sameSite: "Strict",
         maxAge: 1000 * 60 * 60 * 24 * 7,
         path: "/",
@@ -1182,6 +1183,7 @@ module.exports = {
       let allUserListing = await Models.userModel.find({ role: "user" });
       result.count = count;
       result.allUserListing = allUserListing;
+
       return helper.success(res, "ALl user list", result);
     } catch (error) {
       return res.status(401).json({ status: false, message: error.message });
