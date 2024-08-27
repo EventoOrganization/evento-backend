@@ -3014,12 +3014,11 @@ module.exports = {
 
       // Format the next date as a string
       const formattedNextDate = nextDate.toISOString();
-      const pastEvents = await Models.eventModel
+
+      // Fetch past events hosted by the user
+      const pastHostedEvents = await Models.eventModel
         .find({
-          $and: [
-            { "details.endDate": { $lt: formattedNextDate } }, // End date is less than current date
-            // { 'details.endTime': { $lt: currentTime } }, // End time is less than current time
-          ],
+          $and: [{ "details.endDate": { $lt: formattedNextDate } }],
           user: req.user._id,
         })
         .populate({
@@ -3039,11 +3038,43 @@ module.exports = {
           select: "firstName lastName name profileImage",
         })
         .exec();
-      return helper.success(res, "List of past events", pastEvents);
+
+      // Fetch past events the user attended but didn't host
+      const pastEventsAttended = await Models.eventModel
+        .find({
+          $and: [
+            { "details.endDate": { $lt: formattedNextDate } },
+            { guests: req.user._id }, // User is listed as a guest
+            { user: { $ne: req.user._id } }, // Exclude events hosted by the user
+          ],
+        })
+        .populate({
+          path: "user",
+          select: "firstName lastName name",
+        })
+        .populate({
+          path: "interest",
+          select: "_id name image",
+        })
+        .populate({
+          path: "guests",
+          select: "firstName lastName name profileImage",
+        })
+        .populate({
+          path: "coHosts",
+          select: "firstName lastName name profileImage",
+        })
+        .exec();
+
+      return helper.success(res, "List of past events", {
+        pastHostedEvents,
+        pastEventsAttended,
+      });
     } catch (error) {
       return res.status(500).json({ status: false, message: error.message });
     }
   },
+
   deleteEvent: async (req, res) => {
     try {
       //Fistly check created event is by logged in user or not
