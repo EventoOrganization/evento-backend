@@ -364,11 +364,11 @@ module.exports = {
 
       console.log("User login successful:", logData);
       res.cookie("token", token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        // secure: false,
-        // sameSite: "Strict",
-        sameSite: "none",
+        httpOnly: false,
+        // secure: process.env.NODE_ENV === "production",
+        secure: false,
+        sameSite: "lax",
+        // sameSite: "none",
         maxAge: 1000 * 60 * 60 * 24 * 7,
         path: "/",
       });
