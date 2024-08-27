@@ -159,123 +159,170 @@ schedule.scheduleJob(cronSchedule1, async function () {
 });
 
 module.exports = {
+  // signup: async (req, res) => {
+  //   console.log(
+  //     "*****************************SIGNUP REQUEST*****************************",
+  //   );
+  //   console.log("req.body", req.body);
+
+  //   try {
+  //     const v = new Validator(req.body, {
+  //       name: "required",
+  //       email: "required|email",
+  //       password: "required",
+  //       confirmPassword: "required",
+  //     });
+
+  //     const values = JSON.parse(JSON.stringify(v));
+  //     let errorsResponse = await helper.checkValidation(v);
+
+  //     if (errorsResponse) {
+  //       console.log("Validation errors:", errorsResponse);
+  //       return helper.failed(res, errorsResponse);
+  //     }
+
+  //     if (req.body.password !== req.body.confirmPassword) {
+  //       const errorMessage = "Password and confirm password do not match";
+  //       console.log(errorMessage);
+  //       return helper.failed(res, errorMessage);
+  //     }
+
+  //     const isEmailExist = await Models.userModel.findOne({
+  //       email: req.body.email,
+  //     });
+
+  //     const isNameExist = await Models.userModel.findOne({
+  //       name: { $regex: new RegExp(req.body.name, "i") }, // Case-insensitive search for name
+  //     });
+
+  //     if (isNameExist) {
+  //       const errorMessage =
+  //         "Sorry, this username already exists. Please choose another one.";
+  //       console.log(errorMessage);
+  //       return helper.failed(res, errorMessage);
+  //     }
+
+  //     if (isEmailExist) {
+  //       const errorMessage = "Email already registered";
+  //       console.log(errorMessage);
+  //       return helper.failed(res, errorMessage);
+  //     }
+
+  //     let isMobileExist = await Models.userModel.findOne({
+  //       phoneNumber: req.body.phoneNumber,
+  //     });
+
+  //     if (isMobileExist) {
+  //       const errorMessage = "Mobile number already registered";
+  //       console.log(errorMessage);
+  //       return helper.failed(res, errorMessage);
+  //     }
+
+  //     let images = "";
+  //     if (req.files && req.files.image) {
+  //       var image = req.files.image;
+  //       images = await helper.fileUpload(image, "profile");
+  //     }
+
+  //     let hash = bcrypt.hashSync(req.body.password, 10);
+  //     let time = helper.unixTimestamp();
+
+  //     let dataEnter = await Models.userModel.create({
+  //       name: req.body.name,
+  //       firstName: req.body.firstName,
+  //       lastName: req.body.lastName,
+  //       email: req.body.email,
+  //       role: "user",
+  //       countryCode: req.body.countryCode,
+  //       phoneNumber: req.body.phoneNumber,
+  //       interest: JSON.parse(req.body.interest),
+  //       DOB: req.body.DOB,
+  //       deviceToken: req.body.deviceToken,
+  //       deviceType: req.body.deviceType,
+  //       loginTime: time,
+  //       password: hash,
+  //       otp: 1111,
+  //       is_otp_verify: 0,
+  //       is_block: 0,
+  //       aboutMe: "",
+  //       profileImage: images ? images : "",
+  //     });
+
+  //     console.log("User created successfully:", dataEnter);
+
+  //     if (dataEnter) {
+  //       let token = jwt.sign(
+  //         {
+  //           data: {
+  //             id: dataEnter.id,
+  //             name: dataEnter.name,
+  //             email: dataEnter.email,
+  //             loginTime: time,
+  //           },
+  //         },
+  //         JWT_SECRET_KEY,
+  //         { expiresIn: "30d" },
+  //       );
+  //       let responseData = {
+  //         ...dataEnter.toObject(), // Convert Mongoose document to plain object
+  //         token: token, // Add the token to the response data
+  //       };
+  //       delete responseData.password; // Remove the password field
+  //       return helper.success(res, "Signup Successfully", responseData);
+  //     }
+  //   } catch (error) {
+  //     console.log("Signup error:", error.message);
+  //     return res.status(500).json({ status: false, message: error.message });
+  //   }
+  // },
   signup: async (req, res) => {
-    console.log(
-      "*****************************SIGNUP REQUEST*****************************",
-    );
-    console.log("req.body", req.body);
-
     try {
-      const v = new Validator(req.body, {
-        name: "required",
-        email: "required|email",
-        password: "required",
-        confirmPassword: "required",
+      const { email, password, confirmPassword } = req.body;
+
+      // Basic validation
+      if (!email || !password || !confirmPassword) {
+        return res.status(400).json({ message: "All fields are required." });
+      }
+
+      if (password !== confirmPassword) {
+        return res.status(400).json({ message: "Passwords do not match." });
+      }
+
+      // Check if the email is already in use
+      const existingUser = await Models.userModel.findOne({ email });
+      if (existingUser) {
+        return res.status(400).json({ message: "Email is already in use." });
+      }
+
+      // Hash password before saving
+      const hashedPassword = await bcrypt.hash(password, 10);
+
+      // Create the new user
+      const newUser = new Models.userModel({
+        email,
+        password: hashedPassword,
+        // Add other fields as needed (e.g., name)
       });
 
-      const values = JSON.parse(JSON.stringify(v));
-      let errorsResponse = await helper.checkValidation(v);
+      await newUser.save();
 
-      if (errorsResponse) {
-        console.log("Validation errors:", errorsResponse);
-        return helper.failed(res, errorsResponse);
-      }
+      // Automatically log the user in after signup (optional)
+      const token = generateToken(newUser._id); // Create a JWT token
+      res.cookie("token", token, { httpOnly: true }); // Set token in cookies
 
-      if (req.body.password !== req.body.confirmPassword) {
-        const errorMessage = "Password and confirm password do not match";
-        console.log(errorMessage);
-        return helper.failed(res, errorMessage);
-      }
-
-      const isEmailExist = await Models.userModel.findOne({
-        email: req.body.email,
+      return res.status(201).json({
+        message: "User created successfully",
+        body: {
+          _id: newUser._id,
+          email: newUser.email,
+          token: token,
+        },
       });
-
-      const isNameExist = await Models.userModel.findOne({
-        name: { $regex: new RegExp(req.body.name, "i") }, // Case-insensitive search for name
-      });
-
-      if (isNameExist) {
-        const errorMessage =
-          "Sorry, this username already exists. Please choose another one.";
-        console.log(errorMessage);
-        return helper.failed(res, errorMessage);
-      }
-
-      if (isEmailExist) {
-        const errorMessage = "Email already registered";
-        console.log(errorMessage);
-        return helper.failed(res, errorMessage);
-      }
-
-      let isMobileExist = await Models.userModel.findOne({
-        phoneNumber: req.body.phoneNumber,
-      });
-
-      if (isMobileExist) {
-        const errorMessage = "Mobile number already registered";
-        console.log(errorMessage);
-        return helper.failed(res, errorMessage);
-      }
-
-      let images = "";
-      if (req.files && req.files.image) {
-        var image = req.files.image;
-        images = await helper.fileUpload(image, "profile");
-      }
-
-      let hash = bcrypt.hashSync(req.body.password, 10);
-      let time = helper.unixTimestamp();
-
-      let dataEnter = await Models.userModel.create({
-        name: req.body.name,
-        firstName: req.body.firstName,
-        lastName: req.body.lastName,
-        email: req.body.email,
-        role: "user",
-        countryCode: req.body.countryCode,
-        phoneNumber: req.body.phoneNumber,
-        interest: JSON.parse(req.body.interest),
-        DOB: req.body.DOB,
-        deviceToken: req.body.deviceToken,
-        deviceType: req.body.deviceType,
-        loginTime: time,
-        password: hash,
-        otp: 1111,
-        is_otp_verify: 0,
-        is_block: 0,
-        aboutMe: "",
-        profileImage: images ? images : "",
-      });
-
-      console.log("User created successfully:", dataEnter);
-
-      if (dataEnter) {
-        let token = jwt.sign(
-          {
-            data: {
-              id: dataEnter.id,
-              name: dataEnter.name,
-              email: dataEnter.email,
-              loginTime: time,
-            },
-          },
-          JWT_SECRET_KEY,
-          { expiresIn: "30d" },
-        );
-        let responseData = {
-          ...dataEnter.toObject(), // Convert Mongoose document to plain object
-          token: token, // Add the token to the response data
-        };
-        delete responseData.password; // Remove the password field
-        return helper.success(res, "Signup Successfully", responseData);
-      }
     } catch (error) {
-      console.log("Signup error:", error.message);
-      return res.status(500).json({ status: false, message: error.message });
+      console.error("Signup error:", error);
+      return res.status(500).json({ message: "Server error." });
     }
   },
-
   login: async (req, res) => {
     console.log(
       "***************************************************************",
