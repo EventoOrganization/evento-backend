@@ -301,21 +301,16 @@ module.exports = {
       const newUser = new Models.userModel({
         email,
         password: hashedPassword,
-        // Add other fields as needed (e.g., name)
       });
 
       await newUser.save();
 
-      // Automatically log the user in after signup (optional)
-      const token = generateToken(newUser._id); // Create a JWT token
-      res.cookie("token", token, { httpOnly: true }); // Set token in cookies
-
+      // Respond with success message
       return res.status(201).json({
         message: "User created successfully",
         body: {
           _id: newUser._id,
           email: newUser.email,
-          token: token,
         },
       });
     } catch (error) {
@@ -323,6 +318,7 @@ module.exports = {
       return res.status(500).json({ message: "Server error." });
     }
   },
+
   login: async (req, res) => {
     console.log(
       "***************************************************************",
