@@ -368,7 +368,7 @@ module.exports = {
         secure: process.env.NODE_ENV === "production",
         // secure: false,
         // sameSite: "Strict",
-        sameSite: "Lax",
+        sameSite: "none",
         maxAge: 1000 * 60 * 60 * 24 * 7,
         path: "/",
       });
