@@ -27,7 +27,7 @@ router.post("/resendOtp", userController.resendOtp);
 router.put("/updateProfile", authenticateJWT, userController.updateProfile);
 router.get("/getProfile", authenticateJWT, userController.getProfile);
 router.get("/getInterestsListing", userController.getInterestsListing);
-router.get("/allUserListing", authenticateJWT, userController.allUserListing);
+router.get("/allUserListing", userController.allUserListing);
 
 //------------Create Event----------------//
 //use this
