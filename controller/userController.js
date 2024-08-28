@@ -3634,6 +3634,25 @@ module.exports = {
       return res.status(401).json({ status: false, message: error.message });
     }
   },
+  isAttending: async (req, res) => {
+    try {
+      const userId = req.user._id;
+      const eventId = req.params.eventId;
+
+      const isAttending = await Models.eventAttendesUserModel.findOne({
+        eventId: eventId,
+        userId: userId,
+      });
+
+      if (isAttending) {
+        return res.status(200).json({ attending: true });
+      } else {
+        return res.status(200).json({ attending: false });
+      }
+    } catch (error) {
+      return res.status(500).json({ status: false, message: error.message });
+    }
+  },
   attendEventByTickInFigma: async (req, res) => {
     try {
       let objToSave = {

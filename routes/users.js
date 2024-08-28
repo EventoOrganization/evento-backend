@@ -61,6 +61,11 @@ router.post(
   userController.allAndVirtualEventAndNear,
 );
 router.get(
+  "/isAttending/:eventId",
+  authenticateJWT,
+  userController.isAttending,
+);
+router.get(
   "/RSVPanswerLog/:eventId",
   authenticateJWT,
   userController.RSVPanswerLog,
