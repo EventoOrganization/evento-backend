@@ -2818,7 +2818,28 @@ module.exports = {
       return res.status(500).json({ status: false, message: error.message });
     }
   },
+  myEventsWithChat: async (req, res) => {
+    try {
+      // Récupérer les événements où l'utilisateur est inscrit ou a un rôle
+      const events = await Models.eventModel
+        .find({
+          $or: [
+            { user: req.user._id },
+            { coHosts: { $in: [req.user._id] } },
+            { guests: { $in: [req.user._id] } },
+          ],
+          "details.includeChat": true, // Filtrer les événements où le chat est activé
+        })
+        .populate({
+          path: "user",
+          select: "firstName lastName name",
+        });
 
+      return res.status(200).json({ status: true, events });
+    } catch (error) {
+      return res.status(500).json({ status: false, message: error.message });
+    }
+  },
   myUpcomingEvents: async (req, res) => {
     try {
       let { date, eventType } = req.query;

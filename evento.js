@@ -46,9 +46,19 @@ app.use((req, res, next) => {
   }
   next();
 });
-//This is socket.io
+// Create the HTTP server
 const http = require("http").createServer(app);
-const io = require("socket.io")(http);
+
+// Set up Socket.IO with the HTTP server
+const io = require("socket.io")(http, {
+  cors: {
+    origin: true,
+    methods: ["GET", "POST"],
+    credentials: true,
+  },
+});
+
+// Load the socket.io groupSocket handler
 require("./socket/groupSocket")(io);
 
 // Configure session

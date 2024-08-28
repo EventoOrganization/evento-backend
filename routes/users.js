@@ -60,10 +60,17 @@ router.post(
   authenticateJWT,
   userController.allAndVirtualEventAndNear,
 );
+// use this to know if you are attending
 router.get(
   "/isAttending/:eventId",
   authenticateJWT,
   userController.isAttending,
+);
+// use this to know you chatting on events
+router.get(
+  "/myEventsWithChat",
+  authenticateJWT,
+  userController.myEventsWithChat,
 );
 router.get(
   "/RSVPanswerLog/:eventId",
