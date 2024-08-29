@@ -94,7 +94,7 @@ router.post(
   authenticateJWT,
   userController.createRSVPSubmission,
 );
-router.get("/upcomingPublicEvents", userController.getAllUpcomingPublicEvents);
+router.get("/upcomingEvents", authenticateJWT, userController.myUpcomingEvents);
 router.get("/pastEvents", authenticateJWT, userController.myPastEvents);
 router.delete("/deleteEvent/:id", authenticateJWT, userController.deleteEvent);
 router.get(

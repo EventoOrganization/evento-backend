@@ -16,6 +16,7 @@ var indexRouter = require("./routes/dashBoardRoutes");
 var usersRouter = require("./routes/users");
 const cmsRoutes = require("./routes/cmsRoutes ");
 const cors = require("cors");
+const MongoStore = require("connect-mongo");
 // Create an instance of the Express application
 var app = express();
 
@@ -40,6 +41,8 @@ app.use(cookieParser());
 app.use(bodyParser.urlencoded({ extended: true })); // Use body-parser for url-encoded bodies
 app.use(bodyParser.json()); // Parse JSON bodies
 app.use((req, res, next) => {
+  console.log("Session ID:", req.sessionID);
+  console.log("Session Data:", req.session);
   if (req.url == "/") {
     res.redirect("/login");
     return;
@@ -69,11 +72,21 @@ app.use(
     secret: "secret",
     resave: true,
     saveUninitialized: true,
+    store: MongoStore.create({ mongoUrl: process.env.MONGO_URI }),
     cookie: {
       maxAge: 24 * 60 * 60 * 365 * 1000,
+      secure: true,
+      sameSite: "lax",
     },
   }),
 );
+app.use((req, res, next) => {
+  if (req.url == "/") {
+    res.redirect("/login");
+    return;
+  }
+  next();
+});
 app.use(flash());
 app.use(basemiddleware);
 app.use(fileupload());

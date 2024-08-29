@@ -320,16 +320,7 @@ module.exports = {
   },
 
   login: async (req, res) => {
-    console.log(
-      "***************************************************************",
-    );
-    console.log(
-      "************************NEW LOGIN******************************",
-    );
-    console.log(req.body);
-    console.log(
-      "***************************************************************",
-    );
+    console.log("Login request", req.body);
     try {
       const v = new Validator(req.body, {
         email: "required",
@@ -405,17 +396,20 @@ module.exports = {
       logData.token = token;
       delete logData.password;
 
-      console.log("User login successful:", logData);
+      console.log("User login successful:");
+      // console.log("Setting token in cookie:", token);
       res.cookie("token", token, {
-        httpOnly: false,
+        httpOnly: true,
         // secure: process.env.NODE_ENV === "production",
-        secure: false,
+        secure: true,
         sameSite: "lax",
         // sameSite: "none",
         maxAge: 1000 * 60 * 60 * 24 * 7,
         path: "/",
       });
-      return helper.success(res, "User Login Successfully", logData);
+      console.log("Cookie set with token:", req.cookies.token);
+      console.log("Session after login:", req.session);
+      return helper.success(res, "User Login Successfully");
     } catch (error) {
       console.log("Login error:", error.message);
       return res.status(500).json({ status: false, message: error.message });
@@ -720,7 +714,7 @@ module.exports = {
           JWT_SECRET_KEY,
           { expiresIn: "30d" },
         );
-
+        console.log("Token created:", token);
         const values = JSON.parse(JSON.stringify(emailData));
         values.token = token;
         values.allreadyExist = 1;
@@ -1216,7 +1210,7 @@ module.exports = {
     try {
       console.log("Fetching interests from database...");
       let interestList = await Models.interestModel.find();
-      console.log("Interest List from DB:", interestList);
+      // console.log("Interest List from DB:", interestList);
 
       return helper.success(res, "Interest list", interestList);
     } catch (error) {
@@ -3069,6 +3063,7 @@ module.exports = {
         upcomingEvents: uniqueEvents,
         hostedByYouEvents: filteredhostedByYouEvent,
       };
+
       return helper.success(res, "List of upcoming events", obj);
     } catch (error) {
       return res.status(500).json({ status: false, message: error.message });
@@ -4018,8 +4013,8 @@ module.exports = {
 
         return {
           _id: user._id,
-          firstName: user.firstName || "", // Valeur par défaut si firstName est manquant
-          lastName: user.lastName || "", // Valeur par défaut si lastName est manquant
+          firstName: user.firstName || "",
+          lastName: user.lastName || "",
           status,
         };
       });
