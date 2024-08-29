@@ -1211,15 +1211,20 @@ module.exports = {
     }
   },
   getInterestsListing: async (req, res) => {
-    console.log("req.body", req.body);
+    console.log("Entering getInterestsListing");
 
     try {
+      console.log("Fetching interests from database...");
       let interestList = await Models.interestModel.find();
+      console.log("Interest List from DB:", interestList);
+
       return helper.success(res, "Interest list", interestList);
     } catch (error) {
+      console.error("Error in getInterestsListing:", error);
       return res.status(401).json({ status: false, message: error.message });
     }
   },
+
   allUserListing: async (req, res) => {
     try {
       let result = {};
@@ -3950,63 +3955,88 @@ module.exports = {
   },
   followStatusForAllUsers: async (req, res) => {
     try {
-      const loggedInUserId = req.user._id;
-      // const loggedInUserId = "64e4816a1a599a5e9865d700"; // Get the logged-in user's ID
+      let loggedInUserId = null;
+      if (req.user) {
+        loggedInUserId = req.user._id;
+        console.log("Logged in user ID:", loggedInUserId);
+      }
 
-      // Find all users excluding the logged-in user
-      // const userList = await Models.userModel.find({ _id: { $ne: loggedInUserId } });
-      const userList = await Models.userModel.find({
-        $and: [{ _id: { $ne: loggedInUserId } }, { role: { $ne: "admin" } }],
-      });
+      // Récupérer tous les utilisateurs, exclure le connecté s'il y a un utilisateur connecté
+      const userList = await Models.userModel.find(
+        loggedInUserId
+          ? {
+              $and: [
+                { _id: { $ne: loggedInUserId } },
+                { role: { $ne: "admin" } },
+              ],
+            }
+          : { role: { $ne: "admin" } },
+      );
+      console.log("User List:", userList.length); // Log pour vérifier le nombre d'utilisateurs trouvés
 
-      // const userList = await Models.userModel.find();
+      let followingList = [];
+      let followedByList = [];
 
-      // Find users whom the logged-in user follows
-      const followingList = await Models.userFollowModel.find({
-        follower: loggedInUserId,
-      });
+      if (loggedInUserId) {
+        // Récupérer la liste des utilisateurs suivis et qui suivent l'utilisateur connecté
+        followingList = await Models.userFollowModel.find({
+          follower: loggedInUserId,
+        });
+        followedByList = await Models.userFollowModel.find({
+          following: loggedInUserId,
+        });
 
-      // Find users who follow the logged-in user
-      const followedByList = await Models.userFollowModel.find({
-        following: loggedInUserId,
-      });
+        console.log("Following List:", followingList.length);
+        console.log("Followed By List:", followedByList.length);
+      }
 
-      // Create a map of following users for faster lookup
+      // Créer des maps pour un accès rapide
       const followingMap = new Map();
       followingList.forEach((following) => {
         followingMap.set(following.following.toString(), true);
       });
-      // Create a map of followed by users for faster lookup
+
       const followedByMap = new Map();
       followedByList.forEach((followedBy) => {
         followedByMap.set(followedBy.follower.toString(), true);
       });
 
-      // Prepare the result list with user details and follow status
+      // Préparer la liste des résultats avec seulement les champs nécessaires
       const resultList = userList.map((user) => {
         const userId = user._id.toString();
         let status = "not-followed";
-        if (followingMap.has(userId) && followedByMap.has(userId)) {
-          status = "follow-each-other";
-        } else if (followingMap.has(userId)) {
-          status = "following";
-        } else if (followedByMap.has(userId)) {
-          status = "followed";
+
+        if (loggedInUserId) {
+          if (followingMap.has(userId) && followedByMap.has(userId)) {
+            status = "follow-each-other";
+          } else if (followingMap.has(userId)) {
+            status = "following";
+          } else if (followedByMap.has(userId)) {
+            status = "followed";
+          }
         }
+
         return {
-          user,
+          _id: user._id,
+          firstName: user.firstName || "", // Valeur par défaut si firstName est manquant
+          lastName: user.lastName || "", // Valeur par défaut si lastName est manquant
           status,
         };
       });
+
+      console.log("Result List:", resultList.length); // Log pour vérifier le nombre d'utilisateurs dans le résultat final
+
       return helper.success(
         res,
         "List of users and their follow status",
         resultList,
       );
     } catch (error) {
-      return res.status(401).json({ status: false, message: error.message });
+      console.error("Error in followStatusForAllUsers controller: ", error);
+      return res.status(500).json({ status: false, message: error.message });
     }
   },
+
   followStatusForAttendedUsers: async (req, res) => {
     try {
       // Find users who attended the event (attendEvent: "yes")
@@ -4179,6 +4209,68 @@ module.exports = {
       );
     } catch (error) {
       return res.status(401).json({ status: false, message: error.message });
+    }
+  },
+  getAllUpcomingPublicEvents: async (req, res) => {
+    try {
+      console.log("Start getting getAllUpcomingPublicEvents");
+      const currentDate = new Date();
+
+      // Récupération des événements publics à venir
+      const events = await Event.find({
+        eventType: "public",
+        "details.date": { $gt: currentDate },
+      })
+        .populate({
+          path: "user",
+          select: "firstName lastName profileImage",
+        })
+        .populate({
+          path: "coHosts",
+          select: "firstName lastName profileImage",
+        })
+        .populate({
+          path: "guests",
+          select: "firstName lastName profileImage",
+        })
+        .exec();
+
+      let enrichedEvents = events;
+
+      if (req.user) {
+        // Récupération des participations de l'utilisateur connecté
+        const attendeeStatus = await EventAttendee.find({
+          userId: req.user._id,
+          eventId: { $in: events.map((event) => event._id) },
+        }).exec();
+
+        const goingStatusMap = {};
+        attendeeStatus.forEach((status) => {
+          goingStatusMap[status.eventId] = status.attendEvent === 1;
+        });
+
+        enrichedEvents = events.map((event) => {
+          const isGoing = !!goingStatusMap[event._id];
+          return {
+            ...event.toObject(),
+            isGoing,
+          };
+        });
+      }
+
+      // Enveloppe de la réponse avec des métadonnées
+      res.status(200).json({
+        success: true,
+        message: "Upcoming public events retrieved successfully",
+        data: enrichedEvents,
+      });
+    } catch (error) {
+      console.error("Error in getAllUpcomingPublicEvents controller: ", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to retrieve upcoming public events",
+        error: error.message,
+      });
     }
   },
 

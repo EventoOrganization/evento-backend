@@ -30,11 +30,17 @@ router.get("/getInterestsListing", userController.getInterestsListing);
 router.get("/allUserListing", userController.allUserListing);
 
 //------------Create Event----------------//
-//use this
+//This route is used to create event
 router.post(
   "/createEventAndRSVPform",
   authenticateJWT,
   userController.createEventAndRSVPform,
+);
+
+//This route is used to fetch all upcoming events
+router.get(
+  "/getAllUpcomingPublicEvents",
+  userController.getAllUpcomingPublicEvents,
 );
 router.put("/updateEventAll", authenticateJWT, userController.updateEventALl);
 router.put("/updateEvent", authenticateJWT, userController.updateEvent);
@@ -88,7 +94,7 @@ router.post(
   authenticateJWT,
   userController.createRSVPSubmission,
 );
-router.get("/upcomingEvents", authenticateJWT, userController.myUpcomingEvents);
+router.get("/upcomingPublicEvents", userController.getAllUpcomingPublicEvents);
 router.get("/pastEvents", authenticateJWT, userController.myPastEvents);
 router.delete("/deleteEvent/:id", authenticateJWT, userController.deleteEvent);
 router.get(
@@ -142,7 +148,6 @@ router.get("/getFAQ", userController.getFAQ);
 router.post("/follow", authenticateJWT, userController.userFollow);
 router.get(
   "/userListWithFollowingStatus",
-  authenticateJWT,
   userController.followStatusForAllUsers,
 );
 router.post(
