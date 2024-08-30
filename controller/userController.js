@@ -402,8 +402,8 @@ module.exports = {
         httpOnly: true,
         // secure: process.env.NODE_ENV === "production",
         secure: true,
-        // sameSite: "lax",
-        sameSite: "none",
+        sameSite: "lax",
+        // sameSite: "none",
         maxAge: 1000 * 60 * 60 * 24 * 7,
         path: "/",
       });
@@ -4231,6 +4231,10 @@ module.exports = {
         .populate({
           path: "guests",
           select: "firstName lastName profileImage",
+        })
+        .populate({
+          path: "interest", // Populate the interest field
+          select: "name", // Select only the name of the interest
         })
         .exec();
 

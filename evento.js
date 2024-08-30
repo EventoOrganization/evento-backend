@@ -16,7 +16,6 @@ var indexRouter = require("./routes/dashBoardRoutes");
 var usersRouter = require("./routes/users");
 const cmsRoutes = require("./routes/cmsRoutes ");
 const cors = require("cors");
-const MongoStore = require("connect-mongo");
 // Create an instance of the Express application
 var app = express();
 
@@ -72,11 +71,10 @@ app.use(
     secret: "secret",
     resave: true,
     saveUninitialized: true,
-    store: MongoStore.create({ mongoUrl: process.env.MONGO_URI }),
     cookie: {
       maxAge: 24 * 60 * 60 * 365 * 1000,
-      secure: true,
-      sameSite: "none",
+      // secure: true,
+      sameSite: "lax",
     },
   }),
 );
