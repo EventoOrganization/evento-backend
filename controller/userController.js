@@ -3956,17 +3956,20 @@ module.exports = {
         console.log("Logged in user ID:", loggedInUserId);
       }
 
-      // Récupérer tous les utilisateurs, exclure le connecté s'il y a un utilisateur connecté
-      const userList = await Models.userModel.find(
-        loggedInUserId
-          ? {
-              $and: [
-                { _id: { $ne: loggedInUserId } },
-                { role: { $ne: "admin" } },
-              ],
-            }
-          : { role: { $ne: "admin" } },
-      );
+      // Récupérer tous les utilisateurs, en populant les intérêts et en excluant l'utilisateur connecté s'il y a un utilisateur connecté
+      const userList = await Models.userModel
+        .find(
+          loggedInUserId
+            ? {
+                $and: [
+                  { _id: { $ne: loggedInUserId } },
+                  { role: { $ne: "admin" } },
+                ],
+              }
+            : { role: { $ne: "admin" } },
+        )
+        .populate("interest", "name _id"); // Populate interest field with name and _id
+
       console.log("User List:", userList.length); // Log pour vérifier le nombre d'utilisateurs trouvés
 
       let followingList = [];
@@ -3996,7 +3999,7 @@ module.exports = {
         followedByMap.set(followedBy.follower.toString(), true);
       });
 
-      // Préparer la liste des résultats avec seulement les champs nécessaires
+      // Préparer la liste des résultats avec seulement les champs nécessaires, incluant les intérêts
       const resultList = userList.map((user) => {
         const userId = user._id.toString();
         let status = "not-followed";
@@ -4016,6 +4019,7 @@ module.exports = {
           firstName: user.firstName || "",
           lastName: user.lastName || "",
           status,
+          interests: user.interest, // Inclure les intérêts ici
         };
       });
 
