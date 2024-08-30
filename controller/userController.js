@@ -409,7 +409,7 @@ module.exports = {
       });
       console.log("Cookie set with token:", req.cookies.token);
       console.log("Session after login:", req.session);
-      return helper.success(res, "User Login Successfully");
+      return helper.success(res, "User Login Successfully", logData);
     } catch (error) {
       console.log("Login error:", error.message);
       return res.status(500).json({ status: false, message: error.message });
