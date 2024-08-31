@@ -1973,16 +1973,18 @@ module.exports = {
       currentDate.setUTCHours(0, 0, 0, 0);
       const { search } = req.query;
       let query = {};
+
       if (search) {
         query = {
           $or: [
             { eventType: { $regex: search, $options: "i" } },
-            { "details.name": { $regex: search, $options: "i" } }, // Search by details name
+            { "details.name": { $regex: search, $options: "i" } },
             { "details.mode": { $regex: search, $options: "i" } },
             { "details.location": { $regex: search, $options: "i" } },
           ],
         };
       }
+
       const virtualEvent1 = await Models.eventModel.findOne({
         _id: req.params.id,
       });
@@ -2012,9 +2014,13 @@ module.exports = {
           path: "userId",
           select: "firstName lastName name profileImage",
         });
-      const attendeesCount = await Models.eventAttendesUserModel.count({
-        eventId: req.params.id,
-      });
+
+      const attendeesCount = await Models.eventAttendesUserModel.countDocuments(
+        {
+          eventId: req.params.id,
+        },
+      );
+
       if (!virtualEvent) {
         return res
           .status(404)
@@ -2022,99 +2028,110 @@ module.exports = {
       }
 
       // Fetch attendance status for the specific user
-      const attendance = await Models.eventAttendesUserModel
-        .findOne({
-          userId: req.user._id,
-          eventId: req.params.id,
-        })
-        .exec();
-      const groupDetail = await Models.groupChatModel.findOne({
-        eventId: req.params.id,
-      });
-      const attended = attendance ? attendance.attendEvent === 1 : false;
+      let attended = false;
+      let favouriteEvent = false;
+      let deleteAccess = false;
+      let shareAccess = false;
+      let resultList = [];
 
-      // For favourite
-      const favourite = await Models.eventFavouriteUserModel
-        .findOne({
-          userId: req.user._id,
-          eventId: req.params.id,
-        })
-        .exec();
-      const favouriteEvent = favourite ? favourite.favourite === 1 : false;
-      const deleteAccess = virtualEvent?.user
-        ? virtualEvent?.user?._id.toString() === req.user._id.toString()
-          ? true
-          : false
-        : false;
-      const followingList = await Models.userFollowModel.find({
-        follower: req.user._id,
-      });
-      const followedByList = await Models.userFollowModel.find({
-        following: req.user._id,
-      });
+      if (req.user) {
+        const attendance = await Models.eventAttendesUserModel
+          .findOne({
+            userId: req.user._id,
+            eventId: req.params.id,
+          })
+          .exec();
+        attended = attendance ? attendance.attendEvent === 1 : false;
 
-      const followingMap = new Map();
-      followingList.forEach((following) => {
-        followingMap.set(following.following.toString(), true);
-      });
+        const favourite = await Models.eventFavouriteUserModel
+          .findOne({
+            userId: req.user._id,
+            eventId: req.params.id,
+          })
+          .exec();
+        favouriteEvent = favourite ? favourite.favourite === 1 : false;
 
-      const followedByMap = new Map();
-      followedByList.forEach((followedBy) => {
-        followedByMap.set(followedBy.follower.toString(), true);
-      });
-      const resultList = attendeDetail.map((user) => {
-        const userId = user.userId ? user?.userId?._id.toString() : "";
-        let status = "not-followed";
-        if (followingMap.has(userId) && followedByMap.has(userId)) {
-          status = "follow-each-other";
-        } else if (followingMap.has(userId)) {
-          status = "following";
-        } else if (followedByMap.has(userId)) {
-          status = "followed";
-        }
-        return {
+        deleteAccess =
+          virtualEvent?.user?._id.toString() === req.user._id.toString();
+        shareAccess =
+          virtualEvent?.user?._id.toString() === req.user._id.toString() ||
+          (virtualEvent?.guestsAllowFriend === true &&
+            virtualEvent?.guests.some(
+              (guest) => guest._id.toString() === req?.user?._id.toString(),
+            ));
+
+        const followingList = await Models.userFollowModel.find({
+          follower: req.user._id,
+        });
+        const followedByList = await Models.userFollowModel.find({
+          following: req.user._id,
+        });
+
+        const followingMap = new Map();
+        followingList.forEach((following) => {
+          followingMap.set(following.following.toString(), true);
+        });
+
+        const followedByMap = new Map();
+        followedByList.forEach((followedBy) => {
+          followedByMap.set(followedBy.follower.toString(), true);
+        });
+
+        resultList = attendeDetail.map((user) => {
+          const userId = user.userId ? user?.userId?._id.toString() : "";
+          let status = "not-followed";
+          if (followingMap.has(userId) && followedByMap.has(userId)) {
+            status = "follow-each-other";
+          } else if (followingMap.has(userId)) {
+            status = "following";
+          } else if (followedByMap.has(userId)) {
+            status = "followed";
+          }
+          return {
+            user,
+            status,
+          };
+        });
+      } else {
+        resultList = attendeDetail.map((user) => ({
           user,
-          status,
-        };
-      });
+          status: "not-followed",
+        }));
+      }
+
+      // Si groupDetail n'existe pas, on assigne une chaîne vide
+      const groupDetail =
+        (await Models.groupChatModel.findOne({
+          eventId: req.params.id,
+        })) || "";
+
       const currentDate1 = new Date(currentDate);
       const eventDate = new Date(virtualEvent.details.date);
       const currentTimestamp = currentDate1.getTime();
       const eventTimestamp = eventDate.getTime();
       const updateAccess =
-        virtualEvent?.user?._id.toString() === req.user._id.toString()
-          ? true
-          : false;
-      const shareAccess =
-        virtualEvent?.user?._id.toString() === req.user._id.toString()
-          ? true
-          : virtualEvent?.guestsAllowFriend === true
-          ? virtualEvent?.guests.some(
-              (guest) => guest._id.toString() === req?.user?._id.toString(),
-            )
-            ? true
-            : false
-          : false;
-      // const uploadSectionHideShow=virtualEvent.details.date>=currentDate?true:false;
+        virtualEvent?.user?._id.toString() === req.user?._id.toString();
       const uploadSectionHideShow = eventTimestamp < currentTimestamp;
+
       let guestsData = virtualEvent.guestsCohostAdd;
-      let ID = req.user._id.toString();
+      let ID = req.user?._id.toString();
       const coHostIds = virtualEvent1.coHosts.map((coHost) =>
         coHost.toString(),
       );
       const guestsIds = virtualEvent1.guests.map((guest) => guest.toString());
-      var accessPermission = true;
-      var coHostOrGuestYouAre = false;
-      if (virtualEvent1.user.toString() == ID) {
+      let accessPermission = true;
+      let coHostOrGuestYouAre = false;
+
+      if (ID && virtualEvent1.user.toString() == ID) {
         coHostOrGuestYouAre = true;
       }
-      if (guestsIds.includes(ID)) {
+      if (ID && guestsIds.includes(ID)) {
         coHostOrGuestYouAre = guestsIds.includes(ID);
       }
-      if (coHostIds.includes(ID)) {
+      if (ID && coHostIds.includes(ID)) {
         coHostOrGuestYouAre = coHostIds.includes(ID);
       }
-      if (virtualEvent1.guestsAllowFriend == true) {
+      if (ID && virtualEvent1.guestsAllowFriend == true) {
         if (guestsIds.includes(ID)) {
           accessPermission = guestsData.includes(ID);
         }
@@ -2123,17 +2140,18 @@ module.exports = {
         }
       }
       let coHostYouAre = false;
-      if (coHostIds.includes(ID)) {
+      if (ID && coHostIds.includes(ID)) {
         coHostYouAre = coHostIds.includes(ID);
       }
 
       // Check event in past or not
-      const endDate = new Date(virtualEvent.details.endDate); // Assuming details.endDate is a Date object
-      const endTimeStr = virtualEvent.details.endTime; // Assuming details.endTime is a time string in HH:mm AM/PM format
+      const endDate = new Date(virtualEvent.details.endDate);
+      const endTimeStr = virtualEvent.details.endTime;
       const endTime = moment(endTimeStr, "h:mm A").format("HH:mm");
       const eventDateTime = moment(endDate)
         .add(Number(endTime.split(":")[0]), "hours")
         .add(Number(endTime.split(":")[1]), "minutes");
+
       var time = Date.now();
       var dateObj = new Date(time);
       dateObj.setHours(dateObj.getHours() + 5);
@@ -2144,8 +2162,6 @@ module.exports = {
       let isPast =
         newTime > moment(eventDateTime, "YYYY-MM-DD HH:mm:ss").unix();
 
-      // const addAccess = guestsData.includes(ID);
-      // const shareAccess=virtualEvent.guestsAllowFriend===true ?(virtualEvent.guests.some(guest => guest._id.toString() === req.user._id.toString())?true:false):false;
       const eventWithAttendance = {
         ...virtualEvent.toObject(),
         attended: attended,
@@ -2154,7 +2170,7 @@ module.exports = {
         favourite: favouriteEvent,
         deleteAccess: deleteAccess,
         shareAccess: shareAccess,
-        groupDetail: groupDetail ? groupDetail : "",
+        groupDetail: groupDetail, // Ici, on s'assure que groupDetail est toujours défini
         addAccessPermission: accessPermission == false ? "yes" : "no",
         coHostOrGuestYouAre: coHostOrGuestYouAre,
         coHostYouAre: coHostYouAre,
@@ -2169,6 +2185,7 @@ module.exports = {
       return res.status(401).json({ status: false, message: error.message });
     }
   },
+
   addCoHostAndGuestInExistingEvent: async (req, res) => {
     try {
       // Type 1 for guests, 2 for coHosts
@@ -3674,6 +3691,28 @@ module.exports = {
       return res.status(500).json({ status: false, message: error.message });
     }
   },
+  isFavourite: async (req, res) => {
+    try {
+      const { eventId } = req.params;
+      const userId = req.user._id;
+
+      // Recherchez si cet utilisateur a favorisé cet événement
+      const favourite = await Models.eventFavouriteUserModel.findOne({
+        eventId,
+        userId,
+        favourite: 1,
+      });
+
+      if (favourite) {
+        return res.status(200).json({ favourite: true });
+      } else {
+        return res.status(200).json({ favourite: false });
+      }
+    } catch (error) {
+      console.error("Error checking if event is favourite:", error);
+      return res.status(500).json({ message: error.message });
+    }
+  },
   attendEventByTickInFigma: async (req, res) => {
     try {
       let objToSave = {
@@ -4238,11 +4277,20 @@ module.exports = {
         })
         .exec();
 
-      let enrichedEvents = events;
+      let enrichedEvents = events.map((event) => ({
+        ...event.toObject(),
+        isGoing: false, // Default to false
+        isFavourite: false, // Default to false
+      }));
 
       if (req.user) {
         // Récupération des participations de l'utilisateur connecté
         const attendeeStatus = await EventAttendee.find({
+          userId: req.user._id,
+          eventId: { $in: events.map((event) => event._id) },
+        }).exec();
+
+        const favoriteStatus = await EventFavorite.find({
           userId: req.user._id,
           eventId: { $in: events.map((event) => event._id) },
         }).exec();
@@ -4252,11 +4300,18 @@ module.exports = {
           goingStatusMap[status.eventId] = status.attendEvent === 1;
         });
 
+        const favouriteStatusMap = {};
+        favoriteStatus.forEach((status) => {
+          favouriteStatusMap[status.eventId] = status.favourite === 1;
+        });
+
         enrichedEvents = events.map((event) => {
           const isGoing = !!goingStatusMap[event._id];
+          const isFavourite = !!favouriteStatusMap[event._id];
           return {
             ...event.toObject(),
             isGoing,
+            isFavourite,
           };
         });
       }

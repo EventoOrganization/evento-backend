@@ -44,7 +44,7 @@ router.get(
 );
 router.put("/updateEventAll", authenticateJWT, userController.updateEventALl);
 router.put("/updateEvent", authenticateJWT, userController.updateEvent);
-router.get("/event/:id", authenticateJWT, userController.getEventById);
+router.get("/event/:id", userController.getEventById);
 router.post(
   "/followStatusForAllUsersThatNotAddAsCoHost",
   authenticateJWT,
@@ -72,6 +72,13 @@ router.get(
   authenticateJWT,
   userController.isAttending,
 );
+// use this to know if you are saving
+router.get(
+  "/isFavourite/:eventId",
+  authenticateJWT,
+  userController.isFavourite,
+);
+
 // use this to know you chatting on events
 router.get(
   "/myEventsWithChat",
