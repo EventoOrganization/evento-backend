@@ -159,7 +159,6 @@ router.get(
 );
 router.post(
   "/followStatusForAttendedUsers",
-  authenticateJWT,
   userController.followStatusForAttendedUsers,
 );
 // users that following the logged user

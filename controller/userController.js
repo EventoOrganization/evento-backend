@@ -1235,10 +1235,14 @@ module.exports = {
 
   createEventAndRSVPform: async (req, res) => {
     console.log("Received request body:", req.body);
+    console.log("Received files", req.files);
     try {
       let imageUrls = []; // To store image URLs
-      let videoName; // To store video URL
+      let videoUrls = []; // To store video URL
+      let videoName;
       let thumbnail; // To store thumbnail URL
+      let parsedQuestions = [];
+      let parsedAdditionalFields = [];
 
       const {
         name,
@@ -1250,7 +1254,6 @@ module.exports = {
         additionalField,
         timeSlots,
       } = req.body;
-
       // Fetching user data from the database
       const senderData = await Models.userModel.findOne({ _id: req.user._id });
       if (!senderData) {
@@ -1258,6 +1261,49 @@ module.exports = {
         return res
           .status(404)
           .json({ status: false, message: "User not found" });
+      }
+      // Check if questions and additional fields are valid JSON
+      if (questions) {
+        try {
+          parsedQuestions = JSON.parse(questions);
+        } catch (error) {
+          console.error("Error parsing questions:", error.message);
+          return res.status(400).json({
+            status: false,
+            message: "Invalid JSON format in questions",
+          });
+        }
+      }
+      if (additionalField) {
+        try {
+          parsedAdditionalFields = JSON.parse(additionalField);
+        } catch (error) {
+          console.error("Error parsing additional fields:", error.message);
+          return res.status(400).json({
+            status: false,
+            message: "Invalid JSON format in additional fields",
+          });
+        }
+      }
+      // Check if there are media files in the request and upload them to S3
+      if (req.files) {
+        const mediaKeys = Object.keys(req.files).filter((key) =>
+          key.startsWith("media"),
+        );
+        const uploadedMedia = mediaKeys.map((key) => req.files[key]);
+
+        for (const media of uploadedMedia) {
+          const mediaName = await helper.fileUpload(media, "events"); // Upload to S3
+
+          // Separate media based on type and store URLs accordingly
+          if (media.mimetype.startsWith("image/")) {
+            imageUrls.push(mediaName);
+          } else if (media.mimetype.startsWith("video/")) {
+            videoUrls.push(mediaName);
+          }
+
+          console.log("Media uploaded to S3:", mediaName);
+        }
       }
 
       // Check if there's a video file in the request
@@ -1358,6 +1404,7 @@ module.exports = {
         }
       }
       // Preparing the RSVP form if required
+      // Preparing the RSVP form if required
       let rsvpForm = {};
       if (req.body.createRSVP && req.body.createRSVP == "true") {
         try {
@@ -1403,6 +1450,7 @@ module.exports = {
           video: videoName, // Store video URL
           thumbnailVideo: req.body.type == 2 ? thumbnail : "", // Store thumbnail URL if type is 2
           images: imageUrls, // Store image URLs
+          videos: videoUrls,
           mode: req.body.mode,
           date: req.body.date,
           endDate: req.body.endDate,
@@ -1415,6 +1463,7 @@ module.exports = {
           createRSVP: req.body.createRSVP,
           timeSlots: parsedTimeSlots,
         },
+        rsvpForm,
         privateEventLink: req.body.privateEventLink,
         guestsAllowFriend: req.body.guestsAllowFriend,
         allUploadPhotoVideo: 1,

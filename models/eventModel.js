@@ -22,6 +22,7 @@ const eventSchema = new Schema(
       video: String,
       thumbnailVideo: String,
       images: [String],
+      videos: [String],
       loc: {
         type: {
           type: String,
