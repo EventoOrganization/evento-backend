@@ -40,8 +40,6 @@ app.use(cookieParser());
 app.use(bodyParser.urlencoded({ extended: true })); // Use body-parser for url-encoded bodies
 app.use(bodyParser.json()); // Parse JSON bodies
 app.use((req, res, next) => {
-  console.log("Session ID:", req.sessionID);
-  console.log("Session Data:", req.session);
   if (req.url == "/") {
     res.redirect("/login");
     return;

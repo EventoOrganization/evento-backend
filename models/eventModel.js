@@ -37,7 +37,7 @@ const eventSchema = new Schema(
       },
       mode: {
         type: String,
-        enum: ["virtual", "in-person"],
+        enum: ["virtual", "in-person", "both"],
       },
       location: { type: String, required: false },
       longitude: { type: String, required: false },
@@ -115,9 +115,9 @@ const eventSchema = new Schema(
       attendEvent: String,
       questions: [
         {
-          question: String,
+          question: { type: String, required: true },
           answer: String,
-          required: Boolean,
+          required: { type: Boolean, default: false },
           options: [String],
         },
       ],

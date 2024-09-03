@@ -162,10 +162,16 @@ router.post(
   authenticateJWT,
   userController.followStatusForAttendedUsers,
 );
+// users that following the logged user
 router.get(
   "/followStatusForAllUsersWithUserId/:id",
   authenticateJWT,
   userController.followStatusForAllUsersWithUserId,
+);
+router.get(
+  "/followStatusForUsersYouFollow/:id",
+  authenticateJWT,
+  userController.followStatusForUsersYouFollow,
 );
 router.get(
   "/followStatusForAllUsersWithUserIdSartaj/:id",

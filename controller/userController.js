@@ -1248,6 +1248,7 @@ module.exports = {
         attendEvent,
         questions,
         additionalField,
+        timeSlots,
       } = req.body;
 
       // Fetching user data from the database
@@ -1345,7 +1346,17 @@ module.exports = {
           console.log("Image uploaded to S3:", imageName);
         }
       }
-
+      if (timeSlots) {
+        try {
+          parsedTimeSlots = JSON.parse(timeSlots);
+        } catch (error) {
+          console.error("Error parsing timeSlots:", error.message);
+          return res.status(400).json({
+            status: false,
+            message: "Invalid JSON format in timeSlots",
+          });
+        }
+      }
       // Preparing the RSVP form if required
       let rsvpForm = {};
       if (req.body.createRSVP && req.body.createRSVP == "true") {
@@ -1402,6 +1413,7 @@ module.exports = {
           description: req.body.description,
           includeChat: req.body.includeChat,
           createRSVP: req.body.createRSVP,
+          timeSlots: parsedTimeSlots,
         },
         privateEventLink: req.body.privateEventLink,
         guestsAllowFriend: req.body.guestsAllowFriend,
@@ -4129,6 +4141,42 @@ module.exports = {
       return helper.success(
         res,
         "List of users who attended the event with follow status",
+        resultList,
+      );
+    } catch (error) {
+      return res.status(401).json({ status: false, message: error.message });
+    }
+  },
+  followStatusForUsersYouFollow: async (req, res) => {
+    console.log("****************************************************");
+    try {
+      let loggedInUserId = req.params.id;
+
+      const userList = await Models.userModel.find({
+        $and: [{ _id: { $ne: loggedInUserId } }, { role: { $ne: "admin" } }],
+      });
+
+      const followingList = await Models.userFollowModel.find({
+        follower: loggedInUserId,
+      });
+
+      const followingMap = new Map();
+      followingList.forEach((following) => {
+        followingMap.set(following.following.toString(), true);
+      });
+
+      const resultList = userList.map((user) => {
+        const userId = user._id.toString();
+        let status = followingMap.has(userId) ? "following" : "not-followed";
+        return {
+          user,
+          status,
+        };
+      });
+
+      return helper.success(
+        res,
+        "List of users and their follow status based on who you follow",
         resultList,
       );
     } catch (error) {
