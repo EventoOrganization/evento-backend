@@ -1204,6 +1204,103 @@ module.exports = {
       return res.status(401).json({ status: false, message: error.message });
     }
   },
+  getProfileByUserId: async (req, res) => {
+    try {
+      const userInfo = await Models.userModel
+        .findOne({ _id: req.user._id })
+        .populate({ path: "interest" });
+
+      const allEvents = await Models.eventModel
+        .find({})
+        .populate({
+          path: "user",
+          select: "firstName lastName name",
+        })
+        .populate({
+          path: "interest",
+          select: "_id name profileImage",
+        })
+        .populate({
+          path: "guests",
+          select: "firstName lastName name profileImage",
+        })
+        .populate({
+          path: "coHosts",
+          select: "firstName lastName name profileImage",
+        })
+        .exec();
+
+      const attendEvents = await Models.eventAttendesUserModel
+        .find({ userId: req.user._id })
+        .exec();
+
+      const favouriteEvents = await Models.eventFavouriteUserModel
+        .find({ userId: req.user._id, favourite: 1 })
+        .exec();
+
+      let attendEventsIds = attendEvents.map((e) => e.eventId.toString());
+      let favouriteEventsIds = favouriteEvents.map((e) => e.eventId.toString());
+
+      // Ajout des propriétés isGoing, isFavourite, et isHosted
+      const differentiatedEvents = allEvents.map((event) => {
+        return {
+          ...event._doc,
+          isGoing: attendEventsIds.includes(event._id.toString()),
+          isFavourite: favouriteEventsIds.includes(event._id.toString()),
+          isHosted: event.user._id.toString() === req.user._id.toString(),
+        };
+      });
+
+      // Filtrage des événements indésirables
+      const filteredEvents = differentiatedEvents.filter((event) => {
+        return event.isGoing || event.isFavourite || event.isHosted;
+      });
+
+      // Filtrer les événements à venir
+      const filteredUpcomingEvents = filteredEvents.filter((event) => {
+        const endDate = new Date(event.details.endDate);
+        return endDate >= new Date(); // Garde les événements à venir
+      });
+
+      // Filtrer les événements passés
+      const filteredPastEvents = filteredEvents.filter((event) => {
+        const endDate = new Date(event.details.endDate);
+        return endDate < new Date(); // Garde les événements passés
+      });
+
+      // Filtrer les événements auxquels l'utilisateur participe
+      const filteredUpcomingEventsAttened = filteredEvents.filter((event) => {
+        return event.isGoing || event.isFavourite;
+      });
+
+      let countFollowing = await Models.userFollowModel.countDocuments({
+        follower: req.user._id,
+      });
+      let countTotalEventIAttended =
+        await Models.eventAttendesUserModel.countDocuments({
+          userId: req.user._id,
+        });
+
+      let obj = {};
+      obj.userInfo = userInfo;
+      obj.upcomingEvents = filteredUpcomingEvents; // Inclut les événements à venir
+      obj.pastEvents = filteredPastEvents; // Inclut les événements passés
+      obj.following = countFollowing;
+      obj.totalEventAttended = countTotalEventIAttended;
+      obj.filteredUpcomingEventsAttened = filteredUpcomingEventsAttened; // Inclut les événements "going" ou "favourite"
+
+      if (userInfo.password) {
+        delete userInfo.password;
+        delete userInfo.otp;
+        return helper.success(res, "Profile get Successfully", obj);
+      }
+
+      return helper.success(res, "Profile get Successfully", obj);
+    } catch (error) {
+      return res.status(401).json({ status: false, message: error.message });
+    }
+  },
+
   getInterestsListing: async (req, res) => {
     console.log("Entering getInterestsListing");
 

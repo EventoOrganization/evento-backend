@@ -26,6 +26,11 @@ router.post("/otpVerify", userController.otpVerify);
 router.post("/resendOtp", userController.resendOtp);
 router.put("/updateProfile", authenticateJWT, userController.updateProfile);
 router.get("/getProfile", authenticateJWT, userController.getProfile);
+router.get(
+  "/getProfileByUserId",
+  authenticateJWT,
+  userController.getProfileByUserId,
+);
 router.get("/getInterestsListing", userController.getInterestsListing);
 router.get("/allUserListing", userController.allUserListing);
 
