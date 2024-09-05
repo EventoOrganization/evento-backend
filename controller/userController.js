@@ -19,7 +19,123 @@ const schedule = require("node-schedule");
 const cronSchedule = "0 0 * * *"; // Runs every night at 12:00 AM
 // const cronSchedule1 = "*/10 * * * * *"; // Runs every 10 sec
 const cronSchedule1 = "01 0 * * *";
+exports.signup = async (req, res) => {
+  const { email, password } = req.body;
 
+  try {
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({ message: "Email is already in use." });
+    }
+    // Generates a random 6-digit OTP
+    const otpCode = Math.floor(100000 + Math.random() * 900000);
+    const otpExpires = Date.now() + 10 * 60 * 1000;
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const newUser = new User({
+      email,
+      password: hashedPassword,
+      email_otp: otpCode,
+      otpExpires: otpExpires,
+    });
+    await newUser.save();
+
+    // Sends OTP via email
+    await sendOTPEmail(email, otpCode);
+
+    res.status(201).json({
+      message: "User created successfully",
+      body: {
+        _id: newUser._id,
+        email: newUser.email,
+      },
+    });
+  } catch (error) {
+    console.error("Signup error:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+exports.verifyEmailOTP = async (req, res) => {
+  const { otpCode } = req.body;
+
+  try {
+    const user = await User.findOne({
+      email_otp: otpCode,
+      otpExpires: { $gt: Date.now() },
+    });
+
+    if (!user) {
+      return res.status(400).json({ message: "User not found" });
+    }
+    user.email_verified = true;
+    user.email_otp = null;
+    user.otpExpires = null;
+    await user.save();
+
+    return res.status(200).json({ message: "Email verified successfully." });
+  } catch (error) {
+    console.error("OTP verification error:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+exports.login = async (req, res) => {
+  const { email, password } = req.body;
+
+  try {
+    // Recherche de l'utilisateur par email
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(400).json({ message: "Invalid credentials" });
+    }
+
+    // Vérification du mot de passe
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(400).json({ message: "Invalid credentials" });
+    }
+    // Génération du token JWT
+    const token = jwt.sign(
+      {
+        id: user._id,
+        email: user.email,
+      },
+      JWT_SECRET_KEY,
+      { expiresIn: "30d" },
+    );
+
+    // Configuration du cookie sécurisé avec le token
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production", // secure en production
+      sameSite: "lax",
+      maxAge: 1000 * 60 * 60 * 24 * 7, // 7 jours
+    });
+
+    res.status(200).json({
+      message: "Login successful",
+      body: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        profileImage: user.profileImage,
+        token,
+      },
+    });
+  } catch (error) {
+    console.error("Login error:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+exports.logout = async (req, res) => {
+  try {
+    // Supprime le cookie contenant le token
+    res.clearCookie("token");
+    res.status(200).json({ message: "Logout successful" });
+  } catch (error) {
+    res.status(500).json({ message: "Logout error", error });
+  }
+};
 schedule.scheduleJob(cronSchedule, async function () {
   try {
     const todayDate = moment().format("YYYY-MM-DD");
@@ -275,146 +391,146 @@ module.exports = {
   //     return res.status(500).json({ status: false, message: error.message });
   //   }
   // },
-  signup: async (req, res) => {
-    try {
-      const { email, password, confirmPassword } = req.body;
+  // signup: async (req, res) => {
+  //   try {
+  //     const { email, password, confirmPassword } = req.body;
 
-      // Basic validation
-      if (!email || !password || !confirmPassword) {
-        return res.status(400).json({ message: "All fields are required." });
-      }
+  //     // Basic validation
+  //     if (!email || !password || !confirmPassword) {
+  //       return res.status(400).json({ message: "All fields are required." });
+  //     }
 
-      if (password !== confirmPassword) {
-        return res.status(400).json({ message: "Passwords do not match." });
-      }
+  //     if (password !== confirmPassword) {
+  //       return res.status(400).json({ message: "Passwords do not match." });
+  //     }
 
-      // Check if the email is already in use
-      const existingUser = await Models.userModel.findOne({ email });
-      if (existingUser) {
-        return res.status(400).json({ message: "Email is already in use." });
-      }
+  //     // Check if the email is already in use
+  //     const existingUser = await Models.userModel.findOne({ email });
+  //     if (existingUser) {
+  //       return res.status(400).json({ message: "Email is already in use." });
+  //     }
 
-      // Hash password before saving
-      const hashedPassword = await bcrypt.hash(password, 10);
+  //     // Hash password before saving
+  //     const hashedPassword = await bcrypt.hash(password, 10);
 
-      // Create the new user
-      const newUser = new Models.userModel({
-        email,
-        password: hashedPassword,
-      });
+  //     // Create the new user
+  //     const newUser = new Models.userModel({
+  //       email,
+  //       password: hashedPassword,
+  //     });
 
-      await newUser.save();
+  //     await newUser.save();
 
-      // Respond with success message
-      return res.status(201).json({
-        message: "User created successfully",
-        body: {
-          _id: newUser._id,
-          email: newUser.email,
-        },
-      });
-    } catch (error) {
-      console.error("Signup error:", error);
-      return res.status(500).json({ message: "Server error." });
-    }
-  },
+  //     // Respond with success message
+  //     return res.status(201).json({
+  //       message: "User created successfully",
+  //       body: {
+  //         _id: newUser._id,
+  //         email: newUser.email,
+  //       },
+  //     });
+  //   } catch (error) {
+  //     console.error("Signup error:", error);
+  //     return res.status(500).json({ message: "Server error." });
+  //   }
+  // },
 
-  login: async (req, res) => {
-    console.log("Login request", req.body);
-    try {
-      const v = new Validator(req.body, {
-        email: "required",
-        password: "required",
-      });
-      const values = JSON.parse(JSON.stringify(v));
-      let errorsResponse = await helper.checkValidation(v);
+  // login: async (req, res) => {
+  //   console.log("Login request", req.body);
+  //   try {
+  //     const v = new Validator(req.body, {
+  //       email: "required",
+  //       password: "required",
+  //     });
+  //     const values = JSON.parse(JSON.stringify(v));
+  //     let errorsResponse = await helper.checkValidation(v);
 
-      if (errorsResponse) {
-        console.log("Validation errors:", errorsResponse);
-        return helper.failed(res, errorsResponse);
-      }
+  //     if (errorsResponse) {
+  //       console.log("Validation errors:", errorsResponse);
+  //       return helper.failed(res, errorsResponse);
+  //     }
 
-      let logData = await Models.userModel.findOne({
-        email: v.inputs.email,
-      });
+  //     let logData = await Models.userModel.findOne({
+  //       email: v.inputs.email,
+  //     });
 
-      if (!logData) {
-        const errorMessage =
-          "Sorry, we don’t recognize your user. Please create an account.";
-        console.log(errorMessage);
-        return helper.failed(res, errorMessage);
-      }
+  //     if (!logData) {
+  //       const errorMessage =
+  //         "Sorry, we don’t recognize your user. Please create an account.";
+  //       console.log(errorMessage);
+  //       return helper.failed(res, errorMessage);
+  //     }
 
-      if (logData.is_block == 1) {
-        const errorMessage =
-          "Your account is blocked by admin. Please contact the admin.";
-        console.log(errorMessage);
-        return helper.failed(res, errorMessage);
-      }
+  //     if (logData.is_block == 1) {
+  //       const errorMessage =
+  //         "Your account is blocked by admin. Please contact the admin.";
+  //       console.log(errorMessage);
+  //       return helper.failed(res, errorMessage);
+  //     }
 
-      const checkPassword = await bcrypt.compare(
-        v.inputs.password,
-        logData.password,
-      );
+  //     const checkPassword = await bcrypt.compare(
+  //       v.inputs.password,
+  //       logData.password,
+  //     );
 
-      if (!checkPassword) {
-        const errorMessage = "Password is incorrect";
-        console.log(errorMessage);
-        return helper.failed(res, errorMessage);
-      }
+  //     if (!checkPassword) {
+  //       const errorMessage = "Password is incorrect";
+  //       console.log(errorMessage);
+  //       return helper.failed(res, errorMessage);
+  //     }
 
-      let time = helper.unixTimestamp();
+  //     let time = helper.unixTimestamp();
 
-      await Models.userModel.findByIdAndUpdate(
-        { _id: logData._id },
-        {
-          $set: {
-            loginTime: time,
-            deviceType: req.body.deviceType,
-            deviceToken: req.body.deviceToken,
-          },
-        },
-        { new: true },
-      );
+  //     await Models.userModel.findByIdAndUpdate(
+  //       { _id: logData._id },
+  //       {
+  //         $set: {
+  //           loginTime: time,
+  //           deviceType: req.body.deviceType,
+  //           deviceToken: req.body.deviceToken,
+  //         },
+  //       },
+  //       { new: true },
+  //     );
 
-      let token = jwt.sign(
-        {
-          data: {
-            id: logData.id,
-            email: logData.email,
-            name: logData.name,
-            loginTime: time,
-          },
-        },
-        JWT_SECRET_KEY,
-        { expiresIn: "30d" },
-      );
+  //     let token = jwt.sign(
+  //       {
+  //         data: {
+  //           id: logData.id,
+  //           email: logData.email,
+  //           name: logData.name,
+  //           loginTime: time,
+  //         },
+  //       },
+  //       JWT_SECRET_KEY,
+  //       { expiresIn: "30d" },
+  //     );
 
-      delete logData.password;
-      logData = JSON.stringify(logData);
-      logData = JSON.parse(logData);
-      logData.token = token;
-      delete logData.password;
+  //     delete logData.password;
+  //     logData = JSON.stringify(logData);
+  //     logData = JSON.parse(logData);
+  //     logData.token = token;
+  //     delete logData.password;
 
-      console.log("User login successful:");
-      // console.log("Setting token in cookie:", token);
-      res.cookie("token", token, {
-        httpOnly: true,
-        // secure: process.env.NODE_ENV === "production",
-        secure: true,
-        sameSite: "lax",
-        // sameSite: "none",
-        maxAge: 1000 * 60 * 60 * 24 * 7,
-        path: "/",
-      });
-      console.log("Cookie set with token:", req.cookies.token);
-      console.log("Session after login:", req.session);
-      return helper.success(res, "User Login Successfully", logData);
-    } catch (error) {
-      console.log("Login error:", error.message);
-      return res.status(500).json({ status: false, message: error.message });
-    }
-  },
+  //     console.log("User login successful:");
+  //     // console.log("Setting token in cookie:", token);
+  //     res.cookie("token", token, {
+  //       httpOnly: true,
+  //       // secure: process.env.NODE_ENV === "production",
+  //       secure: true,
+  //       sameSite: "lax",
+  //       // sameSite: "none",
+  //       maxAge: 1000 * 60 * 60 * 24 * 7,
+  //       path: "/",
+  //     });
+  //     console.log("Cookie set with token:", req.cookies.token);
+  //     console.log("Session after login:", req.session);
+  //     return helper.success(res, "User Login Successfully", logData);
+  //   } catch (error) {
+  //     console.log("Login error:", error.message);
+  //     return res.status(500).json({ status: false, message: error.message });
+  //   }
+  // },
 
   logOut: async (req, res) => {
     try {

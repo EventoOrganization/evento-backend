@@ -101,11 +101,6 @@ app.use("/", indexRouter);
 app.use("/users", usersRouter);
 app.use("/", cmsRoutes);
 
-//New set up routes
-app.use("/auth", authRoutes);
-app.use("/events", eventRoutes);
-app.use("/profile", profileRoutes);
-
 // Catch 404 and forward to error handler
 app.use(function (req, res, next) {
   next(createError(404));

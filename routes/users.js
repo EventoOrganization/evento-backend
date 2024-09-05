@@ -5,9 +5,20 @@ const authenticateJWT = require("../middleware/authentication").authenticateJWT;
 const authenticateHeader =
   require("../middleware/authentication").authenticateHeader;
 
+// Fresh evento routes
 router.post("/signup", userController.signup);
 router.post("/login", userController.login);
-router.post("/logout", authenticateJWT, userController.logOut);
+router.post("/logout", authenticateJWT, userController.logout);
+router.post("/verify-otp", userController.verifyEmailOTP);
+router.get(
+  "/getLoggedUserProfile",
+  authenticateJWT,
+  userController.getLoggedUserProfile,
+);
+
+// router.post("/signup", userController.signup);
+// router.post("/login", userController.login);
+// router.post("/logout", authenticateJWT, userController.logOut);
 router.post("/deleteAccount", authenticateJWT, userController.deleteAccount);
 router.post("/changePassword", authenticateJWT, userController.changePassword);
 
