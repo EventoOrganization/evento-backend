@@ -6,5 +6,5 @@ var authController = require("../../controller/user/authController");
 router.post("/signup", authController.signup);
 router.post("/login", authController.login);
 router.post("/logout", authController.logout);
-
+router.post("/verify-otp", authController.verifyEmailOTP);
 module.exports = router;

@@ -1,29 +1,33 @@
 // controller/user/authController.js
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
+const moment = require("moment");
 const User = require("../../models/userModel");
 const { JWT_SECRET_KEY } = process.env;
-
+const { sendOTPEmail } = require("../../helper/emailService");
 exports.signup = async (req, res) => {
   const { email, password } = req.body;
 
   try {
-    // Vérification si l'email est déjà utilisé
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.status(400).json({ message: "Email is already in use." });
     }
-
-    // Hachage du mot de passe
+    // Generates a random 6-digit OTP
+    const otpCode = Math.floor(100000 + Math.random() * 900000);
+    const otpExpires = Date.now() + 10 * 60 * 1000;
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Création d'un nouvel utilisateur
     const newUser = new User({
       email,
       password: hashedPassword,
+      email_otp: otpCode,
+      otpExpires: otpExpires,
     });
-
     await newUser.save();
+
+    // Sends OTP via email
+    await sendOTPEmail(email, otpCode);
 
     res.status(201).json({
       message: "User created successfully",
@@ -37,7 +41,29 @@ exports.signup = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
+exports.verifyEmailOTP = async (req, res) => {
+  const { otpCode } = req.body;
 
+  try {
+    const user = await User.findOne({
+      email_otp: otpCode,
+      otpExpires: { $gt: Date.now() },
+    });
+
+    if (!user) {
+      return res.status(400).json({ message: "User not found" });
+    }
+    user.email_verified = true;
+    user.email_otp = null;
+    user.otpExpires = null;
+    await user.save();
+
+    return res.status(200).json({ message: "Email verified successfully." });
+  } catch (error) {
+    console.error("OTP verification error:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
 exports.login = async (req, res) => {
   const { email, password } = req.body;
 
@@ -53,7 +79,6 @@ exports.login = async (req, res) => {
     if (!isMatch) {
       return res.status(400).json({ message: "Invalid credentials" });
     }
-
     // Génération du token JWT
     const token = jwt.sign(
       {
@@ -74,7 +99,7 @@ exports.login = async (req, res) => {
 
     res.status(200).json({
       message: "Login successful",
-      user: {
+      body: {
         _id: user._id,
         name: user.name,
         email: user.email,

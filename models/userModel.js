@@ -23,6 +23,7 @@ const userSchema = new mongoose.Schema(
     resetPasswordToken: { type: String, default: null },
     resetPasswordExpires: { type: Date, default: null },
     forgotPasswordToken: { type: String, default: null },
+    otpExpires: { type: Date, default: null },
 
     // OTP for verification
     email_otp: { type: Number, default: 0 },
@@ -64,13 +65,13 @@ const userSchema = new mongoose.Schema(
     },
     devices: [
       {
-        deviceToken: { type: String, required: true }, // Token de notification push pour chaque appareil
+        deviceToken: { type: String, required: true },
         deviceType: {
           type: String,
           enum: ["web", "android", "ios"],
           required: true,
-        }, // Type d'appareil
-        lastUsed: { type: Date, default: Date.now }, // Date de la dernière utilisation de cet appareil
+        },
+        lastUsed: { type: Date, default: Date.now },
       },
     ],
   },

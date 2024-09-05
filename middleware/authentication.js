@@ -7,6 +7,7 @@ const API_SECRET_KEY = process.env.API_SECRET_KEY;
 const PUBLISH_KEY = process.env.PUBLISH_KEY;
 
 module.exports = {
+  // Middleware pour authentifier via JWT
   authenticateJWT: async (req, res, next) => {
     const authHeader = req.headers.authorization;
 
@@ -20,23 +21,21 @@ module.exports = {
     const token = authHeader.split(" ")[1];
 
     try {
-      const decoded = jwt.verify(token, JWT_SECRET_KEY);
-
+      const decoded = jwt.verify(token, JWT_SECRET_KEY); // Vérification du token
+      console.log("🚀 ~ decoded:", decoded);
       const existingUser = await users.findOne({
-        _id: decoded.data.id,
-        loginTime: decoded.data.loginTime,
-        role: "user",
+        _id: decoded.id,
+        email: decoded.email,
       });
-
+      // console.log("🚀 ~ existingUser:", existingUser);
       if (!existingUser) {
         return res.status(403).json({
           success: false,
           message: "User not found or session expired",
         });
       }
-
-      req.user = existingUser;
-      next();
+      req.user = existingUser; // Attache l'utilisateur à la requête pour une utilisation ultérieure
+      next(); // Passe au middleware suivant
     } catch (error) {
       console.error("JWT verification error:", error.message);
       return res.status(403).json({
@@ -46,6 +45,7 @@ module.exports = {
     }
   },
 
+  // Middleware pour authentifier les clés d'API
   authenticateHeader: async (req, res, next) => {
     const v = new Validator(req.headers, {
       secret_key: "required|string",
@@ -72,6 +72,6 @@ module.exports = {
       });
     }
 
-    next();
+    next(); // Passe au middleware suivant si les clés sont valides
   },
 };
