@@ -50,6 +50,7 @@ router.get(
 router.put("/updateEventAll", authenticateJWT, userController.updateEventALl);
 router.put("/updateEvent", authenticateJWT, userController.updateEvent);
 router.get("/event/:id", userController.getEventById);
+router.get("/evento/:id", userController.getEventoById);
 router.post(
   "/followStatusForAllUsersThatNotAddAsCoHost",
   authenticateJWT,
@@ -114,11 +115,7 @@ router.get(
   authenticateJWT,
   userController.rsvpSubmissionAnswerByUserId,
 ); // answer given by user by id
-router.get(
-  "/getProfileUser/:id",
-  authenticateJWT,
-  userController.getProfileUser,
-); //User profile with upcomming and past events;
+router.get("/getProfileUser/:id", userController.getProfileUser); //User profile with upcomming and past events;
 
 //Upload and get vidio and image for specific event
 router.post(

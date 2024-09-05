@@ -2,48 +2,75 @@ const mongoose = require("mongoose");
 const crypto = require("crypto");
 const userSchema = new mongoose.Schema(
   {
-    firstName: { type: String },
-    name: { type: String }, //only for admin
-    lastName: { type: String },
-    email: { type: String },
-    socialId: { type: String },
-    socialType: { type: Number },
-    password: { type: String },
-    countryCode: { type: String },
-    phoneNumber: { type: String },
-    address: { type: String },
-    DOB: { type: String },
-    image: { type: String },
+    // standards userInfo
+    firstName: { type: String, default: "" },
+    name: { type: String, default: "" },
+    lastName: { type: String, default: "" },
+    password: { type: String, required: true },
+    email: { type: String, unique: true, required: true },
+    email_verified: { type: String, default: false },
+    countryCode: { type: String, default: "+" },
+    phoneNumber: { type: String, default: "" },
+    phone_verified: { type: String, default: false },
+    address: { type: String, default: "" },
+    bio: { type: String, default: "" },
+    URL: { type: String, default: "" },
+    DOB: { type: String, default: "" },
+    profileImage: { type: String, default: "" },
+    loginTime: { type: Number },
+
+    // Fields for password reset
+    resetPasswordToken: { type: String, default: null },
+    resetPasswordExpires: { type: Date, default: null },
+    forgotPasswordToken: { type: String, default: null },
+
+    // OTP for verification
+    email_otp: { type: Number, default: 0 },
+    phone_otp: { type: Number, default: 0 },
+
+    is_block: { type: Number, default: 0 },
+
+    // specials userInfo
+    interest: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "interest",
+      },
+    ],
+    socialLinks: [
+      {
+        platform: {
+          type: String,
+          enum: [
+            "facebook",
+            "google",
+            "twitter",
+            "instagram",
+            "linkedin",
+            "tiktok",
+            "youtube",
+          ],
+        },
+        url: { type: String, default: "" },
+      },
+    ],
+    // socialId: { type: String },
+    // socialType: { type: Number },
+    // image: { type: String },
     role: {
       type: String,
       enum: ["admin", "user"],
       deafult: "user",
     },
-    profileImage: { type: String }, //for user
-    deviceToken: { type: String },
-    deviceType: { type: String },
-    loginTime: { type: Number },
-    address: { type: String },
-    bio: { type: String },
-    countryCode: {
-      type: String,
-    },
-    resetPasswordToken: { type: String, default: null },
-    forgotPasswordToken: { type: String, default: null },
-    resetPasswordExpires: { type: Date, default: null },
-    phone_verified: { type: String },
-    aboutMe: { type: String },
-    otp: { type: Number },
-    is_block: { type: Number, default: 0 },
-    is_otp_verify: {
-      type: Number,
-      enum: [0, 1],
-      deafult: 0,
-    },
-    interest: [
+    devices: [
       {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "interest",
+        deviceToken: { type: String, required: true }, // Token de notification push pour chaque appareil
+        deviceType: {
+          type: String,
+          enum: ["web", "android", "ios"],
+          required: true,
+        }, // Type d'appareil
+        lastUsed: { type: Date, default: Date.now }, // Date de la dernière utilisation de cet appareil
       },
     ],
   },

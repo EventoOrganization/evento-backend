@@ -1208,7 +1208,10 @@ module.exports = {
     try {
       const userInfo = await Models.userModel
         .findOne({ _id: req.user._id })
-        .populate({ path: "interest" });
+        .select(
+          "firstName lastName name email countryCode phoneNumber address DOB profileImage deviceToken deviceType bio aboutMe role is_block is_otp_verify interest",
+        )
+        .populate({ path: "interest", select: "_id name" });
 
       const allEvents = await Models.eventModel
         .find({})
@@ -1294,7 +1297,7 @@ module.exports = {
         delete userInfo.otp;
         return helper.success(res, "Profile get Successfully", obj);
       }
-
+      console.log(obj.userInfo);
       return helper.success(res, "Profile get Successfully", obj);
     } catch (error) {
       return res.status(401).json({ status: false, message: error.message });
@@ -2343,6 +2346,84 @@ module.exports = {
       return res.status(401).json({ status: false, message: error.message });
     }
   },
+  getEventoById: async (req, res) => {
+    try {
+      const eventId = req.params.id;
+
+      // Récupérer l'événement
+      const virtualEvent = await Models.eventModel
+        .findOne({ _id: eventId })
+        .populate({
+          path: "user",
+          select: "firstName lastName name profileImage",
+        })
+        .populate({
+          path: "interest",
+          select: "name image",
+        })
+        .populate({
+          path: "guests",
+          select: "firstName lastName name profileImage",
+        })
+        .populate({
+          path: "coHosts",
+          select: "firstName lastName name profileImage",
+        })
+        .exec();
+
+      if (!virtualEvent) {
+        return res
+          .status(404)
+          .json({ status: false, message: "Event not found" });
+      }
+
+      // Récupérer les détails des participants
+      const attendeDetail = await Models.eventAttendesUserModel
+        .find({ eventId })
+        .populate({
+          path: "userId",
+          select: "firstName lastName name profileImage",
+        });
+
+      // Initialiser une map pour stocker les utilisateurs suivis par l'utilisateur connecté
+      let followingMap = new Map();
+
+      // Si l'utilisateur est connecté, vérifier les relations de suivi
+      if (req.user) {
+        const followingList = await Models.userFollowModel.find({
+          follower: req.user._id, // Récupérer les utilisateurs que l'utilisateur connecté suit
+        });
+
+        // Remplir la map avec les utilisateurs suivis par l'utilisateur connecté
+        followingList.forEach((following) => {
+          followingMap.set(following.following.toString(), true);
+        });
+      }
+
+      // Créer la liste enrichie des participants avec les informations de suivi
+      const resultList = attendeDetail.map((user) => ({
+        user: {
+          _id: user.userId._id,
+          firstName: user.userId.firstName || "",
+          lastName: user.userId.lastName || "",
+          name: user.userId.name || "",
+          profileImage: user.userId.profileImage || "",
+        },
+        isGoing: user.attendEvent === 1,
+        isFavourite: user.favouriteEvent === 1,
+        isFollowing: req.user
+          ? followingMap.has(user.userId._id.toString())
+          : false, // Vérifier si l'utilisateur connecté suit cet utilisateur
+      }));
+
+      return helper.success(res, "Event details", {
+        ...virtualEvent.toObject(),
+        attendees: resultList, // Inclure la liste enrichie des participants
+      });
+    } catch (error) {
+      return res.status(401).json({ status: false, message: error.message });
+    }
+  },
 
   addCoHostAndGuestInExistingEvent: async (req, res) => {
     try {
@@ -3381,10 +3462,10 @@ module.exports = {
           bio: 1,
         },
       );
+
       let upcomingEvents = await Models.eventModel
         .find({
           $and: [
-            // { 'details.endDate': { $gte: currentDate } },
             {
               $or: [
                 { user: req.params.id },
@@ -3415,7 +3496,6 @@ module.exports = {
       let pastEvents = await Models.eventModel
         .find({
           $and: [
-            // { 'details.endDate': { $lt: currentDate } },
             {
               $or: [
                 { user: req.params.id },
@@ -3445,87 +3525,81 @@ module.exports = {
 
       let followingStatus = "not-followed"; // Default status
 
-      const followerId = req.user._id;
-      const followingId = req.params.id;
+      if (req.user) {
+        const followerId = req.user._id;
+        const followingId = req.params.id;
 
-      const bothFollow1 = await Models.userFollowModel.findOne({
-        follower: followerId,
-        following: followingId,
-      });
-      const bothFollow2 = await Models.userFollowModel.findOne({
-        follower: followingId,
-        following: followerId,
-      });
-      if (bothFollow1 && bothFollow2) {
-        followingStatus = "follow-each-other";
-      } else {
-        const userFollow = await Models.userFollowModel.findOne({
+        const bothFollow1 = await Models.userFollowModel.findOne({
           follower: followerId,
           following: followingId,
         });
+        const bothFollow2 = await Models.userFollowModel.findOne({
+          follower: followingId,
+          following: followerId,
+        });
 
-        if (userFollow) {
-          followingStatus = "following";
+        if (bothFollow1 && bothFollow2) {
+          followingStatus = "follow-each-other";
         } else {
-          const reverseUserFollow = await Models.userFollowModel.findOne({
-            follower: followingId,
-            following: followerId,
+          const userFollow = await Models.userFollowModel.findOne({
+            follower: followerId,
+            following: followingId,
           });
 
-          if (reverseUserFollow) {
-            followingStatus = "followed";
+          if (userFollow) {
+            followingStatus = "following";
+          } else {
+            const reverseUserFollow = await Models.userFollowModel.findOne({
+              follower: followingId,
+              following: followerId,
+            });
+
+            if (reverseUserFollow) {
+              followingStatus = "followed";
+            }
           }
         }
       }
 
-      //   const filteredPastEvents = pastEvents.filter(event => {
-      //     const endDate = new Date(event.details.endDate); // Assuming details.endDate is a Date object
-      //     const endTime = moment(event.details.endTime, "HH:mm").utcOffset(0, false); // Assuming details.endTime is a time in HH:mm format
-      //     const eventDateTime = moment(endDate).add(endTime.hour(), 'hours').add(endTime.minute(), 'minutes');
-      //     const currentDateTime = moment();
-      //     return currentDateTime.isAfter(eventDateTime); // Return true if it's a past event
-      // });
-      let ID = req.user._id.toString();
+      let ID = req.user ? req.user._id.toString() : null;
       const filteredPastEvents = pastEvents.filter((event) => {
-        const endDate = new Date(event.details.endDate); // Assuming details.endDate is a Date object
-        const endTimeStr = event.details.endTime; // Assuming details.endTime is a time string in HH:mm AM/PM format
+        const endDate = new Date(event.details.endDate);
+        const endTimeStr = event.details.endTime;
         const endTime = moment(endTimeStr, "h:mm A").format("HH:mm");
         const eventDateTime = moment(endDate)
           .add(Number(endTime.split(":")[0]), "hours")
           .add(Number(endTime.split(":")[1]), "minutes");
-        var time = Date.now();
-        var dateObj = new Date(time);
+        const time = Date.now();
+        const dateObj = new Date(time);
         dateObj.setHours(dateObj.getHours() + 5);
         dateObj.setMinutes(dateObj.getMinutes() + 30);
-        var newTime = dateObj.getTime();
-        var n = newTime / 1000;
-        newTime = Math.floor(n);
-        const coHostFound = event.coHosts.some(
-          (coHost) => coHost._id.toString() == ID,
-        );
+        const newTime = Math.floor(dateObj.getTime() / 1000);
+        const coHostFound = ID
+          ? event.coHosts.some((coHost) => coHost._id.toString() === ID)
+          : false;
         event.coHostStatus = coHostFound;
         return newTime > moment(eventDateTime, "YYYY-MM-DD HH:mm:ss").unix();
       });
 
       const filteredUpcomingEvents = upcomingEvents.filter((event) => {
-        const endDate = new Date(event.details.endDate); // Assuming details.endDate is a Date object
-        const endTimeStr = event.details.endTime; // Assuming details.endTime is a time string in HH:mm AM/PM format
+        const endDate = new Date(event.details.endDate);
+        const endTimeStr = event.details.endTime;
         const endTime = moment(endTimeStr, "h:mm A").format("HH:mm");
         const eventDateTime = moment(endDate)
           .add(Number(endTime.split(":")[0]), "hours")
           .add(Number(endTime.split(":")[1]), "minutes");
-        var time = Date.now();
-        var dateObj = new Date(time);
+        const time = Date.now();
+        const dateObj = new Date(time);
         dateObj.setHours(dateObj.getHours() + 5);
         dateObj.setMinutes(dateObj.getMinutes() + 30);
-        var newTime = dateObj.getTime();
-        var n = newTime / 1000;
-        newTime = Math.floor(n);
+        const newTime = Math.floor(dateObj.getTime() / 1000);
         return newTime < moment(eventDateTime, "YYYY-MM-DD HH:mm:ss").unix();
       });
+
       let countFollowing = await Models.userFollowModel.countDocuments({
         follower: req.params.id,
       });
+
       let countTotalEventIAttended =
         await Models.eventAttendesUserModel.countDocuments({
           userId: req.params.id,
@@ -3535,15 +3609,16 @@ module.exports = {
       obj.countFollowing = countFollowing;
       obj.countTotalEventIAttended = countTotalEventIAttended;
       obj.userInfo = userInfo;
-      (obj.followingStatus = followingStatus),
-        (obj.upcomingEvents = filteredUpcomingEvents);
+      obj.followingStatus = followingStatus;
+      obj.upcomingEvents = filteredUpcomingEvents;
       obj.pastEvents = filteredPastEvents;
+
       if (userInfo.password) {
         delete userInfo.password;
         delete userInfo.otp;
-        return helper.success(res, "Profile get Successfully", obj);
       }
-      return helper.success(res, "Profile get Successfully", obj);
+
+      return helper.success(res, "Profile retrieved successfully", obj);
     } catch (error) {
       return res.status(401).json({ status: false, message: error.message });
     }

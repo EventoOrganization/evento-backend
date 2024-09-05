@@ -15,6 +15,9 @@ var expressLayouts = require("express-ejs-layouts");
 var indexRouter = require("./routes/dashBoardRoutes");
 var usersRouter = require("./routes/users");
 const cmsRoutes = require("./routes/cmsRoutes ");
+var authRoutes = require("./routes/user/authRoutes");
+var eventRoutes = require("./routes/user/eventRoutes");
+var profileRoutes = require("./routes/user/profileRoutes");
 const cors = require("cors");
 // Create an instance of the Express application
 var app = express();
@@ -97,6 +100,11 @@ app.set("layout", "./layout/admin_layout");
 app.use("/", indexRouter);
 app.use("/users", usersRouter);
 app.use("/", cmsRoutes);
+
+//New set up routes
+app.use("/auth", authRoutes);
+app.use("/events", eventRoutes);
+app.use("/profile", profileRoutes);
 
 // Catch 404 and forward to error handler
 app.use(function (req, res, next) {
