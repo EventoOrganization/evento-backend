@@ -88,53 +88,109 @@ exports.getLoggedUserProfile = async (req, res) => {
 
 exports.updateProfile = async (req, res) => {
   try {
-    if (req.files && req.files.profileImage) {
-      var image = req.files.profileImage;
+    // Validate that the request contains the necessary fields
+    if (!req.body.firstName || !req.body.lastName) {
+      return res.status(400).json({
+        status: false,
+        message: "First name and last name are required.",
+      });
+    }
 
-      if (image) {
-        image = await helper.fileUpload(image, "profile");
+    let image = null;
+
+    // Check if there's a file attached
+    if (req.files && req.files.profileImage) {
+      const file = req.files.profileImage;
+
+      // Validate file type
+      if (!file.mimetype.startsWith("image/")) {
+        return res.status(400).json({
+          status: false,
+          message: "Only image files are allowed for the profile image.",
+        });
+      }
+
+      try {
+        // Attempt to upload the file
+        image = await helper.fileUpload(file, "profile");
+      } catch (error) {
+        return res.status(500).json({
+          status: false,
+          message: "Error uploading profile image.",
+          error: error.message, // Log the actual error message
+        });
       }
     }
-    let data = await Models.userModel.findById({ _id: req.user._id });
 
-    let objToSave = {};
-    objToSave = {
-      name: req.body.name,
-      aboutMe: req.body.aboutMe,
+    // Build the object to save
+    const objToSave = {
       firstName: req.body.firstName,
       lastName: req.body.lastName,
-      countryCode: req.body.countryCode,
-      phoneNumber: req.body.phoneNumber,
+      address: req.body.address,
+      bio: req.body.bio,
+      URL: req.body.URL,
       DOB: req.body.DOB,
       profileImage: image,
-      bio: req.body.bio,
     };
-    const isNameExist = await Models.userModel.findOne({
-      name: { $regex: new RegExp(req.body.name, "i") }, // Case-insensitive search for name
-      _id: { $ne: req.user.id }, // Exclude current user by ID
-    });
-    if (isNameExist) {
-      return helper.failed(
-        res,
-        "Sorry this username already exists, please choose another one",
-      );
+
+    // Check if the name is already taken
+    if (req.body.name) {
+      const isNameExist = await Models.userModel.findOne({
+        name: { $regex: new RegExp(req.body.name, "i") },
+        _id: { $ne: req.user.id },
+      });
+
+      if (isNameExist) {
+        return res.status(409).json({
+          status: false,
+          message: "Username already exists. Please choose another one.",
+        });
+      }
     }
-    if (req.body && req.body.interest && req.body.interest.length > 0) {
-      objToSave.interest = JSON.parse(req.body.interest);
-      await Models.userModel.updateOne(
-        { _id: req.user._id },
-        { $set: { interest: [] } },
-      );
+
+    // Handle interests if provided
+    if (req.body.interest && req.body.interest.length > 0) {
+      try {
+        objToSave.interest = JSON.parse(req.body.interest);
+        await Models.userModel.updateOne(
+          { _id: req.user._id },
+          { $set: { interest: [] } },
+        );
+      } catch (error) {
+        return res.status(400).json({
+          status: false,
+          message: "Invalid interest format. Must be valid JSON.",
+        });
+      }
     }
-    let dataUpdate = await Models.userModel.findByIdAndUpdate(
+
+    // Attempt to update the profile
+    const dataUpdate = await Models.userModel.findByIdAndUpdate(
       { _id: req.user._id },
-      {
-        $set: objToSave,
-      },
+      { $set: objToSave },
       { new: true },
     );
-    return helper.success(res, "Profile updated successfully", dataUpdate);
+
+    if (!dataUpdate) {
+      return res.status(404).json({
+        status: false,
+        message: "User not found.",
+      });
+    }
+
+    return res.status(200).json({
+      status: true,
+      message: "Profile updated successfully.",
+      data: dataUpdate,
+    });
   } catch (error) {
-    return res.status(401).json({ status: false, message: error.message });
+    // Log the full error internally for debugging
+    console.error("Error in updateProfile:", error);
+
+    // Return a generic error message
+    return res.status(500).json({
+      status: false,
+      message: "An unexpected error occurred. Please try again later.",
+    });
   }
 };

@@ -117,17 +117,14 @@ exports.login = async (req, res) => {
 };
 
 exports.logout = async (req, res) => {
-  /**
-   * @function logout
-   * @description Déconnecte l'utilisateur en supprimant le cookie du token JWT.
-   * @param {Object} req - La requête HTTP.
-   * @param {Object} res - La réponse HTTP.
-   * @returns {Promise} Une promesse qui se résout avec un objet JSON indiquant le résultat de la déconnexion.
-   */
   try {
-    // Supprime le cookie contenant le token
     res.clearCookie("token");
-    res.status(200).json({ message: "Logout successful" });
+    res
+      .status(200)
+      .json({
+        message: "Logout successful",
+        body: { message: "Logout successful" },
+      });
   } catch (error) {
     res.status(500).json({ message: "Logout error", error });
   }
