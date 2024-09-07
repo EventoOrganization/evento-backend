@@ -86,6 +86,7 @@ exports.login = async (req, res) => {
       {
         id: user._id,
         name: user.name,
+        profileImage: user.profileImage,
         email: user.email,
       },
       JWT_SECRET_KEY,
@@ -105,8 +106,8 @@ exports.login = async (req, res) => {
       body: {
         _id: user._id,
         name: user.name,
-        email: user.email,
         profileImage: user.profileImage,
+        email: user.email,
         token,
       },
     });
@@ -119,12 +120,10 @@ exports.login = async (req, res) => {
 exports.logout = async (req, res) => {
   try {
     res.clearCookie("token");
-    res
-      .status(200)
-      .json({
-        message: "Logout successful",
-        body: { message: "Logout successful" },
-      });
+    res.status(200).json({
+      message: "Logout successful",
+      body: { message: "Logout successful" },
+    });
   } catch (error) {
     res.status(500).json({ message: "Logout error", error });
   }
