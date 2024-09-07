@@ -88,21 +88,27 @@ exports.getLoggedUserProfile = async (req, res) => {
 
 exports.updateProfile = async (req, res) => {
   try {
-    // Validate that the request contains the necessary fields
-    if (!req.body.firstName || !req.body.lastName) {
-      return res.status(400).json({
-        status: false,
-        message: "First name and last name are required.",
-      });
+    let image = null;
+    let socialLinks = null;
+
+    // Gérer socialLinks
+    if (req.body.socialLinks) {
+      try {
+        socialLinks = JSON.parse(req.body.socialLinks);
+        console.log("Parsed socialLinks:", socialLinks);
+      } catch (error) {
+        return res.status(400).json({
+          status: false,
+          message: "Failed to parse social links",
+          error: error.toString(),
+        });
+      }
     }
 
-    let image = null;
-
-    // Check if there's a file attached
+    // Gérer les fichiers d'image
     if (req.files && req.files.profileImage) {
       const file = req.files.profileImage;
 
-      // Validate file type
       if (!file.mimetype.startsWith("image/")) {
         return res.status(400).json({
           status: false,
@@ -111,35 +117,36 @@ exports.updateProfile = async (req, res) => {
       }
 
       try {
-        // Attempt to upload the file
         image = await helper.fileUpload(file, "profile");
       } catch (error) {
         return res.status(500).json({
           status: false,
           message: "Error uploading profile image.",
-          error: error.message, // Log the actual error message
+          error: error.message,
         });
       }
     }
 
-    // Build the object to save
-    const objToSave = {
-      firstName: req.body.firstName,
-      lastName: req.body.lastName,
-      address: req.body.address,
-      bio: req.body.bio,
-      URL: req.body.URL,
-      DOB: req.body.DOB,
-      profileImage: image,
-    };
+    // Construire l'objet à sauvegarder
+    let objToSave = {};
+    if (req.body.firstName && req.body.firstName !== "null")
+      objToSave.firstName = req.body.firstName;
+    if (req.body.lastName && req.body.lastName !== "null")
+      objToSave.lastName = req.body.lastName;
+    if (req.body.address && req.body.address !== "null")
+      objToSave.address = req.body.address;
+    if (req.body.bio && req.body.bio !== "null") objToSave.bio = req.body.bio;
+    if (req.body.URL && req.body.URL !== "null") objToSave.URL = req.body.URL;
+    if (req.body.DOB && req.body.DOB !== "null") objToSave.DOB = req.body.DOB;
+    if (image) objToSave.profileImage = image;
+    if (socialLinks && socialLinks.length > 0)
+      objToSave.socialLinks = socialLinks;
 
-    // Check if the name is already taken
     if (req.body.name) {
       const isNameExist = await Models.userModel.findOne({
         name: { $regex: new RegExp(req.body.name, "i") },
         _id: { $ne: req.user.id },
       });
-
       if (isNameExist) {
         return res.status(409).json({
           status: false,
@@ -148,23 +155,6 @@ exports.updateProfile = async (req, res) => {
       }
     }
 
-    // Handle interests if provided
-    if (req.body.interest && req.body.interest.length > 0) {
-      try {
-        objToSave.interest = JSON.parse(req.body.interest);
-        await Models.userModel.updateOne(
-          { _id: req.user._id },
-          { $set: { interest: [] } },
-        );
-      } catch (error) {
-        return res.status(400).json({
-          status: false,
-          message: "Invalid interest format. Must be valid JSON.",
-        });
-      }
-    }
-
-    // Attempt to update the profile
     const dataUpdate = await Models.userModel.findByIdAndUpdate(
       { _id: req.user._id },
       { $set: objToSave },
@@ -184,10 +174,7 @@ exports.updateProfile = async (req, res) => {
       data: dataUpdate,
     });
   } catch (error) {
-    // Log the full error internally for debugging
     console.error("Error in updateProfile:", error);
-
-    // Return a generic error message
     return res.status(500).json({
       status: false,
       message: "An unexpected error occurred. Please try again later.",
