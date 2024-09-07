@@ -1321,11 +1321,9 @@ module.exports = {
 
   allUserListing: async (req, res) => {
     try {
-      let result = {};
-      let count = await Models.userModel.countDocuments({ role: "user" });
-      let allUserListing = await Models.userModel.find({ role: "user" });
-      result.count = count;
-      result.allUserListing = allUserListing;
+      let result = await Models.userModel.find({
+        role: { $ne: "admin" },
+      });
 
       return helper.success(res, "ALl user list", result);
     } catch (error) {
@@ -4379,18 +4377,25 @@ module.exports = {
       const followingList = await Models.userFollowModel.find({
         follower: loggedInUserId,
       });
-
+      const followersList = await Models.userFollowModel.find({
+        following: loggedInUserId,
+      });
       const followingMap = new Map();
       followingList.forEach((following) => {
         followingMap.set(following.following.toString(), true);
       });
-
+      const followersMap = new Map();
+      followersList.forEach((follower) => {
+        followersMap.set(follower.follower.toString(), true);
+      });
       const resultList = userList.map((user) => {
         const userId = user._id.toString();
-        let status = followingMap.has(userId) ? "following" : "not-followed";
+        let isIFollowingHim = followingMap.has(userId);
+        let isFollowingMe = followersMap.has(userId);
         return {
-          user,
-          status,
+          ...user.toObject(),
+          isIFollowingHim,
+          isFollowingMe,
         };
       });
 

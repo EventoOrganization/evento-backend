@@ -32,8 +32,8 @@ exports.getUpcomingEvents = async (req, res) => {
         select: "firstName lastName profileImage",
       })
       .populate({
-        path: "interest", // Populate the interest field
-        select: "name image _id", // Select only the name of the interest
+        path: "interest",
+        select: "name image _id",
       })
       .exec();
 
@@ -75,8 +75,6 @@ exports.getUpcomingEvents = async (req, res) => {
         };
       });
     }
-
-    // Enveloppe de la réponse avec des métadonnées
     res.status(200).json({
       success: true,
       message: "Upcoming public events retrieved successfully",
