@@ -85,6 +85,65 @@ exports.getLoggedUserProfile = async (req, res) => {
     return res.status(401).json({ status: false, message: error.message });
   }
 };
+exports.getUserProfileById = async (req, res) => {
+  try {
+    const userId = req.params.userId;
+    const userInfo = await User.findById(userId)
+      .select("firstName lastName name email profileImage bio URL socialLinks")
+      .exec();
+
+    if (!userInfo) {
+      return res
+        .status(404)
+        .json({ status: false, message: "User not found." });
+    }
+
+    // Récupérer les événements auxquels l'utilisateur a participé, qu'il a favorisés ou hébergés
+    const allEvents = await Event.find({
+      $or: [
+        { "guests.user": userId },
+        { "coHosts.user": userId },
+        { user: userId },
+      ],
+    })
+      .populate({
+        path: "user",
+        select: "firstName lastName name profileImage",
+      })
+      .populate({
+        path: "guests.user",
+        select: "firstName lastName name profileImage",
+      })
+      .populate({
+        path: "coHosts.user",
+        select: "firstName lastName name profileImage",
+      })
+      .exec();
+
+    // Filtrer les événements à venir et passés, etc.
+    const upcomingEvents = allEvents.filter(
+      (event) => new Date(event.details.endDate) >= new Date(),
+    );
+    const pastEvents = allEvents.filter(
+      (event) => new Date(event.details.endDate) < new Date(),
+    );
+
+    let obj = {
+      userInfo,
+      upcomingEvents,
+      pastEvents,
+    };
+    console.log(obj);
+    return res.status(200).json({
+      status: true,
+      message: "User profile fetched successfully",
+      data: obj,
+    });
+  } catch (error) {
+    console.error("Error fetching user profile by ID:", error);
+    return res.status(500).json({ status: false, message: error.message });
+  }
+};
 
 exports.updateProfile = async (req, res) => {
   try {
