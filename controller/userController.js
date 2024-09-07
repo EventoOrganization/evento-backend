@@ -4369,7 +4369,6 @@ module.exports = {
     }
   },
   followStatusForUsersYouFollow: async (req, res) => {
-    console.log("****************************************************");
     try {
       let loggedInUserId = req.params.id;
 

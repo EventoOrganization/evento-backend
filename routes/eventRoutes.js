@@ -6,5 +6,6 @@ const authenticateJWT = require("../middleware/authentication").authenticateJWT;
 // All routes start with /event
 router.post("/createEvent", authenticateJWT, eventController.createEvent);
 router.get("/getEvent/:id", eventController.getEventById);
+router.get("/getUpcomingEvents", eventController.getUpcomingEvents);
 
 module.exports = router;
