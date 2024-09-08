@@ -7,10 +7,11 @@ const eventSchema = new Schema(
     user: {
       type: Schema.Types.ObjectId,
       ref: "user",
+      required: true,
     },
     title: {
       type: String,
-      required: false,
+      required: true,
     },
     eventType: {
       type: String,
@@ -76,8 +77,15 @@ const eventSchema = new Schema(
     privateEventLink: String,
     coHosts: [
       {
-        type: Schema.Types.ObjectId,
-        ref: "user",
+        user: {
+          type: Schema.Types.ObjectId,
+          ref: "user",
+        },
+        status: {
+          type: String,
+          enum: ["admin", "read-only"],
+          default: "read-only",
+        },
       },
     ],
     guests: [
@@ -93,9 +101,8 @@ const eventSchema = new Schema(
       },
     ],
     allUploadPhotoVideo: {
-      type: Number,
-      enum: [0, 1], // 0 means not allow 1 means allow
-      default: 0,
+      type: Boolean,
+      default: false,
     },
     rsvpForm: {
       name: {

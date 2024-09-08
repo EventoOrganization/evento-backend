@@ -1,10 +1,52 @@
+const mongoose = require("mongoose");
+const Schema = mongoose.Schema;
+
+const rsvpQuestionSchema = new Schema({
+  question: { type: String, required: true },
+  type: {
+    type: String,
+    enum: ["text", "checkbox", "multiple-choice"],
+    required: true,
+  },
+  required: { type: Boolean, default: false },
+  options: [String],
+  answer: { type: Schema.Types.Mixed },
+});
+
+const rsvpFormSchema = new Schema(
+  {
+    name: {
+      type: String,
+      required: false,
+    },
+    firstName: {
+      type: String,
+    },
+    lastName: {
+      type: String,
+    },
+    email: {
+      type: String,
+      required: false,
+    },
+    phone: String,
+    attendEvent: String,
+    questions: [rsvpQuestionSchema],
+    additionalField: Schema.Types.Mixed,
+  },
+  { timestamps: true },
+);
+
+const RSVPForm = mongoose.model("RSVPForm", rsvpFormSchema);
+module.exports = RSVPForm;
+
 // const mongoose = require('mongoose');
 // const Schema = mongoose.Schema;
 
 // const rsvpFormSchema = new Schema({
 //   name: {
 //     type: String,
-//     required: false 
+//     required: false
 //   },
 //   firstName:{
 //     type:String
@@ -33,7 +75,6 @@
 
 // module.exports = RSVPForm;
 
-
 // {
 //   "eventId":"64df65b26135b146ec97453f",
 //   "questions": [
@@ -59,7 +100,6 @@
 //     }
 //   ]
 // }
-
 
 // const mongoose = require('mongoose');
 // const Schema = mongoose.Schema;
@@ -97,10 +137,10 @@
 
 // module.exports = RSVPSubmission;
 
-//answer of rsvp form 
+//answer of rsvp form
 
 // {
-//   "eventId": "64df65b26135b146ec97453f", 
+//   "eventId": "64df65b26135b146ec97453f",
 //   "name": "John Doe",
 //   "email": "john@example.com",
 //   "firstName": "John",

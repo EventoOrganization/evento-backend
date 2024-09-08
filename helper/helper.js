@@ -1,5 +1,6 @@
 var apn = require("apn");
 const { S3Client, PutObjectCommand } = require("@aws-sdk/client-s3");
+const { Upload } = require("@aws-sdk/lib-storage");
 // var ffmpeg = require("fluent-ffmpeg");
 // const schedule = require("node-schedule");
 // ffmpeg.setFfprobePath("../public/images/videos");
@@ -342,6 +343,54 @@ module.exports = {
       console.log("Error uploading to S3:", error);
       throw new Error("S3 upload failed");
     }
+  },
+  async fileUploadLarge(file, folder = "users") {
+    let file_name_string = file.name;
+    var file_name_array = file_name_string.split(".");
+    var file_ext = file_name_array[file_name_array.length - 1];
+
+    var letters = "ABCDE1234567890FGHJK1234567890MNPQRSTUXY";
+    var result = "";
+    while (result.length < 28) {
+      var rand_int = Math.floor(Math.random() * letters.length);
+      var rand_chr = letters[rand_int];
+      if (result.substr(-1, 1) !== rand_chr) result += rand_chr;
+    }
+    var resultExt = `${result}.${file_ext}`;
+
+    // Deviner le type MIME si nécessaire
+    const mimeType = file.mimetype || guessMimeType(file_ext);
+
+    const upload = new Upload({
+      client: s3,
+      params: {
+        Bucket: process.env.S3_BUCKET_NAME,
+        Key: `${folder}/${resultExt}`,
+        Body: file.data,
+        ContentType: mimeType,
+      },
+    });
+
+    try {
+      const uploadResult = await upload.done();
+      return `https://${process.env.S3_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${folder}/${resultExt}`;
+    } catch (error) {
+      console.error("Error uploading large file to S3:", error);
+      throw new Error("S3 upload failed");
+    }
+  },
+
+  // Exemple de fonction pour deviner le type MIME
+  guessMimeType(extension) {
+    const mimeTypes = {
+      jpg: "image/jpeg",
+      jpeg: "image/jpeg",
+      png: "image/png",
+      mp4: "video/mp4",
+      mov: "video/quicktime",
+      // Ajoutez d'autres extensions/mime-types si nécessaire
+    };
+    return mimeTypes[extension.toLowerCase()] || "application/octet-stream";
   },
 
   //   uploadThumbAndVideo: async (file, folder = "users") => {
