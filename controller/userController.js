@@ -4370,6 +4370,11 @@ module.exports = {
     try {
       let loggedInUserId = req.params.id;
 
+      // Fetch logged-in user's interests
+      const loggedInUser = await Models.userModel.findById(loggedInUserId);
+      const loggedInUserInterests = loggedInUser.interests || [];
+
+      // Get the list of users excluding the logged-in user and admins
       const userList = await Models.userModel.find({
         $and: [{ _id: { $ne: loggedInUserId } }, { role: { $ne: "admin" } }],
       });
@@ -4380,6 +4385,8 @@ module.exports = {
       const followersList = await Models.userFollowModel.find({
         following: loggedInUserId,
       });
+
+      // Create maps for following and followers status
       const followingMap = new Map();
       followingList.forEach((following) => {
         followingMap.set(following.following.toString(), true);
@@ -4388,26 +4395,81 @@ module.exports = {
       followersList.forEach((follower) => {
         followersMap.set(follower.follower.toString(), true);
       });
+
+      // Calculate interest matches and build the result list
       const resultList = userList.map((user) => {
         const userId = user._id.toString();
+        const userInterests = user.interests || [];
+        const matchingInterests = loggedInUserInterests.filter((interest) =>
+          userInterests.includes(interest),
+        ).length;
+
         let isIFollowingHim = followingMap.has(userId);
         let isFollowingMe = followersMap.has(userId);
+
         return {
           ...user.toObject(),
           isIFollowingHim,
           isFollowingMe,
+          matchingInterests,
         };
       });
 
+      // Sort users by the number of matching interests in descending order
+      resultList.sort((a, b) => b.matchingInterests - a.matchingInterests);
+
       return helper.success(
         res,
-        "List of users and their follow status based on who you follow",
+        "List of users and their follow status, sorted by interest matches",
         resultList,
       );
     } catch (error) {
       return res.status(401).json({ status: false, message: error.message });
     }
   },
+
+  // followStatusForUsersYouFollow: async (req, res) => {
+  //   try {
+  //     let loggedInUserId = req.params.id;
+
+  //     const userList = await Models.userModel.find({
+  //       $and: [{ _id: { $ne: loggedInUserId } }, { role: { $ne: "admin" } }],
+  //     });
+
+  //     const followingList = await Models.userFollowModel.find({
+  //       follower: loggedInUserId,
+  //     });
+  //     const followersList = await Models.userFollowModel.find({
+  //       following: loggedInUserId,
+  //     });
+  //     const followingMap = new Map();
+  //     followingList.forEach((following) => {
+  //       followingMap.set(following.following.toString(), true);
+  //     });
+  //     const followersMap = new Map();
+  //     followersList.forEach((follower) => {
+  //       followersMap.set(follower.follower.toString(), true);
+  //     });
+  //     const resultList = userList.map((user) => {
+  //       const userId = user._id.toString();
+  //       let isIFollowingHim = followingMap.has(userId);
+  //       let isFollowingMe = followersMap.has(userId);
+  //       return {
+  //         ...user.toObject(),
+  //         isIFollowingHim,
+  //         isFollowingMe,
+  //       };
+  //     });
+
+  //     return helper.success(
+  //       res,
+  //       "List of users and their follow status based on who you follow",
+  //       resultList,
+  //     );
+  //   } catch (error) {
+  //     return res.status(401).json({ status: false, message: error.message });
+  //   }
+  // },
   followStatusForAllUsersWithUserId: async (req, res) => {
     try {
       // const loggedInUserId = req.user._id;

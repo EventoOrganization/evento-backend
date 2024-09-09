@@ -100,6 +100,12 @@ const eventSchema = new Schema(
         ref: "user",
       },
     ],
+    attendees: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: "EventAttendee",
+      },
+    ],
     allUploadPhotoVideo: {
       type: Boolean,
       default: false,

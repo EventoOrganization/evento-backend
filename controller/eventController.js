@@ -146,22 +146,11 @@ exports.getUpcomingEvents = async (req, res) => {
       eventType: "public",
       "details.date": { $gt: currentDate },
     })
-      .populate({
-        path: "user",
-        select: "firstName lastName profileImage",
-      })
-      .populate({
-        path: "coHosts",
-        select: "firstName lastName profileImage",
-      })
-      .populate({
-        path: "guests",
-        select: "firstName lastName profileImage",
-      })
-      .populate({
-        path: "interest",
-        select: "name image _id",
-      })
+      .sort({ createdAt: -1 })
+      .populate("user", "firstName lastName profileImage")
+      .populate("coHosts", "firstName lastName profileImage")
+      .populate("guests", "firstName lastName profileImage")
+      .populate("interest", "name image")
       .exec();
 
     let enrichedEvents = events.map((event) => ({

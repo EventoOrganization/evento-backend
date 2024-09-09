@@ -11,4 +11,5 @@ router.get(
 );
 router.put("/updateProfile", authenticateJWT, profileController.updateProfile);
 router.get("/userProfile/:userId", profileController.getUserProfileById);
+
 module.exports = router;
