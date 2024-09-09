@@ -131,9 +131,44 @@ exports.createEvent = async (req, res) => {
   }
 };
 
-exports.getEventById = (req, res) => {
-  // Logique pour le login
-  res.send("Get event by id");
+// Get event by ID with all enrichments
+exports.getEventById = async (req, res) => {
+  try {
+    // Récupérer l'ID de l'événement à partir des paramètres de la requête
+    const eventId = req.params.id;
+
+    // Trouver l'événement en question, et enrichir avec les données nécessaires
+    const event = await Event.findById(eventId)
+      .populate("user", "name email profileImage") // Populate user info (event host)
+      .populate("interest", "_id name") // Populate interests related to the event
+      .populate("coHosts.user", "name email profileImage") // Populate co-hosts info
+      .populate("guests", "name email profileImage") // Populate guests info
+      .populate("attendees", "user name email profileImage") // Populate attendees info
+      .exec();
+
+    // Si l'événement n'est pas trouvé, renvoyer une erreur
+    if (!event) {
+      return res.status(404).json({
+        status: false,
+        message: "Event not found",
+      });
+    }
+
+    // Renvoyer les données de l'événement
+    return res.status(200).json({
+      status: true,
+      message: "Event retrieved successfully",
+      data: event,
+    });
+  } catch (error) {
+    // En cas d'erreur, renvoyer une réponse avec une erreur
+    console.error("Error retrieving event:", error);
+    return res.status(500).json({
+      status: false,
+      message: "An error occurred while retrieving the event",
+      error: error.message,
+    });
+  }
 };
 
 exports.getUpcomingEvents = async (req, res) => {
@@ -144,7 +179,7 @@ exports.getUpcomingEvents = async (req, res) => {
     // Récupération des événements publics à venir
     const events = await Event.find({
       eventType: "public",
-      "details.date": { $gt: currentDate },
+      "details.endDate": { $gt: currentDate },
     })
       .sort({ createdAt: -1 })
       .populate("user", "firstName lastName profileImage")
