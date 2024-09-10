@@ -18,9 +18,9 @@ exports.getLoggedUserProfile = async (req, res) => {
 
     const userInfo = await User.findOne({ _id: req.user._id })
       .select(
-        "firstName lastName name email email_verified countryCode phoneNumber phone_verified address bio URL DOB profileImage interest socialLinks role devices",
+        "firstName lastName username email email_verified countryCode phoneNumber phone_verified address bio URL DOB profileImage interest socialLinks role devices",
       )
-      .populate({ path: "interest", select: "_id name" });
+      .populate({ path: "interest", select: "_id username" });
 
     if (!userInfo) {
       console.error("User not found in the database for ID:", req.user._id);
@@ -31,15 +31,15 @@ exports.getLoggedUserProfile = async (req, res) => {
 
     // Log for all events being fetched
     const allEvents = await Event.find({})
-      .populate({ path: "user", select: "firstName lastName name" })
-      .populate({ path: "interest", select: "_id name profileImage" })
+      .populate({ path: "user", select: "firstName lastName username" })
+      .populate({ path: "interest", select: "_id username profileImage" })
       .populate({
         path: "guests",
-        select: "firstName lastName name profileImage",
+        select: "firstName lastName username profileImage",
       })
       .populate({
         path: "coHosts",
-        select: "firstName lastName name profileImage",
+        select: "firstName lastName username profileImage",
       })
       .exec();
 
@@ -129,7 +129,6 @@ exports.getLoggedUserProfile = async (req, res) => {
       .json({ status: false, message: "Internal server error" });
   }
 };
-
 exports.getUserProfileById = async (req, res) => {
   try {
     const userId = req.params.userId;
@@ -189,26 +188,24 @@ exports.getUserProfileById = async (req, res) => {
     return res.status(500).json({ status: false, message: error.message });
   }
 };
-
 exports.updateProfile = async (req, res) => {
+  console.log("Starting updateProfile function"); // Log de début de fonction
   try {
     const userId = req.user._id;
+    console.log("User ID:", userId); // Log ID utilisateur
 
-    // 1. Vérifier si l'utilisateur existe
     const user = await Models.userModel.findById(userId);
     if (!user) {
+      console.log("User not found for ID:", userId); // Log utilisateur non trouvé
       return res.status(404).json({
         status: false,
         message: "User not found",
       });
     }
 
-    // 2. Préparer les données pour la mise à jour
-    let updateData = {}; // Objet qui contiendra les données à mettre à jour
-
-    // 3. Gestion des informations de base du profil utilisateur
+    let updateData = {};
     const {
-      name,
+      username,
       firstName,
       lastName,
       address,
@@ -217,11 +214,13 @@ exports.updateProfile = async (req, res) => {
       DOB,
       email,
       countryCode,
-      phoneNumber, // Gestion du numéro de téléphone sans vérification
-      password, // Nouveau mot de passe (si changé)
+      phoneNumber,
+      password,
     } = req.body;
 
-    if (name && name !== user.name) updateData.name = name;
+    console.log("Request body:", req.body); // Log données de la requête
+
+    if (username && username !== user.username) updateData.username = username;
     if (firstName && firstName !== user.firstName)
       updateData.firstName = firstName;
     if (lastName && lastName !== user.lastName) updateData.lastName = lastName;
@@ -230,13 +229,15 @@ exports.updateProfile = async (req, res) => {
     if (URL && URL !== user.URL) updateData.URL = URL;
     if (DOB && DOB !== user.DOB) updateData.DOB = DOB;
 
-    // 4. Gestion de l'email (sans vérification)
+    // Gestion de l'email
     if (email && email !== user.email) {
+      console.log("Checking for email duplication:", email); // Log de vérification de l'email
       const isEmailExist = await Models.userModel.findOne({
         email,
         _id: { $ne: userId },
       });
       if (isEmailExist) {
+        console.log("Duplicate email found:", email); // Log email dupliqué
         return res.status(409).json({
           status: false,
           message: "Email already exists. Please choose another one.",
@@ -245,22 +246,26 @@ exports.updateProfile = async (req, res) => {
       updateData.email = email;
     }
 
-    // 5. Gestion du numéro de téléphone
+    // Gestion du numéro de téléphone
     if (phoneNumber && phoneNumber !== user.phoneNumber) {
       updateData.phoneNumber = phoneNumber;
     }
 
-    // 6. Gestion du mot de passe (si l'utilisateur souhaite le changer)
+    // Gestion du mot de passe
     if (password) {
+      console.log("Updating password"); // Log de mise à jour du mot de passe
       const salt = await bcrypt.genSalt(10);
       const hashedPassword = await bcrypt.hash(password, salt);
       updateData.password = hashedPassword;
     }
 
-    // 7. Gestion de l'image de profil
+    // Gestion de l'image de profil
     if (req.files && req.files.profileImage) {
       const file = req.files.profileImage;
+      console.log("Profile image file received:", file); // Log fichier d'image reçu
+
       if (!file.mimetype.startsWith("image/")) {
+        console.log("Invalid file type for profile image:", file.mimetype); // Log type de fichier invalide
         return res.status(400).json({
           status: false,
           message: "Only image files are allowed for the profile image",
@@ -268,9 +273,12 @@ exports.updateProfile = async (req, res) => {
       }
 
       try {
+        console.log("Uploading profile image..."); // Log du début de l'upload d'image
         const imageUrl = await helper.fileUpload(file, "profile");
+        console.log("Profile image uploaded:", imageUrl); // Log image téléchargée
         updateData.profileImage = imageUrl;
       } catch (error) {
+        console.log("Error uploading profile image:", error); // Log erreur lors du téléchargement de l'image
         return res.status(500).json({
           status: false,
           message: "Error uploading profile image",
@@ -279,12 +287,14 @@ exports.updateProfile = async (req, res) => {
       }
     }
 
-    // 8. Gestion des liens sociaux
+    // Gestion des liens sociaux
     if (req.body.socialLinks) {
+      console.log("Processing social links"); // Log traitement des liens sociaux
       let socialLinks = [];
       try {
         socialLinks = JSON.parse(req.body.socialLinks);
       } catch (error) {
+        console.log("Failed to parse social links:", error); // Log échec de parsing des liens sociaux
         return res.status(400).json({
           status: false,
           message: "Failed to parse social links",
@@ -294,6 +304,7 @@ exports.updateProfile = async (req, res) => {
 
       socialLinks.forEach((link) => {
         if (!link.platform || !link.url) {
+          console.log("Invalid social link:", link); // Log lien social invalide
           return res.status(400).json({
             status: false,
             message: "Each social link must include a platform and a URL",
@@ -301,7 +312,6 @@ exports.updateProfile = async (req, res) => {
         }
       });
 
-      // Supprimer les doublons de plateformes
       const uniqueLinks = Array.from(
         new Set(socialLinks.map((link) => link.platform)),
       ).map((platform) =>
@@ -311,12 +321,14 @@ exports.updateProfile = async (req, res) => {
       updateData.socialLinks = uniqueLinks;
     }
 
-    // 9. Gestion des intérêts
+    // Gestion des intérêts
     if (req.body.interest) {
+      console.log("Processing interests"); // Log traitement des intérêts
       let interestArray = [];
       try {
         interestArray = JSON.parse(req.body.interest);
       } catch (error) {
+        console.log("Failed to parse interests:", error); // Log échec parsing des intérêts
         return res.status(400).json({
           status: false,
           message: "Failed to parse interests",
@@ -327,17 +339,18 @@ exports.updateProfile = async (req, res) => {
       const validInterests = interestArray
         .map((id) => {
           if (mongoose.Types.ObjectId.isValid(id)) {
-            return new mongoose.Types.ObjectId(id); // Utiliser 'new' ici pour créer ObjectId
+            return new mongoose.Types.ObjectId(id);
           } else {
             return null;
           }
         })
-        .filter(Boolean); // Supprimer les valeurs nulles
+        .filter(Boolean);
 
       updateData.interest = validInterests;
     }
 
-    // 10. Sauvegarde des données mises à jour dans la base de données
+    // Sauvegarde des données mises à jour dans la base de données
+    console.log("Updating user data in database"); // Log début mise à jour des données
     const updatedUser = await Models.userModel.findByIdAndUpdate(
       userId,
       { $set: updateData },
@@ -345,24 +358,30 @@ exports.updateProfile = async (req, res) => {
     );
 
     if (!updatedUser) {
+      console.log("Failed to update user profile in database"); // Log échec de mise à jour
       return res.status(500).json({
         status: false,
         message: "Failed to update user profile",
       });
     }
 
-    // 11. Retourner les données mises à jour
+    // Retourner les données mises à jour
+    console.log("Profile updated successfully:", updatedUser); // Log succès de mise à jour
     return res.status(200).json({
       status: true,
       message: "Profile updated successfully",
       data: updatedUser,
     });
   } catch (error) {
-    console.error("Error updating profile:", error);
-    return res.status(500).json({
-      status: false,
-      message: "An unexpected error occurred. Please try again later.",
-      error: error.message,
-    });
+    console.error("Error updating profile:", error); // Log erreur générale
+
+    // Vérification si une réponse a déjà été envoyée
+    if (!res.headersSent) {
+      return res.status(500).json({
+        status: false,
+        message: "An unexpected error occurred. Please try again later.",
+        error: error.message,
+      });
+    }
   }
 };

@@ -85,7 +85,7 @@ exports.login = async (req, res) => {
     const token = jwt.sign(
       {
         id: user._id,
-        name: user.name,
+        username: user.username,
         profileImage: user.profileImage,
         email: user.email,
       },
@@ -105,7 +105,7 @@ exports.login = async (req, res) => {
       message: "Login successful",
       body: {
         _id: user._id,
-        name: user.name,
+        username: user.username,
         profileImage: user.profileImage,
         email: user.email,
         token,
