@@ -142,6 +142,14 @@ exports.getEventById = async (req, res) => {
       .populate("coHosts.user", "name email profileImage")
       .populate("guests", "name email profileImage")
       .exec();
+
+    if (!event) {
+      return res.status(404).json({
+        status: false,
+        message: "Event not found",
+      });
+    }
+
     let attendees = await Models.eventAttendesUserModel
       .find({
         eventId: eventId,
@@ -156,16 +164,34 @@ exports.getEventById = async (req, res) => {
       })
       .populate("userId", "username firstName lastName profileImage")
       .exec();
-    if (!event) {
-      return res.status(404).json({
-        status: false,
-        message: "Event not found",
-      });
+    let isGoing = false;
+    let isFavourite = false;
+    if (req.query.userId) {
+      const attendeeStatus = await Models.eventAttendesUserModel
+        .findOne({
+          userId: req.query.userId,
+          eventId: eventId,
+          attendEvent: 1,
+        })
+        .exec();
+
+      const favouriteStatus = await Models.eventFavouriteUserModel
+        .findOne({
+          userId: req.query.userId,
+          eventId: eventId,
+          favourite: 1,
+        })
+        .exec();
+
+      isGoing = !!attendeeStatus;
+      isFavourite = !!favouriteStatus;
     }
     const enrichedEvent = {
       ...event.toObject(),
       attendees: attendees.map((attendee) => attendee.userId),
       favouritees: favouritees.map((favourite) => favourite.userId),
+      isGoing: isGoing,
+      isFavourite: isFavourite,
     };
     // Renvoyer les données de l'événement
     return res.status(200).json({
