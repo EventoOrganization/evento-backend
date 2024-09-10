@@ -8,4 +8,14 @@ router.post("/createEvent", authenticateJWT, eventController.createEvent);
 router.get("/getEvent/:id", eventController.getEventById);
 router.get("/getUpcomingEvents", eventController.getUpcomingEvents);
 router.delete("/deleteEvent/:id", authenticateJWT, eventController.deleteEvent);
+router.post(
+  "/attendEventStatus",
+  authenticateJWT,
+  eventController.attendEventStatus,
+);
+router.post(
+  "/favouriteEventStatus",
+  authenticateJWT,
+  eventController.favouriteEventStatus,
+);
 module.exports = router;

@@ -3,6 +3,8 @@ const Models = require("../models");
 const helper = require("../helper/helper");
 const path = require("path");
 const axios = require("axios");
+const EventAttendee = require("../models/eventAttendesUser");
+const EventFavorite = require("../models/eventFavorite");
 exports.createEvent = async (req, res) => {
   console.log("req.body", req.body);
   try {
@@ -175,56 +177,69 @@ exports.getUpcomingEvents = async (req, res) => {
   try {
     console.log("Start getting getAllUpcomingPublicEvents");
     const currentDate = new Date();
-
     // Récupération des événements publics à venir
     const events = await Event.find({
       eventType: "public",
       "details.endDate": { $gt: currentDate },
     })
       .sort({ createdAt: -1 })
-      .populate("user", "firstName lastName profileImage")
-      .populate("coHosts", "firstName lastName profileImage")
-      .populate("guests", "firstName lastName profileImage")
+      .populate("user", "username firstName lastName profileImage")
+      .populate("coHosts", " usernamefirstName lastName profileImage")
+      .populate("guests", " usernamefirstName lastName profileImage")
       .populate("interest", "name image")
+      .populate({
+        path: "attendees",
+        populate: {
+          path: "userId",
+          model: "User",
+          select: "username firstName lastName profileImage",
+        },
+      })
       .exec();
 
     let enrichedEvents = events.map((event) => ({
       ...event.toObject(),
-      isGoing: false, // Default to false
-      isFavourite: false, // Default to false
+      isGoing: false,
+      isFavourite: false,
     }));
 
-    if (req.user) {
-      // Récupération des participations de l'utilisateur connecté
+    if (req.query.userId) {
       const attendeeStatus = await EventAttendee.find({
-        userId: req.user._id,
+        userId: req.query.userId,
         eventId: { $in: events.map((event) => event._id) },
       }).exec();
 
       const favoriteStatus = await EventFavorite.find({
-        userId: req.user._id,
+        userId: req.query.userId,
         eventId: { $in: events.map((event) => event._id) },
       }).exec();
+      if (attendeeStatus && Array.isArray(attendeeStatus)) {
+        const goingStatusMap = {};
+        attendeeStatus.forEach((status) => {
+          if (status && status.eventId) {
+            goingStatusMap[status.eventId] = status.attendEvent === 1;
+          }
+        });
 
-      const goingStatusMap = {};
-      attendeeStatus.forEach((status) => {
-        goingStatusMap[status.eventId] = status.attendEvent === 1;
-      });
+        const favouriteStatusMap = {};
+        if (favoriteStatus && Array.isArray(favoriteStatus)) {
+          favoriteStatus.forEach((status) => {
+            if (status && status.eventId) {
+              favouriteStatusMap[status.eventId] = status.favourite === 1;
+            }
+          });
+        }
 
-      const favouriteStatusMap = {};
-      favoriteStatus.forEach((status) => {
-        favouriteStatusMap[status.eventId] = status.favourite === 1;
-      });
-
-      enrichedEvents = events.map((event) => {
-        const isGoing = !!goingStatusMap[event._id];
-        const isFavourite = !!favouriteStatusMap[event._id];
-        return {
-          ...event.toObject(),
-          isGoing,
-          isFavourite,
-        };
-      });
+        enrichedEvents = events.map((event) => {
+          const isGoing = !!goingStatusMap[event._id];
+          const isFavourite = !!favouriteStatusMap[event._id];
+          return {
+            ...event.toObject(),
+            isGoing,
+            isFavourite,
+          };
+        });
+      }
     }
     res.status(200).json({
       success: true,
@@ -264,5 +279,78 @@ exports.deleteEvent = async (req, res) => {
     return helper.success(res, "This event is not created by you");
   } catch (error) {
     return res.status(500).json({ status: false, message: error.message });
+  }
+};
+
+exports.attendEventStatus = async (req, res) => {
+  try {
+    let objToSave = {
+      eventId: req.body.eventId,
+      userId: req.user._id,
+      attendEvent: 1,
+    };
+
+    let findGroup = {
+      eventId: req.body.eventId,
+    };
+    var checkGroupHas = await Models.groupChatModel.findOne(findGroup);
+    let findData = await Models.eventAttendesUserModel.findOne(objToSave);
+    if (!findData) {
+      let save = await Models.eventAttendesUserModel.create(objToSave);
+
+      if (checkGroupHas) {
+        const update = {
+          $addToSet: {
+            users: req.user._id, // Changed data.userId to req.user._id
+          },
+        };
+        await Models.groupChatModel.findByIdAndUpdate(
+          checkGroupHas._id,
+          update,
+          { new: true }, // This option returns the updated document
+        );
+      }
+      return helper.success(
+        res,
+        "Event attendees confirmation sent successfully",
+        save,
+      );
+    } else {
+      let save = await Models.eventAttendesUserModel.deleteOne(objToSave);
+      if (checkGroupHas) {
+        await Models.groupChatModel.findByIdAndUpdate(
+          checkGroupHas._id,
+          { $pull: { users: req.user._id } }, // Changed data.userId to req.user._id
+          { new: true },
+        );
+      }
+      return helper.success(
+        res,
+        "Event attendees confirmation deleted successfully",
+        save,
+      );
+    }
+  } catch (error) {
+    return res.status(401).json({ status: false, message: error.message });
+  }
+};
+exports.favouriteEventStatus = async (req, res) => {
+  try {
+    let objToSave = {
+      favourite: 1,
+      eventId: req.body.eventId,
+      userId: req.user._id,
+    };
+    //Firstly find if exist then delete other wise create
+    let findData = await Models.eventFavouriteUserModel.findOne(objToSave);
+    if (!findData) {
+      let save = await Models.eventFavouriteUserModel.create(objToSave);
+      return helper.success(res, "Event Favourite", save);
+    } else {
+      let save = await Models.eventFavouriteUserModel.deleteOne(objToSave);
+      return helper.success(res, "Event not favourite", save);
+    }
+  } catch (error) {
+    return res.status(401).json({ status: false, message: error.message });
   }
 };
