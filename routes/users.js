@@ -84,7 +84,7 @@ router.get(
   authenticateJWT,
   userController.isFavourite,
 );
-
+router.get("isRefused/:eventId", authenticateJWT, userController.isRefused);
 // use this to know you chatting on events
 router.get(
   "/myEventsWithChat",

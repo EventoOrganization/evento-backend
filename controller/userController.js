@@ -3944,6 +3944,28 @@ module.exports = {
       return res.status(500).json({ message: error.message });
     }
   },
+  isRefused: async (req, res) => {
+    try {
+      const { eventId } = req.params;
+      const userId = req.user._id;
+
+      // Recherchez si cet utilisateur a favorisé cet événement
+      const favourite = await Models.eventRefuseModel.findOne({
+        eventId,
+        userId,
+        refused: 1,
+      });
+
+      if (favourite) {
+        return res.status(200).json({ refused: true });
+      } else {
+        return res.status(200).json({ refused: false });
+      }
+    } catch (error) {
+      console.error("Error checking if event is favourite:", error);
+      return res.status(500).json({ message: error.message });
+    }
+  },
   attendEventByTickInFigma: async (req, res) => {
     try {
       let objToSave = {

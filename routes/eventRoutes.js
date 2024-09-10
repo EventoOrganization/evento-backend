@@ -18,4 +18,9 @@ router.post(
   authenticateJWT,
   eventController.favouriteEventStatus,
 );
+router.post(
+  "/refusedEventStatus",
+  authenticateJWT,
+  eventController.refusedEventStatus,
+);
 module.exports = router;

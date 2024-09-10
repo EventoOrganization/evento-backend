@@ -149,23 +149,31 @@ exports.getEventById = async (req, res) => {
         message: "Event not found",
       });
     }
-
-    let attendees = await Models.eventAttendesUserModel
+    let isGoing = false;
+    let isFavourite = false;
+    let isRefused = false;
+    const refused = await Models.eventRefuseModel
+      .find({
+        eventId: eventId,
+        refused: 1,
+      })
+      .populate("userId", "username firstName lastName profileImage")
+      .exec();
+    const attendees = await Models.eventAttendesUserModel
       .find({
         eventId: eventId,
         attendEvent: 1,
       })
       .populate("userId", "username firstName lastName profileImage")
       .exec();
-    let favouritees = await Models.eventFavouriteUserModel
+    const favouritees = await Models.eventFavouriteUserModel
       .find({
         eventId: eventId,
         favourite: 1,
       })
       .populate("userId", "username firstName lastName profileImage")
       .exec();
-    let isGoing = false;
-    let isFavourite = false;
+
     if (req.query.userId) {
       const attendeeStatus = await Models.eventAttendesUserModel
         .findOne({
@@ -174,7 +182,6 @@ exports.getEventById = async (req, res) => {
           attendEvent: 1,
         })
         .exec();
-
       const favouriteStatus = await Models.eventFavouriteUserModel
         .findOne({
           userId: req.query.userId,
@@ -182,7 +189,14 @@ exports.getEventById = async (req, res) => {
           favourite: 1,
         })
         .exec();
-
+      const refuseStatus = await Models.eventRefuseModel
+        .findOne({
+          userId: req.query.userId,
+          eventId: eventId,
+          refused: 1,
+        })
+        .exec();
+      isRefused = !!refuseStatus;
       isGoing = !!attendeeStatus;
       isFavourite = !!favouriteStatus;
     }
@@ -190,8 +204,13 @@ exports.getEventById = async (req, res) => {
       ...event.toObject(),
       attendees: attendees.map((attendee) => attendee.userId),
       favouritees: favouritees.map((favourite) => favourite.userId),
+      refused: refused.map((r) => ({
+        userId: r.userId,
+        reason: r.reason,
+      })),
       isGoing: isGoing,
       isFavourite: isFavourite,
+      isRefused: isRefused,
     };
     // Renvoyer les données de l'événement
     return res.status(200).json({
@@ -381,6 +400,27 @@ exports.favouriteEventStatus = async (req, res) => {
     } else {
       let save = await Models.eventFavouriteUserModel.deleteOne(objToSave);
       return helper.success(res, "Event not favourite", save);
+    }
+  } catch (error) {
+    return res.status(401).json({ status: false, message: error.message });
+  }
+};
+exports.refusedEventStatus = async (req, res) => {
+  try {
+    let objToSave = {
+      refused: 1,
+      eventId: req.body.eventId,
+      reason: req.body.reason ? req.body.reason : "",
+      userId: req.user._id,
+    };
+    //Firstly find if exist then delete other wise create
+    let findData = await Models.eventRefuseModel.findOne(objToSave);
+    if (!findData) {
+      let save = await Models.eventRefuseModel.create(objToSave);
+      return helper.success(res, "Event Refused", save);
+    } else {
+      let save = await Models.eventRefuseModel.deleteOne(objToSave);
+      return helper.success(res, "Event not Refused", save);
     }
   } catch (error) {
     return res.status(401).json({ status: false, message: error.message });
