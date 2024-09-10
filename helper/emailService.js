@@ -12,7 +12,7 @@ const sendOTPEmail = async (email, otpCode) => {
         {
           From: {
             Email: process.env.MJ_FROM_EMAIL,
-            Name: "Your App Name",
+            Name: "Evento - Your Enternaing Event Platform",
           },
           To: [
             {
@@ -44,7 +44,7 @@ const sendResetPasswordEmail = async (email, resetLink) => {
         {
           From: {
             Email: process.env.MJ_FROM_EMAIL,
-            Name: "Your App Name",
+            Name: "Evento - Your Enternaing Event Platform",
           },
           To: [
             {
