@@ -3,8 +3,6 @@ const Models = require("../models");
 const helper = require("../helper/helper");
 const path = require("path");
 const axios = require("axios");
-const EventAttendee = require("../models/eventAttendesUser");
-const EventFavorite = require("../models/eventFavorite");
 exports.createEvent = async (req, res) => {
   console.log("req.body", req.body);
   try {
@@ -136,31 +134,44 @@ exports.createEvent = async (req, res) => {
 // Get event by ID with all enrichments
 exports.getEventById = async (req, res) => {
   try {
-    // Récupérer l'ID de l'événement à partir des paramètres de la requête
     const eventId = req.params.id;
 
-    // Trouver l'événement en question, et enrichir avec les données nécessaires
     const event = await Event.findById(eventId)
-      .populate("user", "name email profileImage") // Populate user info (event host)
-      .populate("interest", "_id name") // Populate interests related to the event
-      .populate("coHosts.user", "name email profileImage") // Populate co-hosts info
-      .populate("guests", "name email profileImage") // Populate guests info
-      .populate("attendees", "user name email profileImage") // Populate attendees info
+      .populate("user", "name email profileImage")
+      .populate("interest", "_id name")
+      .populate("coHosts.user", "name email profileImage")
+      .populate("guests", "name email profileImage")
       .exec();
-
-    // Si l'événement n'est pas trouvé, renvoyer une erreur
+    let attendees = await Models.eventAttendesUserModel
+      .find({
+        eventId: eventId,
+        attendEvent: 1,
+      })
+      .populate("userId", "username firstName lastName profileImage")
+      .exec();
+    let favouritees = await Models.eventFavouriteUserModel
+      .find({
+        eventId: eventId,
+        favourite: 1,
+      })
+      .populate("userId", "username firstName lastName profileImage")
+      .exec();
     if (!event) {
       return res.status(404).json({
         status: false,
         message: "Event not found",
       });
     }
-
+    const enrichedEvent = {
+      ...event.toObject(),
+      attendees: attendees.map((attendee) => attendee.userId),
+      favouritees: favouritees.map((favourite) => favourite.userId),
+    };
     // Renvoyer les données de l'événement
     return res.status(200).json({
       status: true,
       message: "Event retrieved successfully",
-      data: event,
+      data: enrichedEvent,
     });
   } catch (error) {
     // En cas d'erreur, renvoyer une réponse avec une erreur
@@ -187,32 +198,27 @@ exports.getUpcomingEvents = async (req, res) => {
       .populate("coHosts", " usernamefirstName lastName profileImage")
       .populate("guests", " usernamefirstName lastName profileImage")
       .populate("interest", "name image")
-      .populate({
-        path: "attendees",
-        populate: {
-          path: "userId",
-          model: "User",
-          select: "username firstName lastName profileImage",
-        },
-      })
       .exec();
-
     let enrichedEvents = events.map((event) => ({
       ...event.toObject(),
       isGoing: false,
       isFavourite: false,
     }));
-
+    // add LoggedUser's status
     if (req.query.userId) {
-      const attendeeStatus = await EventAttendee.find({
-        userId: req.query.userId,
-        eventId: { $in: events.map((event) => event._id) },
-      }).exec();
+      const attendeeStatus = await Models.eventAttendesUserModel
+        .find({
+          userId: req.query.userId,
+          eventId: { $in: events.map((event) => event._id) },
+        })
+        .exec();
 
-      const favoriteStatus = await EventFavorite.find({
-        userId: req.query.userId,
-        eventId: { $in: events.map((event) => event._id) },
-      }).exec();
+      const favoriteStatus = await Models.eventFavouriteUserModel
+        .find({
+          userId: req.query.userId,
+          eventId: { $in: events.map((event) => event._id) },
+        })
+        .exec();
       if (attendeeStatus && Array.isArray(attendeeStatus)) {
         const goingStatusMap = {};
         attendeeStatus.forEach((status) => {

@@ -106,6 +106,12 @@ const eventSchema = new Schema(
         ref: "EventAttendee",
       },
     ],
+    favouritees: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: "user",
+      },
+    ],
     allUploadPhotoVideo: {
       type: Boolean,
       default: false,

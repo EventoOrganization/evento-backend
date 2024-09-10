@@ -3,7 +3,7 @@ const Schema = mongoose.Schema;
 
 const eventAttendeeSchema = new Schema(
   {
-    userId: { type: Schema.Types.ObjectId, ref: "User" },
+    userId: { type: Schema.Types.ObjectId, ref: "user" },
     eventId: { type: Schema.Types.ObjectId, ref: "Event" },
     attendEvent: {
       type: Number,
