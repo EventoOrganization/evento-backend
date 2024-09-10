@@ -19,8 +19,6 @@ const eventSchema = new Schema(
       default: "public",
     },
     details: {
-      name: String,
-      video: String,
       thumbnailVideo: String,
       images: [String],
       videos: [String],
@@ -52,23 +50,22 @@ const eventSchema = new Schema(
         type: Date,
         required: false,
       },
-      startTime: String,
-      endTime: String,
-      //dufournet franck the 08/06/2024 adding timeSlots
+      startTime: { type: String },
+      endTime: { type: String },
       timeSlots: [
         {
-          date: Date,
-          startTime: String,
-          endTime: String,
+          date: { type: String },
+          startTime: { type: String },
+          endTime: { type: String },
         },
       ],
-      description: String,
+      description: { type: String },
       includeChat: Boolean,
       createRSVP: Boolean,
       tages: String,
-      URLlink: String,
+      URLlink: { type: String },
     },
-    interest: [
+    interests: [
       {
         type: mongoose.Schema.Types.ObjectId,
         ref: "interest",
@@ -116,33 +113,15 @@ const eventSchema = new Schema(
       type: Boolean,
       default: false,
     },
-    rsvpForm: {
-      name: {
-        type: String,
-        required: false,
+    questions: [
+      {
+        id: { type: String },
+        options: [{ type: String }],
+        question: { type: String, required: true },
+        required: { type: Boolean, default: false },
+        type: { type: String, required: true },
       },
-      firstName: {
-        type: String,
-      },
-      lastName: {
-        type: String,
-      },
-      email: {
-        type: String,
-        required: false,
-      },
-      phone: String,
-      attendEvent: String,
-      questions: [
-        {
-          question: { type: String, required: true },
-          answer: String,
-          required: { type: Boolean, default: false },
-          options: [String],
-        },
-      ],
-      additionalField: Schema.Types.Mixed,
-    },
+    ],
     coHostStatus: { type: Boolean, default: false },
     guestsAllowFriend: Boolean,
   },

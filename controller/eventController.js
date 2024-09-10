@@ -4,11 +4,11 @@ const helper = require("../helper/helper");
 const path = require("path");
 const axios = require("axios");
 exports.createEvent = async (req, res) => {
-  console.log("req.body", req.body);
+  // console.log("req.body", req.body);
   try {
     const {
       title,
-      name,
+      username,
       eventType,
       mode,
       location,
@@ -19,7 +19,6 @@ exports.createEvent = async (req, res) => {
       startTime,
       endTime,
       description,
-      coHosts,
       guests,
       interests,
       uploadedMedia,
@@ -31,7 +30,7 @@ exports.createEvent = async (req, res) => {
     } = req.body;
     if (
       !title ||
-      !name ||
+      !username ||
       !eventType ||
       !mode ||
       !location ||
@@ -47,6 +46,10 @@ exports.createEvent = async (req, res) => {
         .status(400)
         .json({ status: false, message: "Missing required fields" });
     }
+    const coHosts = req.body.coHosts.map((coHost) => ({
+      user: coHost.userId,
+      status: coHost.status || "read-only",
+    }));
     let imageUrls = [];
     let videoUrls = [];
     for (const media of uploadedMedia) {
@@ -83,14 +86,17 @@ exports.createEvent = async (req, res) => {
 
     imageUrls = [...imageUrls, ...predefinedImages];
     videoUrls = [...videoUrls, ...predefinedVideos];
-
-    // Création de l'objet événement à stocker
+    console.log("Received data:");
+    console.log("title:", title);
+    console.log("timeSlots:", req.body.timeSlots);
+    console.log("questions:", req.body.questions);
+    console.log("interests:", req.body.interests);
     const objToSave = {
       user: req.user._id,
       title,
       eventType,
       details: {
-        name,
+        username,
         images: imageUrls,
         videos: videoUrls,
         loc: {
@@ -104,13 +110,11 @@ exports.createEvent = async (req, res) => {
         startTime,
         endTime,
         description,
-        URL,
+        URLlink: URL,
         includeChat,
+        timeSlots: req.body.timeSlots,
       },
-      coHosts: coHosts.map((id) => ({
-        user: id,
-        status: "read-only",
-      })),
+      coHosts: coHosts,
       guests: guests,
       interests: interests,
       questions: questions,
@@ -138,7 +142,7 @@ exports.getEventById = async (req, res) => {
 
     const event = await Event.findById(eventId)
       .populate("user", "name email profileImage")
-      .populate("interest", "_id name")
+      .populate("interests", "_id name")
       .populate("coHosts.user", "name email profileImage")
       .populate("guests", "name email profileImage")
       .exec();

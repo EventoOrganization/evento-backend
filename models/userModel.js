@@ -3,8 +3,8 @@ const crypto = require("crypto");
 const userSchema = new mongoose.Schema(
   {
     // standards userInfo
+    username: { type: String, default: "" },
     firstName: { type: String, default: "" },
-    username: { type: String, default: "", unique: true },
     lastName: { type: String, default: "" },
     password: { type: String, required: true },
     email: { type: String, unique: true, required: true },
@@ -77,7 +77,10 @@ const userSchema = new mongoose.Schema(
   },
   { timestamps: true },
 );
-
+userSchema.index(
+  { username: 1 },
+  { unique: true, partialFilterExpression: { username: { $ne: null } } },
+);
 userSchema.methods.generateResetPasswordToken = function () {
   const token = crypto.randomBytes(20).toString("hex");
   return token;
