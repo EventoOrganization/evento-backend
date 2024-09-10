@@ -407,19 +407,29 @@ exports.favouriteEventStatus = async (req, res) => {
 };
 exports.refusedEventStatus = async (req, res) => {
   try {
-    let objToSave = {
-      refused: 1,
+    // Search for an existing refusal status by userId and eventId only
+    let objToFind = {
       eventId: req.body.eventId,
-      reason: req.body.reason ? req.body.reason : "",
       userId: req.user._id,
     };
-    //Firstly find if exist then delete other wise create
-    let findData = await Models.eventRefuseModel.findOne(objToSave);
+
+    // Find if the refusal status already exists
+    let findData = await Models.eventRefuseModel.findOne(objToFind);
+
+    // If it doesn't exist, create a new refusal record
     if (!findData) {
+      let objToSave = {
+        refused: 1,
+        eventId: req.body.eventId,
+        reason: req.body.reason ? req.body.reason : "",
+        userId: req.user._id,
+      };
+
       let save = await Models.eventRefuseModel.create(objToSave);
       return helper.success(res, "Event Refused", save);
     } else {
-      let save = await Models.eventRefuseModel.deleteOne(objToSave);
+      // If it exists, delete the refusal status (toggle off)
+      let save = await Models.eventRefuseModel.deleteOne(objToFind);
       return helper.success(res, "Event not Refused", save);
     }
   } catch (error) {

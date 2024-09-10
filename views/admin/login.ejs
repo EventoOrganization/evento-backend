@@ -1,138 +1,211 @@
-
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <% if (msg !== '') { %>
-    <div class="alert alert-success msg" style="position: absolute; z-index: 9999; color:white; background-color: #195780; right: 10px; top: 10px;">
-      <span style="font-size: 16px;">
-        <%= msg %>
-      </span>
+  <head>
+    <% if (msg !== '') { %>
+    <div
+      class="alert alert-success msg"
+      style="
+        position: absolute;
+        z-index: 9999;
+        color: white;
+        background-color: #195780;
+        right: 10px;
+        top: 10px;
+      "
+    >
+      <span style="font-size: 16px"> <%= msg %> </span>
     </div>
     <script>
       // Add JavaScript to remove the error message after 5 seconds (5000 milliseconds)
-      setTimeout(function() {
-        var msgElement = document.querySelector('.msg');
+      setTimeout(function () {
+        var msgElement = document.querySelector(".msg");
         if (msgElement) {
           msgElement.remove();
         }
       }, 2000); // Adjust the time (in milliseconds) as needed
     </script>
-  <% } %>
-  <meta charset="UTF-8">
-  <meta content="width=device-width, initial-scale=1, maximum-scale=1, shrink-to-fit=no" name="viewport">
-  <title>Login &mdash; Stisla</title>
+    <% } %>
+    <meta charset="UTF-8" />
+    <meta
+      content="width=device-width, initial-scale=1, maximum-scale=1, shrink-to-fit=no"
+      name="viewport"
+    />
+    <title>Login &mdash; Stisla</title>
 
-  <!-- General CSS Files -->
-  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
-  <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.7.2/css/all.css" integrity="sha384-fnmOCqbTlWIlj8LyTjo7mOUStjsKC4pOpQbqyi7RrhN7udi9RwhKkMHpvLbHG9Sr" crossorigin="anonymous">
+    <!-- General CSS Files -->
+    <link
+      rel="stylesheet"
+      href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
+      integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T"
+      crossorigin="anonymous"
+    />
+    <link
+      rel="stylesheet"
+      href="https://use.fontawesome.com/releases/v5.7.2/css/all.css"
+      integrity="sha384-fnmOCqbTlWIlj8LyTjo7mOUStjsKC4pOpQbqyi7RrhN7udi9RwhKkMHpvLbHG9Sr"
+      crossorigin="anonymous"
+    />
 
-  <!-- CSS Libraries -->
-  <!-- <link rel="stylesheet" href="../node_modules/bootstrap-social/bootstrap-social.css"> -->
+    <!-- CSS Libraries -->
+    <!-- <link rel="stylesheet" href="../node_modules/bootstrap-social/bootstrap-social.css"> -->
 
-  <!-- Template CSS -->
-  <link rel="stylesheet" href="../assets/css/style.css">
-  <link rel="stylesheet" href="../assets/css/components.css">
-</head>
-<style>
-  div#app {
-    background: url(../../assets/img/aleksandr-popov-hTv8aaPziOQ-unsplash.jpg);
-    background-size: cover;
-    position: fixed;
-    width: 100%;
-    height: 100%;
-  }
-</style>
-<style>
-  .card-header {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
+    <!-- Template CSS -->
+    <link rel="stylesheet" href="../assets/css/style.css" />
+    <link rel="stylesheet" href="../assets/css/components.css" />
+  </head>
+  <style>
+    div#app {
+      background: url(../../assets/img/aleksandr-popov-hTv8aaPziOQ-unsplash.jpg);
+      background-size: cover;
+      position: fixed;
+      width: 100%;
+      height: 100%;
+    }
+  </style>
+  <style>
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
 
-  .simple-footer {
-    text-align: center;
-    margin-top: 40px;
-    margin-bottom: 40px;
-    color: white;
-  }
+    .simple-footer {
+      text-align: center;
+      margin-top: 40px;
+      margin-bottom: 40px;
+      color: white;
+    }
 
-  a {
-    color: #191d21;
-    font-weight: 900;
-    transition: all .5s;
-    -webkit-transition: all .5s;
-    color: white;
-    -o-transition: all .5s;
-  }
+    a {
+      color: #191d21;
+      font-weight: 900;
+      transition: all 0.5s;
+      -webkit-transition: all 0.5s;
+      color: white;
+      -o-transition: all 0.5s;
+    }
 
-  .error {
-    color: red !important;
-  }
-</style>
-<body>
-  <div id="app">
-    <section class="section">
-      <div class="container mt-5">
-        <div class="row">
-          <div class="col-12 col-sm-8 offset-sm-2 col-md-6 offset-md-3 col-lg-6 offset-lg-3 col-xl-4 offset-xl-4">
-            <div class="login-brand">
-              <img src="/assets/img/Logo1.png" alt="logo" width="100" class="shadow-light rounded-circle">
-            </div>
-
-            <div class="card card-primary">
-              <div class="card-header"><h4>Login</h4></div>
-
-              <div class="card-body">
-                <form method="POST" action="#" class="needs-validation" novalidate="">
-                  <div class="form-group">
-                    <label for="email">Email</label>
-                    <input id="email" type="email" class="form-control pr-5" name="email" tabindex="1" required autofocus >
-                    <div class="invalid-feedback">
-                      Please fill in your email
-                    </div>
-                  </div>
-                  <div class="form-group">
-                    <div class="d-block">
-                    	<label for="password" class="control-label">Password</label>
-                    </div>
-                    <input id="password" type="password" class="form-control pr-5" name="password" tabindex="2" required>
-                    <div class="invalid-feedback">
-                      Please fill in your password
-                    </div>
-                  </div>
-
-                  <div class="form-group">
-                    <button type="submit" class="btn btn-primary btn-lg btn-block" tabindex="4">
-                      Login
-                    </button>
-                  </div>
-                </form>
+    .error {
+      color: red !important;
+    }
+  </style>
+  <body>
+    <div id="app">
+      <section class="section">
+        <div class="container mt-5">
+          <div class="row">
+            <div
+              class="col-12 col-sm-8 offset-sm-2 col-md-6 offset-md-3 col-lg-6 offset-lg-3 col-xl-4 offset-xl-4"
+            >
+              <div class="login-brand">
+                <img
+                  src="/assets/img/Logo1.png"
+                  alt="logo"
+                  width="100"
+                  class="shadow-light rounded-circle"
+                />
               </div>
-            </div>
-        
-            <div class="footer-left">
-              Copyright &copy;<script>document.write(new Date().getFullYear());</script><div class="bullet"></div> Design By <a href="https://www.cqlsys.com/" target="_blank">Cqlsys Technologies Pvt. Ltd</a>
+
+              <div class="card card-primary">
+                <div class="card-header"><h4>Login</h4></div>
+
+                <div class="card-body">
+                  <form
+                    method="POST"
+                    action="#"
+                    class="needs-validation"
+                    novalidate=""
+                  >
+                    <div class="form-group">
+                      <label for="email">Email</label>
+                      <input
+                        id="email"
+                        type="email"
+                        class="form-control pr-5"
+                        name="email"
+                        tabindex="1"
+                        required
+                        autofocus
+                      />
+                      <div class="invalid-feedback">
+                        Please fill in your email
+                      </div>
+                    </div>
+                    <div class="form-group">
+                      <div class="d-block">
+                        <label for="password" class="control-label"
+                          >Password</label
+                        >
+                      </div>
+                      <input
+                        id="password"
+                        type="password"
+                        class="form-control pr-5"
+                        name="password"
+                        tabindex="2"
+                        required
+                      />
+                      <div class="invalid-feedback">
+                        Please fill in your password
+                      </div>
+                    </div>
+
+                    <div class="form-group">
+                      <button
+                        type="submit"
+                        class="btn btn-primary btn-lg btn-block"
+                        tabindex="4"
+                      >
+                        Login
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+
+              <div class="footer-left">
+                Copyright &copy;
+                <script>
+                  document.write(new Date().getFullYear());
+                </script>
+                <div class="bullet"></div>
+                Design By
+                <a href="https://www.cqlsys.com/" target="_blank"
+                  >Cqlsys Technologies Pvt. Ltd</a
+                >
+              </div>
             </div>
           </div>
         </div>
-      </div>
-    </section>
-  </div>
+      </section>
+    </div>
 
-  <!-- General JS Scripts -->
-  <script src="https://code.jquery.com/jquery-3.3.1.min.js" integrity="sha256-FgpCb/KJQlLNfOu91ta32o/NMZxltwRo8QtmkMRdAu8=" crossorigin="anonymous"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
-  <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.nicescroll/3.7.6/jquery.nicescroll.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.24.0/moment.min.js"></script>
-  <script src="../assets/js/stisla.js"></script>
+    <!-- General JS Scripts -->
+    <script
+      src="https://code.jquery.com/jquery-3.3.1.min.js"
+      integrity="sha256-FgpCb/KJQlLNfOu91ta32o/NMZxltwRo8QtmkMRdAu8="
+      crossorigin="anonymous"
+    ></script>
+    <script
+      src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"
+      integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1"
+      crossorigin="anonymous"
+    ></script>
+    <script
+      src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"
+      integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM"
+      crossorigin="anonymous"
+    ></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.nicescroll/3.7.6/jquery.nicescroll.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.24.0/moment.min.js"></script>
+    <script src="../assets/js/stisla.js"></script>
 
-  <!-- JS Libraies -->
+    <!-- JS Libraies -->
 
-  <!-- Template JS File -->
-  <script src="../assets/js/scripts.js"></script>
-  <script src="../assets/js/custom.js"></script>
+    <!-- Template JS File -->
+    <script src="../assets/js/scripts.js"></script>
+    <script src="../assets/js/custom.js"></script>
 
-  <!-- Page Specific JS File -->
-</body>
+    <!-- Page Specific JS File -->
+  </body>
 </html>

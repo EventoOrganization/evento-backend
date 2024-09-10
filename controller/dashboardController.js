@@ -49,8 +49,11 @@ module.exports = {
     try {
       const { email, password } = req.body;
       console.log("+++++++", req.body);
-
-      const checkUser = await user.findOne({ email: email, role: "admin" });
+      console.log("+++++++", email, password);
+      const checkUser = await user.findOne({
+        email: "admin@gmail.com",
+        role: "admin",
+      });
 
       if (!checkUser) {
         req.flash("msg", "Invalid credentials");
@@ -59,6 +62,7 @@ module.exports = {
       }
 
       const checkPassword = await bcrypt.compare(password, checkUser.password);
+      console.log("+++++++", checkPassword);
       if (checkPassword) {
         const token = jwt.sign({ userId: checkUser._id }, JWT_SECRET_KEY, {
           expiresIn: "5d",

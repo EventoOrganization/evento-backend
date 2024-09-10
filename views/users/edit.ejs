@@ -1,66 +1,129 @@
 <% if(msg !='' ) { %>
-  <div class="alert alert-success msg" style="position: absolute; z-index: 9999; color:white; background-color: #195780; right: 10px; top: 10px;">
-    <span style="font-size: 16px;">
-      <%= msg %>
-    </span>
-  </div>
-  <% } %>
+<div
+  class="alert alert-success msg"
+  style="
+    position: absolute;
+    z-index: 9999;
+    color: white;
+    background-color: #195780;
+    right: 10px;
+    top: 10px;
+  "
+>
+  <span style="font-size: 16px"> <%= msg %> </span>
+</div>
+<% } %>
 
 <section class="section">
   <div class="section-header">
     <h1>User Edit</h1>
   </div>
   <div class="section-body">
-    <form action="/updateUser" method="post" enctype="multipart/form-data" id="editForm">
+    <form
+      action="/updateUser"
+      method="post"
+      enctype="multipart/form-data"
+      id="editForm"
+    >
       <div class="card-body">
-          <div class="form-group row mb-4">
-            <label class="col-form-label text-md-right col-12 col-md-3 col-lg-3">First Name</label>
-            <div class="col-sm-12 col-md-7">
-              <input type="text" name="firstName" value="<%= data?.firstName%>" class="form-control" >
-            </div>
+        <div class="form-group row mb-4">
+          <label class="col-form-label text-md-right col-12 col-md-3 col-lg-3"
+            >First Name</label
+          >
+          <div class="col-sm-12 col-md-7">
+            <input
+              type="text"
+              name="firstName"
+              value="<%= data?.firstName%>"
+              class="form-control"
+            />
           </div>
-          <div class="form-group row mb-4">
-              <label class="col-form-label text-md-right col-12 col-md-3 col-lg-3">Last Name</label>
-              <div class="col-sm-12 col-md-7">
-                <input type="text" name="lastName" value="<%= data?.lastName%>" class="form-control" >
-              </div>
-            </div>
-            <div class="form-group row mb-4">
-              <label class="col-form-label text-md-right col-12 col-md-3 col-lg-3">Email</label>
-              <div class="col-sm-12 col-md-7">
-                <input type="email" name="email" value="<%=data?.email%>" class="form-control" >
-              </div>
-            </div>
-            <div class="form-group row mb-4">
-              <label class="col-form-label text-md-right col-12 col-md-3 col-lg-3">Contact Number</label>
-              <div class="col-sm-12 col-md-7">
-                <input type="number" name="phoneNumber" value="<%= data?.phoneNumber%>" class="form-control" >
-              </div>
-            </div>
-            <div class="form-group row mb-4">
-              <label class="col-form-label text-md-right col-12 col-md-3 col-lg-3">DOB </label>
-              <div class="col-sm-12 col-md-7">
-                <input type="text" name="DOB" value="<%= moment(data?.DOB).format('DD-MM-YYYY')%>" class="form-control" >
-              </div>
-            </div>
-
-            <div class="form-group row mb-4">
-              <label class="col-form-label text-md-right col-12 col-md-3 col-lg-3">Image</label>
-              <div class="col-sm-12 col-md-7">
-                <input type="file" name="profileImage" value="<%=data.profileImage%>" class="form-control" id="blah">
-                <img src="/images/<%= data?.profileImage%>" width="80px" height="80px" alt="">
-              </div>
-            </div>
-            <input type="hidden" name="id" value="<%=data._id%>" alt="">
-          <div class="form-group row mb-4">
-            <label class="col-form-label text-md-right col-12 col-md-3 col-lg-3"></label>
-            <div class="col-sm-12 col-md-7">
-              <button type="submit" class="btn btn-primary">Update</button>
-            </div>
-          </div>
-          <!-- <input type="file" name="profileImage" id="profileImage"> -->
         </div>
-      </form>
+        <div class="form-group row mb-4">
+          <label class="col-form-label text-md-right col-12 col-md-3 col-lg-3"
+            >Last Name</label
+          >
+          <div class="col-sm-12 col-md-7">
+            <input
+              type="text"
+              name="lastName"
+              value="<%= data?.lastName%>"
+              class="form-control"
+            />
+          </div>
+        </div>
+        <div class="form-group row mb-4">
+          <label class="col-form-label text-md-right col-12 col-md-3 col-lg-3"
+            >Email</label
+          >
+          <div class="col-sm-12 col-md-7">
+            <input
+              type="email"
+              name="email"
+              value="<%=data?.email%>"
+              class="form-control"
+            />
+          </div>
+        </div>
+        <div class="form-group row mb-4">
+          <label class="col-form-label text-md-right col-12 col-md-3 col-lg-3"
+            >Contact Number</label
+          >
+          <div class="col-sm-12 col-md-7">
+            <input
+              type="number"
+              name="phoneNumber"
+              value="<%= data?.phoneNumber%>"
+              class="form-control"
+            />
+          </div>
+        </div>
+        <div class="form-group row mb-4">
+          <label class="col-form-label text-md-right col-12 col-md-3 col-lg-3"
+            >DOB
+          </label>
+          <div class="col-sm-12 col-md-7">
+            <input
+              type="text"
+              name="DOB"
+              value="<%= moment(data?.DOB).format('DD-MM-YYYY')%>"
+              class="form-control"
+            />
+          </div>
+        </div>
+
+        <div class="form-group row mb-4">
+          <label class="col-form-label text-md-right col-12 col-md-3 col-lg-3"
+            >Image</label
+          >
+          <div class="col-sm-12 col-md-7">
+            <input
+              type="file"
+              name="profileImage"
+              value="<%=data.profileImage%>"
+              class="form-control"
+              id="blah"
+            />
+            <img
+              src="/images/<%= data?.profileImage%>"
+              width="80px"
+              height="80px"
+              alt=""
+            />
+          </div>
+        </div>
+        <input type="hidden" name="id" value="<%=data._id%>" alt="" />
+        <div class="form-group row mb-4">
+          <label
+            class="col-form-label text-md-right col-12 col-md-3 col-lg-3"
+          ></label>
+          <div class="col-sm-12 col-md-7">
+            <button type="submit" class="btn btn-primary">Update</button>
+          </div>
+        </div>
+        <!-- <input type="file" name="profileImage" id="profileImage"> -->
+      </div>
+    </form>
   </div>
 </section>
 
@@ -77,35 +140,33 @@
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 
 <script>
-  $(document).ready(function(){
-
-  $('form[id="editForm"]').validate({
-    keypress: function(element) {
-            var element_id = $(element).attr('id');
-            if (this.settings.rules[element_id].keypress !== false) {
-                $(element).valid();
-            }
+  $(document).ready(function () {
+    $('form[id="editForm"]').validate({
+      keypress: function (element) {
+        var element_id = $(element).attr("id");
+        if (this.settings.rules[element_id].keypress !== false) {
+          $(element).valid();
+        }
+      },
+      rules: {
+        firstName: {
+          required: true,
         },
-        rules: {
-          firstName:{          
-          required:true,
-        },
-        lastName:{
+        lastName: {
           required: true,
           // emailExt: true
         },
-        email:{
-          required:true
+        email: {
+          required: true,
         },
-        phoneNumber:{
-          required:true
+        phoneNumber: {
+          required: true,
         },
-        DOB:{
-          required:true
-        }
+        DOB: {
+          required: true,
+        },
       },
       messages: {
-      
         name: {
           required: "This field is required.",
         },
@@ -113,15 +174,15 @@
           required: " This filed is required",
         },
         phoneNumber: {
-            required: " This filed is required",
+          required: " This filed is required",
         },
-        DOB:{
-          required:"This filed is required"
-        }
+        DOB: {
+          required: "This filed is required",
+        },
       },
-      submitHandler: function(form) {
+      submitHandler: function (form) {
         form.submit();
-      }
-});
-});
+      },
+    });
+  });
 </script>
