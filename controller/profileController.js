@@ -18,9 +18,9 @@ exports.getLoggedUserProfile = async (req, res) => {
 
     const userInfo = await User.findOne({ _id: req.user._id })
       .select(
-        "firstName lastName username email email_verified countryCode phoneNumber phone_verified address bio URL DOB profileImage interest socialLinks role devices",
+        "firstName lastName username email email_verified countryCode phoneNumber phone_verified address bio URL DOB profileImage interests socialLinks role devices",
       )
-      .populate({ path: "interest", select: "_id username" });
+      .populate({ path: "interests", select: "_id username" });
 
     if (!userInfo) {
       console.error("User not found in the database for ID:", req.user._id);
@@ -32,7 +32,7 @@ exports.getLoggedUserProfile = async (req, res) => {
     // Log for all events being fetched
     const allEvents = await Event.find({})
       .populate({ path: "user", select: "firstName lastName username" })
-      .populate({ path: "interest", select: "_id username profileImage" })
+      .populate({ path: "interests", select: "_id username profileImage" })
       .populate({
         path: "guests",
         select: "firstName lastName username profileImage",
@@ -322,11 +322,11 @@ exports.updateProfile = async (req, res) => {
     }
 
     // Gestion des intérêts
-    if (req.body.interest) {
+    if (req.body.interests) {
       console.log("Processing interests"); // Log traitement des intérêts
-      let interestArray = [];
+      let interestsArray = [];
       try {
-        interestArray = JSON.parse(req.body.interest);
+        interestsArray = JSON.parse(req.body.interests);
       } catch (error) {
         console.log("Failed to parse interests:", error); // Log échec parsing des intérêts
         return res.status(400).json({
@@ -336,7 +336,7 @@ exports.updateProfile = async (req, res) => {
         });
       }
 
-      const validInterests = interestArray
+      const validInterests = interestsArray
         .map((id) => {
           if (mongoose.Types.ObjectId.isValid(id)) {
             return new mongoose.Types.ObjectId(id);
@@ -346,7 +346,7 @@ exports.updateProfile = async (req, res) => {
         })
         .filter(Boolean);
 
-      updateData.interest = validInterests;
+      updateData.interests = validInterests;
     }
 
     // Sauvegarde des données mises à jour dans la base de données

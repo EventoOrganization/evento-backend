@@ -65,10 +65,22 @@ const eventSchema = new Schema(
       tages: String,
       URLlink: { type: String },
     },
+    initialMedia: [
+      {
+        url: { type: String, required: true },
+        type: { type: String, enum: ["image", "video"], required: true },
+      },
+    ],
+    postEventMedia: [
+      {
+        url: { type: String, required: true },
+        type: { type: String, enum: ["image", "video"], required: true },
+      },
+    ],
     interests: [
       {
         type: mongoose.Schema.Types.ObjectId,
-        ref: "interest",
+        ref: "interests",
       },
     ],
     privateEventLink: String,

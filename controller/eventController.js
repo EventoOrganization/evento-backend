@@ -5,6 +5,7 @@ const path = require("path");
 const axios = require("axios");
 exports.createEvent = async (req, res) => {
   // console.log("req.body", req.body);
+  console.log("req.files", req.files);
   try {
     const {
       title,
@@ -69,7 +70,6 @@ exports.createEvent = async (req, res) => {
         },
         "events",
       );
-      console.log("mediaName", mediaName);
       if (media.type === "image") {
         imageUrls.push(mediaName);
       } else if (media.type === "video") {
@@ -86,11 +86,6 @@ exports.createEvent = async (req, res) => {
 
     imageUrls = [...imageUrls, ...predefinedImages];
     videoUrls = [...videoUrls, ...predefinedVideos];
-    console.log("Received data:");
-    console.log("title:", title);
-    console.log("timeSlots:", req.body.timeSlots);
-    console.log("questions:", req.body.questions);
-    console.log("interests:", req.body.interests);
     const objToSave = {
       user: req.user._id,
       title,
@@ -120,7 +115,6 @@ exports.createEvent = async (req, res) => {
       questions: questions,
       additionalField: additionalField,
     };
-    console.log("objToSave", objToSave);
     const createdEvent = await Models.eventModel.create(objToSave);
     return res.status(201).json({
       status: true,
@@ -141,10 +135,10 @@ exports.getEventById = async (req, res) => {
     const eventId = req.params.id;
 
     const event = await Event.findById(eventId)
-      .populate("user", "name email profileImage")
+      .populate("user", "username email profileImage")
       .populate("interests", "_id name")
-      .populate("coHosts.user", "name email profileImage")
-      .populate("guests", "name email profileImage")
+      .populate("coHosts.user", "username email profileImage")
+      .populate("guests", "username email profileImage")
       .exec();
 
     if (!event) {
@@ -246,7 +240,7 @@ exports.getUpcomingEvents = async (req, res) => {
       .populate("user", "username firstName lastName profileImage")
       .populate("coHosts", " usernamefirstName lastName profileImage")
       .populate("guests", " usernamefirstName lastName profileImage")
-      .populate("interest", "name image")
+      .populate("interests", "name image")
       .exec();
     let enrichedEvents = events.map((event) => ({
       ...event.toObject(),

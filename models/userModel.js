@@ -32,10 +32,10 @@ const userSchema = new mongoose.Schema(
     is_block: { type: Number, default: 0 },
 
     // specials userInfo
-    interest: [
+    interests: [
       {
         type: mongoose.Schema.Types.ObjectId,
-        ref: "interest",
+        ref: "interests",
       },
     ],
     socialLinks: [
