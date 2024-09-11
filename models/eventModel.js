@@ -29,10 +29,10 @@ const eventSchema = new Schema(
           default: "Point",
         },
         coordinates: {
-          type: [Number], // [longitude, latitude]
-          index: "2dsphere", // Create a geospatial index for coordinates
+          type: [Number],
+          index: "2dsphere",
           default: [0, 0],
-          required: false, // Set required to false
+          required: false,
         },
       },
       mode: {
@@ -73,8 +73,8 @@ const eventSchema = new Schema(
     ],
     postEventMedia: [
       {
-        url: { type: String, required: true },
-        type: { type: String, enum: ["image", "video"], required: true },
+        url: { type: String },
+        type: { type: String, enum: ["image", "video"] },
       },
     ],
     interests: [
@@ -129,9 +129,9 @@ const eventSchema = new Schema(
       {
         id: { type: String },
         options: [{ type: String }],
-        question: { type: String, required: true },
+        question: { type: String },
         required: { type: Boolean, default: false },
-        type: { type: String, required: true },
+        type: { type: String },
       },
     ],
     coHostStatus: { type: Boolean, default: false },
