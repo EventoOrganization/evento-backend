@@ -3,11 +3,16 @@ var router = express.Router();
 var eventController = require("../controller/eventController");
 const authenticateJWT = require("../middleware/authentication").authenticateJWT;
 
-// All routes start with /event
 router.post("/createEvent", authenticateJWT, eventController.createEvent);
+
+// Get events
 router.get("/getEvent/:id", eventController.getEventById);
 router.get("/getUpcomingEvents", eventController.getUpcomingEvents);
+
+// Delete events
 router.delete("/deleteEvent/:id", authenticateJWT, eventController.deleteEvent);
+
+// Update events
 router.post(
   "/attendEventStatus",
   authenticateJWT,
@@ -23,4 +28,5 @@ router.post(
   authenticateJWT,
   eventController.refusedEventStatus,
 );
+
 module.exports = router;

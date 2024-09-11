@@ -2,6 +2,7 @@ const Event = require("../models/eventModel");
 const Models = require("../models");
 const helper = require("../helper/helper");
 const path = require("path");
+const { uploadFileToS3, deleteFileFromS3 } = require("../services/s3Service");
 const axios = require("axios");
 exports.createEvent = async (req, res) => {
   // console.log("req.body", req.body);
@@ -51,49 +52,33 @@ exports.createEvent = async (req, res) => {
       user: coHost.userId,
       status: coHost.status || "read-only",
     }));
-    let imageUrls = [];
-    let videoUrls = [];
-    for (const media of uploadedMedia) {
-      const publicFileUrl = `${process.env.CLIENT_URL}${media.url}`;
-      const response = await axios({
-        method: "GET",
-        url: publicFileUrl,
-        responseType: "stream",
-      });
-      const mediaName = await helper.fileUploadLarge(
-        {
-          name: path.basename(publicFileUrl),
-          data: response.data,
-          mimetype:
-            media.mimetype ||
-            (media.type === "image" ? "image/jpeg" : "video/mp4"),
-        },
-        "events",
-      );
-      if (media.type === "image") {
-        imageUrls.push(mediaName);
-      } else if (media.type === "video") {
-        videoUrls.push(mediaName);
-      }
-    }
-    const predefinedImages = predefinedMedia
+    let initialMedia = [];
+
+    // Pour les images
+    const imageUrls = uploadedMedia
       .filter((media) => media.type === "image")
-      .map((media) => media.url);
+      .map((media) => ({
+        url: media.url,
+        type: "image",
+      }));
 
-    const predefinedVideos = predefinedMedia
+    // Pour les vidéos
+    const videoUrls = uploadedMedia
       .filter((media) => media.type === "video")
-      .map((media) => media.url);
+      .map((media) => ({
+        url: media.url,
+        type: "video",
+      }));
 
-    imageUrls = [...imageUrls, ...predefinedImages];
-    videoUrls = [...videoUrls, ...predefinedVideos];
+    initialMedia = [...imageUrls, ...videoUrls];
     const objToSave = {
       user: req.user._id,
       title,
       eventType,
       details: {
         username,
-        images: imageUrls,
-        videos: videoUrls,
+        // images: imageUrls,
+        // videos: videoUrls,
         loc: {
           type: "Point",
           coordinates: [longitude, latitude],
@@ -109,6 +94,7 @@ exports.createEvent = async (req, res) => {
         includeChat,
         timeSlots: req.body.timeSlots,
       },
+      initialMedia: initialMedia,
       coHosts: coHosts,
       guests: guests,
       interests: interests,
@@ -128,7 +114,6 @@ exports.createEvent = async (req, res) => {
       .json({ status: false, message: "Internal server error" });
   }
 };
-
 // Get event by ID with all enrichments
 exports.getEventById = async (req, res) => {
   try {
