@@ -103,6 +103,12 @@ const eventSchema = new Schema(
         ref: "user",
       },
     ],
+    tempGuests: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: "TempGuest",
+      },
+    ],
     guestsCohostAdd: [
       {
         type: Schema.Types.ObjectId,

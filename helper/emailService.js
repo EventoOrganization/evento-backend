@@ -4,7 +4,47 @@ const mailjetClient = mailjet.apiConnect(
   process.env.MJ_APIKEY_PUBLIC,
   process.env.MJ_APIKEY_PRIVATE,
 );
+const sendEventInviteEmail = async (
+  email,
+  username,
+  eventTitle,
+  eventLink,
+  role = "guest",
+) => {
+  try {
+    const request = mailjetClient.post("send", { version: "v3.1" }).request({
+      Messages: [
+        {
+          From: {
+            Email: process.env.MJ_FROM_EMAIL,
+            Name: "Evento - Your Entertaining Event Platform",
+          },
+          To: [
+            {
+              Email: email,
+              Name: username || role,
+            },
+          ],
+          Subject: `You're Invited to ${eventTitle}`,
+          HTMLPart: `
+            <h3>Hi ${username || "Guest"},</h3>
+            <p>You are invited to join the event: <strong>${eventTitle}</strong>.</p>
+            <p>Click the link below to join:</p>
+            <a href="${eventLink}">${eventLink}</a>
+          `,
+          CustomID: "EventInvitation",
+        },
+      ],
+    });
 
+    const result = await request;
+    console.log(`Invitation email sent to ${email}:`, result.body);
+  } catch (error) {
+    console.error(`Error sending invitation email to ${email}:`, error);
+  }
+};
+
+module.exports = { sendEventInviteEmail };
 const sendOTPEmail = async (email, otpCode) => {
   try {
     const request = mailjetClient.post("send", { version: "v3.1" }).request({

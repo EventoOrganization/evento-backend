@@ -12,6 +12,7 @@ exports.signup = async (req, res) => {
     if (existingUser) {
       return res.status(400).json({ message: "Email is already in use." });
     }
+    const tempGuest = await TempGuest.findOne({ email });
     // Generates a random 6-digit OTP
     const otpCode = Math.floor(100000 + Math.random() * 900000);
     const otpExpires = Date.now() + 10 * 60 * 1000;
@@ -24,7 +25,12 @@ exports.signup = async (req, res) => {
       otpExpires: otpExpires,
     });
     await newUser.save();
-
+    if (tempGuest) {
+      tempGuest.status = "registered";
+      tempGuest.registeredAt = Date.now();
+      tempGuest.convertedBy = tempGuest.invitations[0]?.invitedBy || null;
+      await tempGuest.save();
+    }
     // Sends OTP via email
     await sendOTPEmail(email, otpCode);
 

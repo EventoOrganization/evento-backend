@@ -1,6 +1,70 @@
 const Event = require("../models/eventModel");
 const Models = require("../models");
 const helper = require("../helper/helper");
+
+exports.addGuests = async (req, res) => {
+  const { id: eventId } = req.params;
+  const { guests, tempGuests, invitedBy } = req.body;
+
+  try {
+    const event = await Event.findById(eventId);
+    if (!event) {
+      return res.status(404).json({ message: "Event not found." });
+    }
+
+    // Ajout des utilisateurs existants
+    if (guests && guests.length > 0) {
+      for (const guestId of guests) {
+        if (!event.guests.includes(guestId)) {
+          event.guests.push(guestId);
+        }
+      }
+    }
+
+    // Ajout des utilisateurs temporaires
+    if (tempGuests && tempGuests.length > 0) {
+      for (const tempGuestData of tempGuests) {
+        const { email, username } = tempGuestData;
+        const existingUser = await User.findOne({ email });
+        if (existingUser) {
+          // Si l'utilisateur existe, l'ignorer et continuer avec le suivant
+          console.log(`User with email ${email} already exists, skipping...`);
+          continue;
+        }
+        let tempGuest = await TempGuest.findOne({ email });
+
+        if (!tempGuest) {
+          // Créer un nouvel utilisateur temporaire si aucun n'existe
+          tempGuest = new TempGuest({
+            email,
+            username,
+            invitations: [
+              { eventId, invitedBy }, // Ajout de l'invitation
+            ],
+          });
+          await tempGuest.save();
+        } else {
+          // Si l'invité temporaire existe déjà, ajouter l'invitation à la liste
+          tempGuest.invitations.push({ eventId, invitedBy });
+          await tempGuest.save();
+        }
+
+        // Ajouter la référence du tempGuest à l'événement
+        if (!event.tempGuests.includes(tempGuest._id)) {
+          event.tempGuests.push(tempGuest._id);
+        }
+      }
+    }
+
+    // Sauvegarder les modifications de l'événement
+    await event.save();
+
+    res.status(200).json({ message: "Guests added successfully.", event });
+  } catch (error) {
+    console.error("Error adding guests:", error);
+    res.status(500).json({ message: "Server error." });
+  }
+};
 exports.createEvent = async (req, res) => {
   // console.log("req.body", req.body);
   console.log("req.files", req.files);
@@ -108,7 +172,6 @@ exports.createEvent = async (req, res) => {
       .json({ status: false, message: "Internal server error" });
   }
 };
-// Get event by ID with all enrichments
 exports.getEventById = async (req, res) => {
   try {
     const eventId = req.params.id;
@@ -219,7 +282,6 @@ exports.getEventById = async (req, res) => {
     });
   }
 };
-
 exports.getUpcomingEvents = async (req, res) => {
   try {
     console.log("Start getting getAllUpcomingPublicEvents");
@@ -297,7 +359,6 @@ exports.getUpcomingEvents = async (req, res) => {
     });
   }
 };
-
 exports.deleteEvent = async (req, res) => {
   try {
     //Fistly check created event is by logged in user or not
@@ -323,7 +384,6 @@ exports.deleteEvent = async (req, res) => {
     return res.status(500).json({ status: false, message: error.message });
   }
 };
-
 exports.attendEventStatus = async (req, res) => {
   try {
     let objToSave = {

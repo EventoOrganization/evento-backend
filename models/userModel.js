@@ -28,7 +28,6 @@ const userSchema = new mongoose.Schema(
     // OTP for verification
     email_otp: { type: Number, default: 0 },
     phone_otp: { type: Number, default: 0 },
-
     is_block: { type: Number, default: 0 },
 
     // specials userInfo
