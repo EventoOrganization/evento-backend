@@ -1,9 +1,6 @@
 const Event = require("../models/eventModel");
 const Models = require("../models");
 const helper = require("../helper/helper");
-const path = require("path");
-const { uploadFileToS3, deleteFileFromS3 } = require("../services/s3Service");
-const axios = require("axios");
 exports.createEvent = async (req, res) => {
   // console.log("req.body", req.body);
   console.log("req.files", req.files);
@@ -35,9 +32,6 @@ exports.createEvent = async (req, res) => {
       !username ||
       !eventType ||
       !mode ||
-      !location ||
-      !latitude ||
-      !longitude ||
       !date ||
       !endDate ||
       !startTime ||
