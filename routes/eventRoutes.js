@@ -10,11 +10,8 @@ router.post("/createEvent", authenticateJWT, eventController.createEvent);
 router.get("/getEvent/:id", eventController.getEventById);
 router.get("/getUpcomingEvents", eventController.getUpcomingEvents);
 
-// Update events
-router.put("/updateEvent/:id", authenticateJWT, eventController.updateEvent);
-
 // Add Guests
-router.post("/addGuests/:id", authenticateJWT, eventController.addGuests);
+router.patch("/addGuests/:id", authenticateJWT, eventController.addGuests);
 
 // Handling Status
 router.post(

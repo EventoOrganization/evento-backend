@@ -1,17 +1,18 @@
-const tempGuestSchema = new Schema(
+const mongoose = require("mongoose");
+const tempGuestSchema = new mongoose.Schema(
   {
     email: { type: String, required: true, unique: true },
     username: { type: String, required: true },
     invitations: [
       {
         eventId: {
-          type: Schema.Types.ObjectId,
+          type: mongoose.Schema.Types.ObjectId,
           ref: "Event",
           required: true,
         },
         invitedAt: { type: Date, default: Date.now },
         invitedBy: {
-          type: Schema.Types.ObjectId,
+          type: mongoose.Schema.Types.ObjectId,
           ref: "User",
           required: true,
         },
@@ -24,7 +25,7 @@ const tempGuestSchema = new Schema(
     },
     registeredAt: { type: Date },
     convertedBy: {
-      type: Schema.Types.ObjectId,
+      type: mongoose.Schema.Types.ObjectId,
       ref: "User",
     },
   },
@@ -32,3 +33,4 @@ const tempGuestSchema = new Schema(
 );
 
 const TempGuest = mongoose.model("TempGuest", tempGuestSchema);
+module.exports = TempGuest;

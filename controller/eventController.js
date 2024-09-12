@@ -1,22 +1,40 @@
 const Event = require("../models/eventModel");
 const Models = require("../models");
 const helper = require("../helper/helper");
-
+const { sendEventInviteEmail } = require("../helper/emailService");
+const TempGuest = require("../models/tempGuestModel");
 exports.addGuests = async (req, res) => {
-  const { id: eventId } = req.params;
-  const { guests, tempGuests, invitedBy } = req.body;
+  const eventId = req.params.id;
+  const { guests, tempGuests, user } = req.body;
 
   try {
     const event = await Event.findById(eventId);
     if (!event) {
       return res.status(404).json({ message: "Event not found." });
     }
-
+    const eventLink = `${process.env.CLIENT_URL}/events/${eventId}`;
+    const usernameFrom = user.username;
+    const invitedBy = user._id;
     // Ajout des utilisateurs existants
     if (guests && guests.length > 0) {
-      for (const guestId of guests) {
+      for (const guest of guests) {
+        const guestId = typeof guest === "string" ? guest : guest.id;
         if (!event.guests.includes(guestId)) {
           event.guests.push(guestId);
+          const guestUser = await Models.userModel.findById(guestId);
+          if (guestUser) {
+            const emailTo = guestUser.email;
+            const usernameTo = guestUser.username;
+            console.log(
+              `Sending invitation email to ${usernameTo} at ${emailTo} from ${usernameFrom} at ${eventLink}`,
+            );
+            await sendEventInviteEmail(
+              usernameFrom,
+              emailTo,
+              usernameTo,
+              eventLink,
+            );
+          }
         }
       }
     }
@@ -25,7 +43,7 @@ exports.addGuests = async (req, res) => {
     if (tempGuests && tempGuests.length > 0) {
       for (const tempGuestData of tempGuests) {
         const { email, username } = tempGuestData;
-        const existingUser = await User.findOne({ email });
+        const existingUser = await Models.userModel.findOne({ email });
         if (existingUser) {
           // Si l'utilisateur existe, l'ignorer et continuer avec le suivant
           console.log(`User with email ${email} already exists, skipping...`);
@@ -53,6 +71,17 @@ exports.addGuests = async (req, res) => {
         if (!event.tempGuests.includes(tempGuest._id)) {
           event.tempGuests.push(tempGuest._id);
         }
+        const emailTo = email;
+        const usernameTo = username;
+        console.log(
+          `Sending invitation email to ${usernameTo} at ${email} from ${usernameFrom} at ${eventLink}`,
+        );
+        await sendEventInviteEmail(
+          usernameFrom,
+          emailTo,
+          usernameTo,
+          eventLink,
+        );
       }
     }
 
@@ -181,6 +210,7 @@ exports.getEventById = async (req, res) => {
       .populate("interests", "_id name")
       .populate("coHosts.user", "username email profileImage")
       .populate("guests", "username email profileImage")
+      .populate("tempGuests", "username email")
       .exec();
 
     if (!event) {

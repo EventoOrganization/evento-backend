@@ -22,6 +22,7 @@ module.exports = {
   followingNotificationModel: require("./followingNotificationModel"),
   eventNotificationModel: require("./eventNotification"),
   groupChatModel: require("./groupChatModel"),
+  tempGuestModel: require("./tempGuestModel"),
 };
 
 //Image path
