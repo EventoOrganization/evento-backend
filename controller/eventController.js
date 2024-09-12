@@ -129,6 +129,8 @@ exports.getEventById = async (req, res) => {
     let isGoing = false;
     let isFavourite = false;
     let isRefused = false;
+    let isAdmin = false;
+
     const refused = await Models.eventRefuseModel
       .find({
         eventId: eventId,
@@ -173,9 +175,15 @@ exports.getEventById = async (req, res) => {
           refused: 1,
         })
         .exec();
+      const adminStatus = await Models.coHostModel.findOne({
+        eventId: eventId,
+        userId: req.query.userId,
+        status: "admin",
+      });
       isRefused = !!refuseStatus;
       isGoing = !!attendeeStatus;
       isFavourite = !!favouriteStatus;
+      isAdmin = !!adminStatus;
     }
     const enrichedEvent = {
       ...event.toObject(),
@@ -188,6 +196,7 @@ exports.getEventById = async (req, res) => {
       isGoing: isGoing,
       isFavourite: isFavourite,
       isRefused: isRefused,
+      isAdmin: isAdmin,
     };
     // Renvoyer les données de l'événement
     return res.status(200).json({

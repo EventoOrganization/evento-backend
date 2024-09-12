@@ -135,7 +135,7 @@ const eventSchema = new Schema(
       },
     ],
     coHostStatus: { type: Boolean, default: false },
-    guestsAllowFriend: Boolean,
+    guestsAllowFriend: { type: Boolean, default: false },
   },
   { timestamps: true },
 );
