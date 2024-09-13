@@ -13,7 +13,6 @@ exports.addGuests = async (req, res) => {
       return res.status(404).json({ message: "Event not found." });
     }
     const eventLink = `${process.env.CLIENT_URL}/events/${eventId}`;
-    const usernameFrom = user.username;
     const invitedBy = user._id;
     // Ajout des utilisateurs existants
     if (guests && guests.length > 0) {
@@ -23,17 +22,12 @@ exports.addGuests = async (req, res) => {
           event.guests.push(guestId);
           const guestUser = await Models.userModel.findById(guestId);
           if (guestUser) {
-            const emailTo = guestUser.email;
-            const usernameTo = guestUser.username;
-            console.log(
-              `Sending invitation email to ${usernameTo} at ${emailTo} from ${usernameFrom} at ${eventLink}`,
-            );
-            await sendEventInviteEmail(
-              usernameFrom,
-              emailTo,
-              usernameTo,
-              eventLink,
-            );
+            const guest = {
+              _id: guestId,
+              username: guestUser.username,
+              email: guestUser.email,
+            };
+            await sendEventInviteEmail(user, guest, event, eventLink);
           }
         }
       }
@@ -71,17 +65,12 @@ exports.addGuests = async (req, res) => {
         if (!event.tempGuests.includes(tempGuest._id)) {
           event.tempGuests.push(tempGuest._id);
         }
-        const emailTo = email;
-        const usernameTo = username;
-        console.log(
-          `Sending invitation email to ${usernameTo} at ${email} from ${usernameFrom} at ${eventLink}`,
-        );
-        await sendEventInviteEmail(
-          usernameFrom,
-          emailTo,
-          usernameTo,
-          eventLink,
-        );
+        const guest = {
+          _id: tempGuest._id,
+          username: tempGuest.username,
+          email: tempGuest.email,
+        };
+        await sendEventInviteEmail(user, guest, event, eventLink);
       }
     }
 

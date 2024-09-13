@@ -4,11 +4,15 @@ const mailjetClient = mailjet.apiConnect(
   process.env.MJ_APIKEY_PUBLIC,
   process.env.MJ_APIKEY_PRIVATE,
 );
-const sendEventInviteEmail = async (guest, event, eventLink) => {
+const sendEventInviteEmail = async (user, guest, event, eventLink) => {
   // Vérifier que les informations requises sont présentes
-  if (!guest.email || !guest.username || !event.title || !eventLink) {
+  if (!user || !guest || !event || !eventLink) {
+    console.log("Missing required fields for sending email:", user);
+    // console.log("Missing required fields for sending email:", event);
+    console.log("Missing required fields for sending email:", eventLink);
+    console.log("Missing required fields for sending email:", guest);
     console.error("Missing required fields for sending email:");
-    return; // Arrêtez la fonction si des informations manquent
+    return;
   }
 
   try {
@@ -26,7 +30,7 @@ const sendEventInviteEmail = async (guest, event, eventLink) => {
             },
           ],
           Subject: `You're Invited to ${event.title} by ${
-            event.user?.username || "Evento"
+            user.username || "Evento"
           }`,
           HTMLPart: `
             <div
@@ -42,7 +46,7 @@ const sendEventInviteEmail = async (guest, event, eventLink) => {
                 </div>
                 <h3 style="margin: 0;">Hi ${guest.username || "Guest"}</h3>
                 <p style="margin: 0;">You are invited to join the event: <strong>${
-                  event?.user?.username || "Evento"
+                  user.username || "Evento"
                 }</strong>.</p>
                 <p>Click the event below to join: <strong>${
                   event.title
@@ -53,11 +57,9 @@ const sendEventInviteEmail = async (guest, event, eventLink) => {
                   <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 10px; border-bottom: 1px solid #dddddd;">
                     <div style="display: flex; align-items: center;">
                       <img src="${
-                        event?.user.profileImage
+                        user?.profileImage
                       }" alt="User Image" style="width: 50px; height: 50px; border-radius: 50%; margin-right: 10px;" />
-                      <h4 style="margin: 0;">${
-                        event?.user.username || "Evento"
-                      }</h4>
+                      <h4 style="margin: 0;">${user?.username || "Evento"}</h4>
                     </div>
                     <span>${new Date(
                       event?.details?.date,
@@ -80,7 +82,10 @@ const sendEventInviteEmail = async (guest, event, eventLink) => {
     });
 
     const result = await request;
-    console.log(`Invitation email sent to ${guest.email}:`, result.body);
+    console.log(
+      `****************Invitation email sent to ${guest.email}:*******************`,
+      result.body,
+    );
   } catch (error) {
     console.error(`Error sending invitation email to ${guest.email}:`, error);
   }
