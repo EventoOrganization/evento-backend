@@ -205,10 +205,17 @@ exports.getEventById = async (req, res) => {
   try {
     const eventId = req.params.id;
 
+    // Fetch the event with all necessary populations
     const event = await Event.findById(eventId)
       .populate("user", "username email profileImage")
       .populate("interests", "_id name")
-      .populate("coHosts.user", "username email profileImage")
+      .populate({
+        path: "coHosts",
+        populate: {
+          path: "user_id",
+          select: "username email profileImage",
+        },
+      })
       .populate("guests", "username email profileImage")
       .populate("tempGuests", "username email")
       .exec();
@@ -219,91 +226,160 @@ exports.getEventById = async (req, res) => {
         message: "Event not found",
       });
     }
+
     let isGoing = false;
     let isFavourite = false;
     let isRefused = false;
     let isAdmin = false;
     let isHosted = false;
+    let isCoHost = false;
+
     const refused = await Models.eventRefuseModel
-      .find({
-        eventId: eventId,
-        refused: 1,
-      })
+      .find({ eventId, refused: 1 })
       .populate("userId", "username firstName lastName profileImage")
       .exec();
+
     const attendees = await Models.eventAttendesUserModel
-      .find({
-        eventId: eventId,
-        attendEvent: 1,
-      })
+      .find({ eventId, attendEvent: 1 })
       .populate("userId", "username firstName lastName profileImage")
       .exec();
+
     const favouritees = await Models.eventFavouriteUserModel
-      .find({
-        eventId: eventId,
-        favourite: 1,
-      })
+      .find({ eventId, favourite: 1 })
       .populate("userId", "username firstName lastName profileImage")
       .exec();
 
     if (req.query.userId) {
+      const userId = req.query.userId;
+
+      // Fetch the following and followers list
+      const followingList = await Models.userFollowModel.find({
+        follower: userId,
+      });
+      const followersList = await Models.userFollowModel.find({
+        following: userId,
+      });
+
+      // Create maps for following and followers status
+      const followingMap = new Map();
+      followingList.forEach((follow) => {
+        followingMap.set(follow.following.toString(), true);
+      });
+
+      const followersMap = new Map();
+      followersList.forEach((follow) => {
+        followersMap.set(follow.follower.toString(), true);
+      });
+
+      // Helper function to add follow status
+      const addFollowStatus = (user) => {
+        if (!user) return null; // Si l'utilisateur est null, renvoyez null.
+        const userIdStr = user._id.toString();
+        return {
+          ...user.toObject(),
+          isIFollowingHim: followingMap.has(userIdStr),
+          isFollowingMe: followersMap.has(userIdStr),
+        };
+      };
+
+      // Enrich coHosts with follow status if coHosts exist
+      const enrichedCoHosts = event.coHosts
+        ? event.coHosts.map((coHost) => ({
+            ...coHost,
+            user: addFollowStatus(coHost.user),
+          }))
+        : [];
+
+      // Enrich guests with follow status if guests exist
+      const enrichedGuests = event.guests
+        ? event.guests.map((guest) => addFollowStatus(guest))
+        : [];
+
+      // Enrich tempGuests (these don't have follow status) if they exist
+      const enrichedTempGuests = event.tempGuests
+        ? event.tempGuests.map((tempGuest) => ({
+            ...tempGuest.toObject(),
+            isIFollowingHim: false,
+            isFollowingMe: false,
+          }))
+        : [];
+
+      // Enrich attendees with follow status if attendees exist
+      const enrichedAttendees = attendees
+        ? attendees.map((attendee) => addFollowStatus(attendee.userId))
+        : [];
+
+      // Enrich favouritees with follow status if favouritees exist
+      const enrichedFavouritees = favouritees
+        ? favouritees.map((favourite) => addFollowStatus(favourite.userId))
+        : [];
+
+      // Enrich refused users with follow status if refused exist
+      const enrichedRefused = refused
+        ? refused.map((refuse) => addFollowStatus(refuse.userId))
+        : [];
+
+      // Check statuses for the logged-in user
       const attendeeStatus = await Models.eventAttendesUserModel
-        .findOne({
-          userId: req.query.userId,
-          eventId: eventId,
-          attendEvent: 1,
-        })
+        .findOne({ userId, eventId, attendEvent: 1 })
         .exec();
+
       const favouriteStatus = await Models.eventFavouriteUserModel
-        .findOne({
-          userId: req.query.userId,
-          eventId: eventId,
-          favourite: 1,
-        })
+        .findOne({ userId, eventId, favourite: 1 })
         .exec();
+
       const refuseStatus = await Models.eventRefuseModel
-        .findOne({
-          userId: req.query.userId,
-          eventId: eventId,
-          refused: 1,
-        })
+        .findOne({ userId, eventId, refused: 1 })
         .exec();
+
       const adminStatus = await Models.coHostModel.findOne({
-        eventId: eventId,
-        userId: req.query.userId,
+        eventId,
+        userId,
         status: "admin",
       });
-      const hostStatus =
-        event.user._id.toString() === req.query.userId.toString();
+
+      if (
+        event.coHosts &&
+        event.coHosts.some(
+          (coHost) => coHost.user._id.toString() === userId.toString(),
+        )
+      ) {
+        isCoHost = true;
+      }
+
+      const hostStatus = event.user._id.toString() === userId.toString();
 
       isRefused = !!refuseStatus;
       isGoing = !!attendeeStatus;
       isFavourite = !!favouriteStatus;
       isAdmin = !!adminStatus;
       isHosted = !!hostStatus;
+
+      // Build the enriched event object
+      const enrichedEvent = {
+        ...event.toObject(),
+        coHosts: enrichedCoHosts,
+        guests: enrichedGuests,
+        tempGuests: enrichedTempGuests,
+        attendees: enrichedAttendees,
+        favouritees: enrichedFavouritees,
+        refused: enrichedRefused,
+        coHostStatus: isCoHost,
+        isGoing,
+        isFavourite,
+        isRefused,
+        isAdmin,
+        isHosted,
+      };
+
+      // Return the enriched event
+      return res.status(200).json({
+        status: true,
+        message: "Event retrieved successfully",
+        data: enrichedEvent,
+      });
     }
-    const enrichedEvent = {
-      ...event.toObject(),
-      attendees: attendees.map((attendee) => attendee.userId),
-      favouritees: favouritees.map((favourite) => favourite.userId),
-      refused: refused.map((r) => ({
-        userId: r.userId,
-        reason: r.reason,
-      })),
-      isGoing: isGoing,
-      isFavourite: isFavourite,
-      isRefused: isRefused,
-      isAdmin: isAdmin,
-      isHosted: isHosted,
-    };
-    // Renvoyer les données de l'événement
-    return res.status(200).json({
-      status: true,
-      message: "Event retrieved successfully",
-      data: enrichedEvent,
-    });
   } catch (error) {
-    // En cas d'erreur, renvoyer une réponse avec une erreur
     console.error("Error retrieving event:", error);
     return res.status(500).json({
       status: false,

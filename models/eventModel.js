@@ -86,15 +86,8 @@ const eventSchema = new Schema(
     privateEventLink: String,
     coHosts: [
       {
-        user: {
-          type: Schema.Types.ObjectId,
-          ref: "user",
-        },
-        status: {
-          type: String,
-          enum: ["admin", "read-only"],
-          default: "read-only",
-        },
+        type: Schema.Types.ObjectId,
+        ref: "cohost",
       },
     ],
     guests: [
