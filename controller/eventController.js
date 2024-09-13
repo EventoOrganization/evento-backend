@@ -270,7 +270,13 @@ exports.getEventById = async (req, res) => {
         message: "Event not found",
       });
     }
-
+    if (!req.query.userId) {
+      return res.status(200).json({
+        status: true,
+        message: "Event retrieved successfully",
+        data: event,
+      });
+    }
     let isGoing = false;
     let isFavourite = false;
     let isRefused = false;

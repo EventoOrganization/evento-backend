@@ -4260,7 +4260,7 @@ module.exports = {
               }
             : { role: { $ne: "admin" } },
         )
-        .populate("interest", "name _id"); // Populate interest field with name and _id
+        .populate("interests", "name _id"); // Populate interest field with name and _id
 
       console.log("User List:", userList.length); // Log pour vérifier le nombre d'utilisateurs trouvés
 
