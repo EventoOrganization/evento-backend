@@ -12,7 +12,7 @@ exports.addGuests = async (req, res) => {
     if (!event) {
       return res.status(404).json({ message: "Event not found." });
     }
-    const eventLink = `${process.env.CLIENT_URL}/events/${eventId}`;
+    const eventLink = `${process.env.CLIENT_URL}/event/${eventId}`;
     const invitedBy = user._id;
     // Ajout des utilisateurs existants
     if (guests && guests.length > 0) {
