@@ -45,8 +45,8 @@ const sendEventInviteEmail = async (user, guest, event, eventLink) => {
                   />
                 </div>
                 <h3 style="margin: 0;">Hi ${guest.username || "Guest"}</h3>
-                <p style="margin: 0;">You are invited to join the event: <strong>${
-                  user.username || "Evento"
+                <p style="margin: 0;">You are invited to join the event by <strong>${
+                  user.username || "on Evento"
                 }</strong>.</p>
                 <p>Click the event below to join: <strong>${
                   event.title
