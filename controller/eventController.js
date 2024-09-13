@@ -94,6 +94,50 @@ exports.addGuests = async (req, res) => {
     res.status(500).json({ message: "Server error." });
   }
 };
+exports.updateGuestsAllowFriend = async (req, res) => {
+  console.log("*************req.body*******", req.body);
+  try {
+    const eventId = req.params.id;
+    const { guestsAllowFriend } = req.body;
+    console.log("*************eventId*******", eventId);
+    console.log("*************user*******", req.user._id);
+    console.log("*************gusetAllowFriend*******", guestsAllowFriend);
+    // Vérifiez que l'utilisateur qui fait la requête est l'hôte de l'événement
+    const event = await Event.findById(eventId);
+
+    if (!event) {
+      return res.status(404).json({
+        status: false,
+        message: "Event not found",
+      });
+    }
+
+    // Vérifiez que l'utilisateur est l'hôte
+    if (event.user.toString() !== req.user._id.toString()) {
+      return res.status(403).json({
+        status: false,
+        message: "You do not have permission to update this event",
+      });
+    }
+
+    // Mettre à jour la propriété guestsAllowFriend
+    event.guestsAllowFriend = guestsAllowFriend;
+    await event.save();
+
+    return res.status(200).json({
+      status: true,
+      message: "guestsAllowFriend updated successfully",
+      data: event,
+    });
+  } catch (error) {
+    console.error("Error updating guestsAllowFriend:", error);
+    return res.status(500).json({
+      status: false,
+      message: "An error occurred while updating guestsAllowFriend",
+      error: error.message,
+    });
+  }
+};
 exports.createEvent = async (req, res) => {
   // console.log("req.body", req.body);
   console.log("req.files", req.files);

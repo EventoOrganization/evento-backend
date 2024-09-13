@@ -12,7 +12,11 @@ router.get("/getUpcomingEvents", eventController.getUpcomingEvents);
 
 // Add Guests
 router.patch("/addGuests/:id", authenticateJWT, eventController.addGuests);
-
+router.put(
+  "/:id/updateGuestsAllowFriend",
+  authenticateJWT,
+  eventController.updateGuestsAllowFriend,
+);
 // Handling Status
 router.post(
   "/attendEventStatus",
