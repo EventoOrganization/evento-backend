@@ -8,4 +8,10 @@ router.get(
   authenticateJWT,
   chatController.myEventsWithChat,
 );
+router.get(
+  "/privateConversations",
+  authenticateJWT,
+  chatController.privateConversations,
+);
+router.post("/saveMessage", chatController.saveMessage);
 module.exports = router;
