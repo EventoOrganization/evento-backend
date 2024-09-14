@@ -222,6 +222,26 @@ exports.createEvent = async (req, res) => {
       additionalField: additionalField,
     };
     const createdEvent = await Models.eventModel.create(objToSave);
+
+    const eventLink = `${process.env.CLIENT_URL}/event/${createdEvent._id}`;
+    const usernameFrom = req.user.username;
+    for (const coHost of coHosts) {
+      const coHostUser = await Models.userModel.findById(coHost.user);
+      if (coHostUser) {
+        const emailTo = coHostUser.email;
+        const usernameTo = coHostUser.username;
+        console.log(
+          `Sending co-host invitation email to ${usernameTo} at ${emailTo} from ${usernameFrom} at ${eventLink}`,
+        );
+        await sendEventInviteEmail(
+          req.user,
+          coHostUser,
+          createdEvent,
+          eventLink,
+          true
+        );
+      }
+    }
     return res.status(201).json({
       status: true,
       message: "Event created successfully",

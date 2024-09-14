@@ -4,14 +4,15 @@ const mailjetClient = mailjet.apiConnect(
   process.env.MJ_APIKEY_PUBLIC,
   process.env.MJ_APIKEY_PRIVATE,
 );
-const sendEventInviteEmail = async (user, guest, event, eventLink) => {
+const sendEventInviteEmail = async (
+  user,
+  guest,
+  event,
+  eventLink,
+  isCoHost = false,
+) => {
   // Vérifier que les informations requises sont présentes
   if (!user || !guest || !event || !eventLink) {
-    console.log("Missing required fields for sending email:", user);
-    // console.log("Missing required fields for sending email:", event);
-    console.log("Missing required fields for sending email:", eventLink);
-    console.log("Missing required fields for sending email:", guest);
-    console.error("Missing required fields for sending email:");
     return;
   }
 
@@ -34,7 +35,7 @@ const sendEventInviteEmail = async (user, guest, event, eventLink) => {
           }`,
           HTMLPart: `
             <div
-              style="color: #333; font-family: Arial, sans-serif; font-size: 16px; line-height: 1.4; padding: 20px; background-color: #f9f9f9; display: flex; flex-direction: column; align-items: center; gap: 10px;"
+              style="color: #333; font-family: Arial, sans-serif; font-size: 16px; line-height: 1.4; padding: 20px; background-color: #f9f9f9; display: flex; flex-direction: column; align-items: center; gap: 10px; width: 90%;" 
             >
               <div style="text-align: center;">
                 <div style="background: linear-gradient(180deg, #a62ba7 0%, #5f6fed 100%); border-radius: 50%; width: 160px; height: 160px; display: flex; justify-content: center; align-items: center; margin-bottom: 20px;">
@@ -45,9 +46,11 @@ const sendEventInviteEmail = async (user, guest, event, eventLink) => {
                   />
                 </div>
                 <h3 style="margin: 0;">Hi ${guest.username || "Guest"}</h3>
-                <p style="margin: 0;">You are invited to join the event by <strong>${
-                  user.username || "on Evento"
-                }</strong>.</p>
+                <p style="margin: 0;">You are invited to ${
+                  isCoHost ? "co-host" : "join"
+                } the event by <strong>${
+            user.username || "on Evento"
+          }</strong>.</p>
                 <p>Click the event below to join: <strong>${
                   event.title
                 }</strong></p>
