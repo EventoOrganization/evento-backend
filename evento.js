@@ -15,6 +15,7 @@ var expressLayouts = require("express-ejs-layouts");
 var indexRouter = require("./routes/dashBoardRoutes");
 var usersRouter = require("./routes/users");
 const cmsRoutes = require("./routes/cmsRoutes ");
+const chatRoutes = require("./routes/chatRoutes");
 var authRoutes = require("./routes/authRoutes");
 var eventRoutes = require("./routes/eventRoutes");
 var profileRoutes = require("./routes/profileRoutes");
@@ -105,6 +106,7 @@ app.use("/", cmsRoutes);
 app.use("/auth", authRoutes);
 app.use("/events", eventRoutes);
 app.use("/profile", profileRoutes);
+app.use("/chats", chatRoutes);
 
 // Catch 404 and forward to error handler
 app.use(function (req, res, next) {
