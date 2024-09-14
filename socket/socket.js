@@ -2,14 +2,13 @@
 const Models = require("../models/index");
 const saveMessage = require("../controller/socketController");
 const moment = require("moment");
-const helper=require("../helper/helper")
+const helper = require("../helper/helper");
 // console.log("this is date", moment().format("YYYY-MM-DD"));
 // console.log("this is time", moment().format("LTS"));
 module.exports = function (io) {
   io.on("connection", (socket) => {
-    // http://192.168.1.210:8747/ when from forntend side start on it give this url instead of localhost give ipV4
-    console.log("connected user", socket.id);
-    //Connect the user  //Test pass
+    console.log("connected user in socket.js", socket.id);
+    // Listener for "connect_user" event, which is triggered by the client to initiate user connection handling.
     socket.on("connect_user", async function (data) {
       try {
         const socketId = socket.id;
@@ -20,7 +19,7 @@ module.exports = function (io) {
         if (checkUser) {
           await Models.socketuser.updateOne(
             { userId: data.userId },
-            { $set: { status: 1, socketId: socketId } }
+            { $set: { status: 1, socketId: socketId } },
           );
         } else {
           await Models.socketuser.create({
@@ -50,27 +49,29 @@ module.exports = function (io) {
         });
 
         if (findConstant) {
-          const chatList = await Models.message.find({
-            $and: [
-              {
-                $or: [
-                  {
-                    senderId: get_data.senderId,
-                    reciverId: get_data.reciverId,
-                  },
-                  {
-                    reciverId: get_data.senderId,
-                    senderId: get_data.reciverId,
-                  },
-                  { constantId: findConstant._id },
-                ],
-              },
-              {
-                is_delete: { $ne: get_data.senderId },
-              },
-            ],
-          }).populate('senderId', 'profileImage') // Populate sender's profile image
-          .populate('reciverId', 'profileImage'); // Populate receiver's profile image;
+          const chatList = await Models.message
+            .find({
+              $and: [
+                {
+                  $or: [
+                    {
+                      senderId: get_data.senderId,
+                      reciverId: get_data.reciverId,
+                    },
+                    {
+                      reciverId: get_data.senderId,
+                      senderId: get_data.reciverId,
+                    },
+                    { constantId: findConstant._id },
+                  ],
+                },
+                {
+                  is_delete: { $ne: get_data.senderId },
+                },
+              ],
+            })
+            .populate("senderId", "profileImage") // Populate sender's profile image
+            .populate("reciverId", "profileImage"); // Populate receiver's profile image;
           const count = await Models.message.countDocuments({
             $and: [
               {
@@ -95,7 +96,7 @@ module.exports = function (io) {
           const success_messages = {
             success_message: "Users Chats",
             code: 200,
-            unread_message_count:count,
+            unread_message_count: count,
             // getdatas: chatList,
             getdata: chatList.map((message) => {
               const isMessageFromSender =
@@ -129,7 +130,7 @@ module.exports = function (io) {
         } else if (filter === 2) {
           order = { createdAt: -1 }; // Sort by new to old
         }
-      
+
         // Build the query to find chat constants
         const where = {
           $or: [
@@ -139,11 +140,11 @@ module.exports = function (io) {
             { reciverId: senderId, is_block: { $exists: false } },
           ],
         };
-      
+
         if (filter == 3) {
           where.is_favourite = 1;
         }
-      
+
         // Find all chat constants that match the criteria
         const constantList = await Models.chatconstant
           .find(where)
@@ -158,16 +159,19 @@ module.exports = function (io) {
             model: Models.userModel,
           })
           .sort(order);
-          console.log("constantList constantList constantList",constantList);
+        console.log("constantList constantList constantList", constantList);
         // Create an array to store user IDs for whom we want to count unread messages
         const userIds = constantList.map((constant) => {
           // console.log("constatnId",constant)
-          if (constant.senderId && constant.senderId._id && constant.senderId._id.toString() === senderId) {
+          if (
+            constant.senderId &&
+            constant.senderId._id &&
+            constant.senderId._id.toString() === senderId
+          ) {
             return constant.reciverId != null
               ? constant.reciverId._id?.toString() || constant.reciverId
               : constant.reciverId;
-          }
-           else {
+          } else {
             return constant.senderId != null
               ? constant.senderId._id.toString()
               : constant.senderId;
@@ -196,12 +200,19 @@ module.exports = function (io) {
         }
         // Add unread message counts to the constantList
         constantList.forEach((constant) => {
-          const senderId = constant.senderId?constant.senderId._id.toString():'';
-          const reciverId = constant.reciverId?constant.reciverId._id.toString():'';
+          const senderId = constant.senderId
+            ? constant.senderId._id.toString()
+            : "";
+          const reciverId = constant.reciverId
+            ? constant.reciverId._id.toString()
+            : "";
           const userId = senderId === get_data.senderId ? reciverId : senderId;
           if (userId) {
-            console.log("unreadMessageCounts[userId]",unreadMessageCounts[userId])
-            constant.unreadCount = unreadMessageCounts[userId] || '0';
+            console.log(
+              "unreadMessageCounts[userId]",
+              unreadMessageCounts[userId],
+            );
+            constant.unreadCount = unreadMessageCounts[userId] || "0";
           } else {
             constant.unreadCount = 0; // Handle the case where both senderId and receiverId are null
           }
@@ -211,12 +222,11 @@ module.exports = function (io) {
           code: 200,
           getdata: constantList,
         };
-      
+
         socket.emit("user_constant_chat_list", success_message);
       } catch (error) {
         console.log(error);
       }
-      
     });
     //Disconnect the user //Test pass
     socket.on("disconnect_user", async (connect_listener) => {
@@ -229,7 +239,7 @@ module.exports = function (io) {
         if (check_user) {
           await Models.socketuser.updateOne(
             { userId: connect_listener.userId },
-            { $set: { status: 0 } }
+            { $set: { status: 0 } },
           );
         }
         const success_message = {
@@ -252,7 +262,7 @@ module.exports = function (io) {
           },
           {
             $set: { is_read: 1 },
-          }
+          },
         );
         console.log(updateResult, "get_read_unread");
         const get_read_unread = { is_read: 1 };
@@ -261,7 +271,7 @@ module.exports = function (io) {
         console.log(error);
       }
     });
-    //Delete the message //test pass 
+    //Delete the message //test pass
     socket.on("delete_message", async (get_data) => {
       try {
         let deleteMessage;
@@ -273,26 +283,32 @@ module.exports = function (io) {
               { reciverId: get_data.senderId, _id: { $in: get_data.id } },
             ],
           });
-             //Find last message
-             let lastMessage = await Models.chatconstant.findOne({
-              $or: [
-                { senderId: get_data.senderId, lastmessage: { $in: get_data.id }},
-                { reciverId: get_data.senderId, lastmessage:{ $in: get_data.id }},
-              ],
-            });
-            if (lastMessage) {
-              //Then find last message
-              let data = await Models.message.findOne(
-                {},
-                {},
-                { sort: { time: -1 } }
-              );
-              //Then store last message in chatConstant
-              await Models.chatconstant.updateOne(
-                { _id: lastMessage._id },
-                { lastmessage: data._id, date: data.date, time: data.time }
-              );
-            }
+          //Find last message
+          let lastMessage = await Models.chatconstant.findOne({
+            $or: [
+              {
+                senderId: get_data.senderId,
+                lastmessage: { $in: get_data.id },
+              },
+              {
+                reciverId: get_data.senderId,
+                lastmessage: { $in: get_data.id },
+              },
+            ],
+          });
+          if (lastMessage) {
+            //Then find last message
+            let data = await Models.message.findOne(
+              {},
+              {},
+              { sort: { time: -1 } },
+            );
+            //Then store last message in chatConstant
+            await Models.chatconstant.updateOne(
+              { _id: lastMessage._id },
+              { lastmessage: data._id, date: data.date, time: data.time },
+            );
+          }
         } else {
           // It's a single ID
           deleteMessage = await Models.message.deleteOne({
@@ -313,12 +329,12 @@ module.exports = function (io) {
             let data = await Models.message.findOne(
               {},
               {},
-              { sort: { time: -1 } }
+              { sort: { time: -1 } },
             );
             //Then store last message in chatConstant
             await Models.chatconstant.updateOne(
               { _id: lastMessage._id },
-              { lastmessage: data._id, date: data.date, time: data.time }
+              { lastmessage: data._id, date: data.date, time: data.time },
             );
           }
         }
@@ -357,7 +373,7 @@ module.exports = function (io) {
               lastmessage: saveMsg._id,
               date: moment().format("YYYY-MM-DD"),
               time: moment().format("LTS"),
-            }
+            },
           );
 
           let getMsg = await Models.message
@@ -377,34 +393,32 @@ module.exports = function (io) {
               },
             ]);
 
-            // console.log("getMsg",getMsg)
-            if (getMsg) {
-              getMsg = getMsg.length > 0 ? getMsg[0] : getMsg;
-              const get_socket_id = await Models.socketuser.findOne ({
-                userId: data.reciverId,
-              });
-              let user=await Models.userModel.findOne({
-                _id:data.reciverId
-              })
-              console.log("Inside if",user)
-              if(user&&user.deviceToken){
-                let deviceToken=user.deviceToken;
-                let deviceType=user.deviceType;
-                let sendData={
-                 ...data,
-                  deviceToken,
-                  deviceType
-                }
-               await helper.sendPushToIos(sendData)
-              }
-              if (get_socket_id) {
-                io
-                  .to (get_socket_id.socketId)
-                  .emit ('send_message_emit', getMsg);
-              }
-              
-              socket.emit ('send_message_emit', getMsg);
+          // console.log("getMsg",getMsg)
+          if (getMsg) {
+            getMsg = getMsg.length > 0 ? getMsg[0] : getMsg;
+            const get_socket_id = await Models.socketuser.findOne({
+              userId: data.reciverId,
+            });
+            let user = await Models.userModel.findOne({
+              _id: data.reciverId,
+            });
+            console.log("Inside if", user);
+            if (user && user.deviceToken) {
+              let deviceToken = user.deviceToken;
+              let deviceType = user.deviceType;
+              let sendData = {
+                ...data,
+                deviceToken,
+                deviceType,
+              };
+              await helper.sendPushToIos(sendData);
             }
+            if (get_socket_id) {
+              io.to(get_socket_id.socketId).emit("send_message_emit", getMsg);
+            }
+
+            socket.emit("send_message_emit", getMsg);
+          }
         } else {
           let createChatConstant = await Models.chatconstant.create({
             senderId: data.senderId,
@@ -426,7 +440,7 @@ module.exports = function (io) {
               lastmessage: saveMsg._id,
               date: moment().format("YYYY-MM-DD"),
               time: moment().format("LTS"),
-            }
+            },
           );
 
           let getMsg = await Models.message
@@ -447,29 +461,27 @@ module.exports = function (io) {
             ]);
           if (getMsg) {
             getMsg = getMsg.length > 0 ? getMsg[0] : getMsg;
-            const get_socket_id = await Models.socketuser.findOne ({
+            const get_socket_id = await Models.socketuser.findOne({
               userId: data.reciverId,
             });
             if (get_socket_id) {
-              io
-                .to (get_socket_id.socketId)
-                .emit ('send_message_emit', getMsg);
+              io.to(get_socket_id.socketId).emit("send_message_emit", getMsg);
             }
-            let user=await Models.userModel.findOne({
-              _id:data.receiverId
-            })
-            console.log("INside else",user)
-            if(user&&user.deviceToken){
-              let deviceToken=user.deviceToken;
-              let deviceType=user.deviceType;
-              let sendData={
-               ...data,
+            let user = await Models.userModel.findOne({
+              _id: data.receiverId,
+            });
+            console.log("INside else", user);
+            if (user && user.deviceToken) {
+              let deviceToken = user.deviceToken;
+              let deviceType = user.deviceType;
+              let sendData = {
+                ...data,
                 deviceToken,
-                deviceType
-              }
-              await helper.sendPushToIos(sendData)
+                deviceType,
+              };
+              await helper.sendPushToIos(sendData);
             }
-            socket.emit ('send_message_emit', getMsg);
+            socket.emit("send_message_emit", getMsg);
           }
         }
       } catch (error) {
@@ -497,7 +509,7 @@ module.exports = function (io) {
               ],
               is_delete: { $exists: false },
             },
-            { is_delete: get_data.senderId }
+            { is_delete: get_data.senderId },
           );
         } else {
           // Delete the message if it doesn't exist or already marked as deleted
@@ -520,50 +532,53 @@ module.exports = function (io) {
       }
     });
     //Block user
-    socket.on("block_user",async(get_data)=>{
+    socket.on("block_user", async (get_data) => {
       try {
-        let criteria={
-          senderID:get_data.senderID,
-          reciverId:get_data.reciverId
-        }
-        let objToUpdate={
-          is_block:1
-        }
-        let block=await Models.chatconstant.findOneAndUpdate(criteria,objToUpdate);
+        let criteria = {
+          senderID: get_data.senderID,
+          reciverId: get_data.reciverId,
+        };
+        let objToUpdate = {
+          is_block: 1,
+        };
+        let block = await Models.chatconstant.findOneAndUpdate(
+          criteria,
+          objToUpdate,
+        );
         socket.emit("block_user_listener", block);
       } catch (error) {
         console.log(error);
       }
-    })
+    });
     //Report the user
-    socket.on("report_message",async(get_data)=>{
+    socket.on("report_message", async (get_data) => {
       try {
-        let objToSave={
-          senderID:get_data.senderID,
-          reciverId:get_data.reciverId,
-          message:get_data.message
-       }
-       let saveData=await Models.ReportModel.create(objToSave);
-       socket.emit("report_message_listener", saveData);
+        let objToSave = {
+          senderID: get_data.senderID,
+          reciverId: get_data.reciverId,
+          message: get_data.message,
+        };
+        let saveData = await Models.ReportModel.create(objToSave);
+        socket.emit("report_message_listener", saveData);
       } catch (error) {
         console.log(error);
       }
-    })
+    });
     //Typing and stopTyping  get_data has senderId and receiverId
     // socket.on("typing", (get_data) => socket.in(get_data).emit("typing"));
     // socket.on("stopTyping", (get_data) => socket.in(get_data).emit("stopTyping"));
     // Listen for typing event
-    socket.on('typing', (data) => {
+    socket.on("typing", (data) => {
       const { senderId, receiverId } = data;
       // Broadcast typing event to the receiver
-      socket.to(receiverId).emit('typing', senderId);
+      socket.to(receiverId).emit("typing", senderId);
     });
-     // Listen for stopTyping event
-  socket.on('stopTyping', (data) => {
-    const { senderId, receiverId } = data;
-    // Broadcast stopTyping event to the receiver
-    socket.to(receiverId).emit('stopTyping', senderId);
-  });
+    // Listen for stopTyping event
+    socket.on("stopTyping", (data) => {
+      const { senderId, receiverId } = data;
+      // Broadcast stopTyping event to the receiver
+      socket.to(receiverId).emit("stopTyping", senderId);
+    });
   });
 };
 

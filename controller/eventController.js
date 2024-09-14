@@ -225,6 +225,23 @@ exports.createEvent = async (req, res) => {
 
     const eventLink = `${process.env.CLIENT_URL}/event/${createdEvent._id}`;
     const usernameFrom = req.user.username;
+    if (includeChat === "true") {
+      const initialUsers = [req.user.id, ...coHosts];
+      const saveData = {
+        eventId: createdEvent._id,
+        admin: req.user._id,
+        users: initialUsers,
+        groupName: createdEvent.title,
+        image:
+          createdEvent.initialMedia.length > 0
+            ? initialMedia[0].url
+            : req.user.profileImage,
+        date: moment().format("YYYY-MM-DD"),
+        time: moment().format("LTS"),
+      };
+
+      await Models.groupChatModel.create(saveData);
+    }
     for (const coHost of coHosts) {
       const coHostUser = await Models.userModel.findById(coHost.user);
       if (coHostUser) {
@@ -238,7 +255,7 @@ exports.createEvent = async (req, res) => {
           coHostUser,
           createdEvent,
           eventLink,
-          true
+          true,
         );
       }
     }
@@ -557,40 +574,49 @@ exports.attendEventStatus = async (req, res) => {
       attendEvent: 1,
     };
 
-    let findGroup = {
+    // Vérifier si le groupe de chat existe pour cet événement
+    let checkGroupHas = await Models.groupChatModel.findOne({
       eventId: req.body.eventId,
-    };
-    var checkGroupHas = await Models.groupChatModel.findOne(findGroup);
+    });
+    if (!checkGroupHas) {
+      return res
+        .status(404)
+        .json({
+          status: false,
+          message: "Group chat not found for the event.",
+        });
+    }
+
+    // Vérifier si l'utilisateur participe déjà à l'événement
     let findData = await Models.eventAttendesUserModel.findOne(objToSave);
+
     if (!findData) {
+      // Si l'utilisateur ne participe pas encore, l'ajouter
       let save = await Models.eventAttendesUserModel.create(objToSave);
 
-      if (checkGroupHas) {
-        const update = {
-          $addToSet: {
-            users: req.user._id, // Changed data.userId to req.user._id
-          },
-        };
-        await Models.groupChatModel.findByIdAndUpdate(
-          checkGroupHas._id,
-          update,
-          { new: true }, // This option returns the updated document
-        );
-      }
+      // Ajouter l'utilisateur au groupe de chat
+      await Models.groupChatModel.findByIdAndUpdate(
+        checkGroupHas._id,
+        { $addToSet: { users: req.user._id } }, // Ajoute l'utilisateur au chat
+        { new: true }, // Retourner le document mis à jour
+      );
+
       return helper.success(
         res,
         "Event attendees confirmation sent successfully",
         save,
       );
     } else {
+      // Si l'utilisateur participe déjà et souhaite annuler, le retirer
       let save = await Models.eventAttendesUserModel.deleteOne(objToSave);
-      if (checkGroupHas) {
-        await Models.groupChatModel.findByIdAndUpdate(
-          checkGroupHas._id,
-          { $pull: { users: req.user._id } }, // Changed data.userId to req.user._id
-          { new: true },
-        );
-      }
+
+      // Retirer l'utilisateur du groupe de chat
+      await Models.groupChatModel.findByIdAndUpdate(
+        checkGroupHas._id,
+        { $pull: { users: req.user._id } }, // Retirer l'utilisateur du chat
+        { new: true },
+      );
+
       return helper.success(
         res,
         "Event attendees confirmation deleted successfully",
@@ -598,9 +624,13 @@ exports.attendEventStatus = async (req, res) => {
       );
     }
   } catch (error) {
-    return res.status(401).json({ status: false, message: error.message });
+    console.error("Error handling event attendance status:", error);
+    return res
+      .status(500)
+      .json({ status: false, message: "Internal server error." });
   }
 };
+
 exports.favouriteEventStatus = async (req, res) => {
   try {
     let objToSave = {

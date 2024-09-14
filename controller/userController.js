@@ -3079,6 +3079,7 @@ module.exports = {
           $or: [
             { user: req.user._id },
             { coHosts: { $in: [req.user._id] } },
+            { attendees: { $in: [req.user._id] } },
             { guests: { $in: [req.user._id] } },
           ],
           "details.includeChat": true, // Filtrer les événements où le chat est activé
