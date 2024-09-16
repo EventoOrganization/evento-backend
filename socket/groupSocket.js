@@ -409,6 +409,7 @@ module.exports = function (io) {
     });
     //Message send //Test pass
     socket.on("send_message", async function (data) {
+      console.log("send_message", data);
       try {
         if (data.groupId) {
           let checkChatConstant = await Models.chatconstant.findOne({

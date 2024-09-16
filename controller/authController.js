@@ -2,6 +2,7 @@
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const User = require("../models/userModel");
+const Models = require("../models");
 const { JWT_SECRET_KEY } = process.env;
 const { sendOTPEmail } = require("../helper/emailService");
 exports.signup = async (req, res) => {
@@ -12,7 +13,7 @@ exports.signup = async (req, res) => {
     if (existingUser) {
       return res.status(400).json({ message: "Email is already in use." });
     }
-    const tempGuest = await TempGuest.findOne({ email });
+    const tempGuest = await Models.tempGuestModel.findOne({ email });
     // Generates a random 6-digit OTP
     const otpCode = Math.floor(100000 + Math.random() * 900000);
     const otpExpires = Date.now() + 10 * 60 * 1000;

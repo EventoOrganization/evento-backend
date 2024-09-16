@@ -67,6 +67,7 @@ exports.privateConversations = async (req, res) => {
 };
 
 exports.saveMessage = async (req, res) => {
+  console.log("req.body", req.body);
   try {
     const { eventId, receiverId, senderId, message, message_type } = req.body;
     let messages;
