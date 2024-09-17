@@ -34,8 +34,8 @@ module.exports = {
           message: "User not found or session expired",
         });
       }
-      req.user = existingUser; // Attache l'utilisateur à la requête pour une utilisation ultérieure
-      next(); // Passe au middleware suivant
+      req.user = existingUser;
+      next();
     } catch (error) {
       console.error("JWT verification error:", error.message);
       return res.status(403).json({

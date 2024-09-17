@@ -567,67 +567,24 @@ exports.deleteEvent = async (req, res) => {
   }
 };
 exports.attendEventStatus = async (req, res) => {
+  console.log("req.body", req.body);
   try {
     let objToSave = {
+      attendEvent: 1,
       eventId: req.body.eventId,
       userId: req.user._id,
-      attendEvent: 1,
     };
-
-    // Vérifier si le groupe de chat existe pour cet événement
-    let checkGroupHas = await Models.groupChatModel.findOne({
-      eventId: req.body.eventId,
-    });
-    if (!checkGroupHas) {
-      return res
-        .status(404)
-        .json({
-          status: false,
-          message: "Group chat not found for the event.",
-        });
-    }
-
-    // Vérifier si l'utilisateur participe déjà à l'événement
+    //Firstly find if exist then delete other wise create
     let findData = await Models.eventAttendesUserModel.findOne(objToSave);
-
     if (!findData) {
-      // Si l'utilisateur ne participe pas encore, l'ajouter
       let save = await Models.eventAttendesUserModel.create(objToSave);
-
-      // Ajouter l'utilisateur au groupe de chat
-      await Models.groupChatModel.findByIdAndUpdate(
-        checkGroupHas._id,
-        { $addToSet: { users: req.user._id } }, // Ajoute l'utilisateur au chat
-        { new: true }, // Retourner le document mis à jour
-      );
-
-      return helper.success(
-        res,
-        "Event attendees confirmation sent successfully",
-        save,
-      );
+      return helper.success(res, "Event Favourite", save);
     } else {
-      // Si l'utilisateur participe déjà et souhaite annuler, le retirer
       let save = await Models.eventAttendesUserModel.deleteOne(objToSave);
-
-      // Retirer l'utilisateur du groupe de chat
-      await Models.groupChatModel.findByIdAndUpdate(
-        checkGroupHas._id,
-        { $pull: { users: req.user._id } }, // Retirer l'utilisateur du chat
-        { new: true },
-      );
-
-      return helper.success(
-        res,
-        "Event attendees confirmation deleted successfully",
-        save,
-      );
+      return helper.success(res, "Event not favourite", save);
     }
   } catch (error) {
-    console.error("Error handling event attendance status:", error);
-    return res
-      .status(500)
-      .json({ status: false, message: "Internal server error." });
+    return res.status(401).json({ status: false, message: error.message });
   }
 };
 

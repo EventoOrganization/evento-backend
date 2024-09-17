@@ -17,7 +17,7 @@ var usersRouter = require("./routes/users");
 const cmsRoutes = require("./routes/cmsRoutes ");
 const chatRoutes = require("./routes/chatRoutes");
 var authRoutes = require("./routes/authRoutes");
-var eventRoutes = require("./routes/eventRoutes");
+const eventRoutes = require("./routes/eventRoutes");
 var profileRoutes = require("./routes/profileRoutes");
 const cors = require("cors");
 // Create an instance of the Express application
