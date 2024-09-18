@@ -18,7 +18,7 @@ exports.getLoggedUserProfile = async (req, res) => {
       .select(
         "firstName lastName username email email_verified countryCode phoneNumber phone_verified address bio URL DOB profileImage interests socialLinks role devices",
       )
-      .populate({ path: "interests", select: "_id username" });
+      .populate({ path: "interests", select: "_id name" });
 
     if (!userInfo) {
       console.error("User not found in the database for ID:", req.user._id);
@@ -284,6 +284,8 @@ exports.updateProfile = async (req, res) => {
       );
 
       updateData.socialLinks = uniqueLinks;
+    } else {
+      updateData.socialLinks = null;
     }
 
     // Gestion des intérêts
@@ -312,6 +314,8 @@ exports.updateProfile = async (req, res) => {
         .filter(Boolean);
 
       updateData.interests = validInterests;
+    } else {
+      updateData.interests = null;
     }
 
     const updatedUser = await Models.userModel.findByIdAndUpdate(
