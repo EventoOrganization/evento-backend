@@ -25,7 +25,6 @@ exports.getLoggedUserProfile = async (req, res) => {
       return res.status(404).json({ status: false, message: "User not found" });
     }
 
-    // Log for all events being fetched
     const allEvents = await Event.find({})
       .populate({
         path: "user",
@@ -62,48 +61,30 @@ exports.getLoggedUserProfile = async (req, res) => {
       };
     });
 
-    const filteredEvents = differentiatedEvents.filter((event) => {
-      return event.isGoing || event.isFavourite || event.isHosted;
+    const hostedEvents = differentiatedEvents.filter((event) => event.isHosted);
+
+    const activeEvents = differentiatedEvents.filter(
+      (event) => event.isGoing || event.isFavourite,
+    );
+    const upcomingEvents = activeEvents.filter(
+      (event) => new Date(event.details.endDate) >= new Date(),
+    );
+    const pastEvents = activeEvents.filter(
+      (event) => new Date(event.details.endDate) < new Date(),
+    );
+
+    let obj = {
+      userInfo,
+      upcomingEvents,
+      pastEvents,
+      hostedEvents,
+    };
+
+    return res.status(200).json({
+      status: true,
+      message: "Profile retrieved successfully",
+      data: obj,
     });
-
-    const filteredUpcomingEvents = filteredEvents.filter((event) => {
-      const endDate = new Date(event.details.endDate);
-      return endDate >= new Date();
-    });
-
-    const filteredPastEvents = filteredEvents.filter((event) => {
-      const endDate = new Date(event.details.endDate);
-      return endDate < new Date();
-    });
-
-    const filteredUpcomingEventsAttened = filteredEvents.filter((event) => {
-      return event.isGoing || event.isFavourite;
-    });
-
-    let countFollowing = await Models.userFollowModel.countDocuments({
-      follower: req.user._id,
-    });
-
-    let countTotalEventIAttended =
-      await Models.eventAttendesUserModel.countDocuments({
-        userId: req.user._id,
-      });
-
-    userInfo._doc.following = countFollowing;
-    userInfo._doc.totalEventAttended = countTotalEventIAttended;
-
-    let obj = {};
-    obj.userInfo = userInfo;
-    obj.upcomingEvents = filteredUpcomingEvents;
-    obj.pastEvents = filteredPastEvents;
-    obj.filteredUpcomingEventsAttened = filteredUpcomingEventsAttened;
-
-    if (userInfo.password) {
-      delete userInfo.password;
-      delete userInfo.otp;
-    }
-
-    return helper.success(res, "Profile retrieved successfully", obj);
   } catch (error) {
     console.error("Error in getLoggedUserProfile:", error);
     return res
@@ -111,6 +92,7 @@ exports.getLoggedUserProfile = async (req, res) => {
       .json({ status: false, message: "Internal server error" });
   }
 };
+
 exports.getUserProfileById = async (req, res) => {
   try {
     const userId = req.params.userId;
