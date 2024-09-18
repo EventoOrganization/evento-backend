@@ -65,9 +65,8 @@ exports.privateConversations = async (req, res) => {
       .json({ status: false, message: "Internal server error" });
   }
 };
-
 exports.saveMessage = async (req, res) => {
-  console.log("req.body", req.body);
+  console.log("SAVE MESSAGE req.body", req.body);
   try {
     const { eventId, receiverId, senderId, message, message_type } = req.body;
     let messages;

@@ -27,8 +27,11 @@ exports.getLoggedUserProfile = async (req, res) => {
 
     // Log for all events being fetched
     const allEvents = await Event.find({})
-      .populate({ path: "user", select: "firstName lastName username" })
-      .populate({ path: "interests", select: "_id username profileImage" })
+      .populate({
+        path: "user",
+        select: "firstName lastName username profileImage",
+      })
+      .populate({ path: "interests", select: "_id name" })
       .populate({
         path: "guests",
         select: "firstName lastName username profileImage",
