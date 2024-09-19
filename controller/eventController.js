@@ -88,9 +88,6 @@ exports.updateGuestsAllowFriend = async (req, res) => {
   try {
     const eventId = req.params.id;
     const { guestsAllowFriend } = req.body;
-    console.log("*************eventId*******", eventId);
-    console.log("*************user*******", req.user._id);
-    console.log("*************gusetAllowFriend*******", guestsAllowFriend);
     // Vérifiez que l'utilisateur qui fait la requête est l'hôte de l'événement
     const event = await Event.findById(eventId);
 
@@ -128,8 +125,7 @@ exports.updateGuestsAllowFriend = async (req, res) => {
   }
 };
 exports.createEvent = async (req, res) => {
-  // console.log("req.body", req.body);
-  console.log("req.files", req.files);
+  console.log("*************req.body*******", req.body);
   try {
     const {
       title,
@@ -147,58 +143,45 @@ exports.createEvent = async (req, res) => {
       guests,
       interests,
       uploadedMedia,
-      predefinedMedia,
       questions,
       additionalField,
       URL,
       includeChat,
     } = req.body;
-    if (
-      !title ||
-      !username ||
-      !eventType ||
-      !mode ||
-      !date ||
-      !endDate ||
-      !startTime ||
-      !endTime ||
-      !description
-    ) {
-      return res
-        .status(400)
-        .json({ status: false, message: "Missing required fields" });
-    }
-    const coHosts = req.body.coHosts.map((coHost) => ({
-      user: coHost.userId,
-      status: coHost.status || "read-only",
-    }));
-    let initialMedia = [];
 
-    // Pour les images
+    let coHosts = [];
+
+    // Step 1: Create the coHosts and collect their ObjectIds
+    if (Array.isArray(req.body.coHosts) && req.body.coHosts.length > 0) {
+      coHosts = await Promise.all(
+        req.body.coHosts.map(async (coHost) => {
+          const newCohost = await Models.coHostModel.create({
+            user_id: coHost.userId,
+            event_id: req.body.eventId, // Make sure event_id is available at this point
+            status: coHost.status || "read-only",
+          });
+          return newCohost.user_id; // Return the ObjectId of the co-host
+        }),
+      );
+    }
+
+    // Handle media for event
+    let initialMedia = [];
     const imageUrls = uploadedMedia
       .filter((media) => media.type === "image")
-      .map((media) => ({
-        url: media.url,
-        type: "image",
-      }));
-
-    // Pour les vidéos
+      .map((media) => ({ url: media.url, type: "image" }));
     const videoUrls = uploadedMedia
       .filter((media) => media.type === "video")
-      .map((media) => ({
-        url: media.url,
-        type: "video",
-      }));
-
+      .map((media) => ({ url: media.url, type: "video" }));
     initialMedia = [...imageUrls, ...videoUrls];
+
+    // Save the event
     const objToSave = {
       user: req.user._id,
       title,
       eventType,
       details: {
         username,
-        // images: imageUrls,
-        // videos: videoUrls,
         loc: {
           type: "Point",
           coordinates: [longitude, latitude],
@@ -214,17 +197,38 @@ exports.createEvent = async (req, res) => {
         includeChat,
         timeSlots: req.body.timeSlots,
       },
-      initialMedia: initialMedia,
-      coHosts: coHosts,
-      guests: guests,
-      interests: interests,
-      questions: questions,
-      additionalField: additionalField,
+      initialMedia,
+      coHosts,
+      guests,
+      interests,
+      questions,
+      additionalField,
     };
     const createdEvent = await Models.eventModel.create(objToSave);
 
     const eventLink = `${process.env.CLIENT_URL}/event/${createdEvent._id}`;
     const usernameFrom = req.user.username;
+
+    // Step 2: Send email to each co-host
+    for (const coHostId of coHosts) {
+      const coHostUser = await Models.userModel.findById(coHostId); // Fetch co-host details using user_id
+      if (coHostUser) {
+        const emailTo = coHostUser.email;
+        const usernameTo = coHostUser.username;
+        console.log(
+          `Sending co-host invitation email to ${usernameTo} at ${emailTo} from ${usernameFrom}`,
+        );
+        await sendEventInviteEmail(
+          req.user,
+          coHostUser,
+          createdEvent,
+          eventLink,
+          true,
+        );
+      }
+    }
+
+    // Step 3: Handle group chat creation if necessary
     if (includeChat === "true") {
       const initialUsers = [req.user.id, ...coHosts];
       const saveData = {
@@ -239,26 +243,9 @@ exports.createEvent = async (req, res) => {
         date: moment().format("YYYY-MM-DD"),
         time: moment().format("LTS"),
       };
-
       await Models.groupChatModel.create(saveData);
     }
-    for (const coHost of coHosts) {
-      const coHostUser = await Models.userModel.findById(coHost.user);
-      if (coHostUser) {
-        const emailTo = coHostUser.email;
-        const usernameTo = coHostUser.username;
-        console.log(
-          `Sending co-host invitation email to ${usernameTo} at ${emailTo} from ${usernameFrom} at ${eventLink}`,
-        );
-        await sendEventInviteEmail(
-          req.user,
-          coHostUser,
-          createdEvent,
-          eventLink,
-          true,
-        );
-      }
-    }
+
     return res.status(201).json({
       status: true,
       message: "Event created successfully",
@@ -271,6 +258,7 @@ exports.createEvent = async (req, res) => {
       .json({ status: false, message: "Internal server error" });
   }
 };
+
 exports.getEventById = async (req, res) => {
   try {
     const eventId = req.params.id;

@@ -49,6 +49,21 @@ module.exports = function (io) {
         throw error;
       }
     });
+    socket.on("sendMessage", async (data) => {
+      try {
+        const { senderId, receiverId, message, messageType } = data;
+        let newMessage = await Message.create({
+          senderId,
+          reciverId: receiverId,
+          message,
+          message_type: messageType,
+          // additional fields as necessary
+        });
+        socket.broadcast.to(receiverId).emit("receiveMessage", newMessage);
+      } catch (error) {
+        console.error("Error sending message:", error);
+      }
+    });
     //this is for create group in data we want adminId and arrays of userIds  test pass
     socket.on("create_group", async function (data) {
       try {
