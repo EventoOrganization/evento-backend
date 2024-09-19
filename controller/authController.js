@@ -243,44 +243,50 @@ exports.resetPassword = async (req, res) => {
 };
 exports.deleteAccount = async (req, res) => {
   try {
-    // Get the user ID from the authenticated session
     const userId = req.user._id;
-
-    // Find the user by their ID
     const user = await User.findById(userId);
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
 
+    // Log models to check if they're correctly imported
+    console.log(Models);
+
     // Delete associated records
     await Promise.all([
-      // Delete event attendees
-      Models.eventAttendesUserModel.deleteMany({ userId }),
+      Models.eventAttendesUserModel
+        ? Models.eventAttendesUserModel.deleteMany({ userId })
+        : console.error("eventAttendesUserModel is undefined"),
 
-      // Delete event favorites
-      Models.eventFavouriteUserModel.deleteMany({ userId }),
+      Models.eventFavouriteUserModel
+        ? Models.eventFavouriteUserModel.deleteMany({ userId })
+        : console.error("eventFavouriteUserModel is undefined"),
 
-      // Delete event refusals
-      Models.eventRefuseModel.deleteMany({ userId }),
+      Models.eventRefuseModel
+        ? Models.eventRefuseModel.deleteMany({ userId })
+        : console.error("eventRefuseModel is undefined"),
 
-      // Delete co-host roles
-      Models.coHostModel.deleteMany({ userId }),
+      Models.coHostModel
+        ? Models.coHostModel.deleteMany({ userId })
+        : console.error("coHostModel is undefined"),
 
-      // Delete any social links associated with the user
-      Models.userSocialLinkModel.deleteMany({ userId }),
+      Models.userSocialLinkModel
+        ? Models.userSocialLinkModel.deleteMany({ userId })
+        : console.error("userSocialLinkModel is undefined"),
 
-      // Delete user-related sessions, notifications, messages, etc.
-      Models.userSessionModel.deleteMany({ userId }),
-      Models.userMessageModel.deleteMany({ userId }),
+      Models.userSessionModel
+        ? Models.userSessionModel.deleteMany({ userId })
+        : console.error("userSessionModel is undefined"),
 
-      // You can add other related models as necessary
+      Models.userMessageModel
+        ? Models.userMessageModel.deleteMany({ userId })
+        : console.error("userMessageModel is undefined"),
     ]);
 
     // Delete the user from the database
     await User.findByIdAndDelete(userId);
 
-    // Optionally, clear the user session or invalidate the JWT
-    // For example, you could clear the auth token (optional)
+    // Clear the user session
     res.clearCookie("token");
 
     return res
