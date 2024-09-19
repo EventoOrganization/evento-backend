@@ -123,6 +123,7 @@ exports.getUserProfileById = async (req, res) => {
     const allEvents = await Event.find({
       $or: [{ guests: userId }, { coHosts: userId }, { user: userId }],
     })
+      .populate("interests", "_id name")
       .populate("user", "firstName lastName username profileImage")
       .populate("guests.user", "firstName lastName username profileImage")
       .populate("coHosts.user", "firstName lastName username profileImage")
