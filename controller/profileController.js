@@ -72,6 +72,17 @@ exports.getLoggedUserProfile = async (req, res) => {
     const pastEvents = activeEvents.filter(
       (event) => new Date(event.details.endDate) < new Date(),
     );
+    let countFollowing = await Models.userFollowModel.countDocuments({
+      follower: req.user._id,
+    });
+
+    let countTotalEventIAttended =
+      await Models.eventAttendesUserModel.countDocuments({
+        userId: req.user._id,
+      });
+
+    userInfo._doc.following = countFollowing;
+    userInfo._doc.totalEventAttended = countTotalEventIAttended;
 
     let obj = {
       userInfo,
@@ -97,7 +108,10 @@ exports.getUserProfileById = async (req, res) => {
   try {
     const userId = req.params.userId;
     const userInfo = await User.findById(userId)
-      .select("firstName lastName name email profileImage bio URL socialLinks")
+      .select(
+        "firstName lastName username email profileImage bio URL socialLinks interests",
+      )
+      .populate("interests", "_id name")
       .exec();
 
     if (!userInfo) {
@@ -106,42 +120,61 @@ exports.getUserProfileById = async (req, res) => {
         .json({ status: false, message: "User not found." });
     }
 
-    // Récupérer les événements auxquels l'utilisateur a participé, qu'il a favorisés ou hébergés
     const allEvents = await Event.find({
-      $or: [
-        { "guests.user": userId },
-        { "coHosts.user": userId },
-        { user: userId },
-      ],
+      $or: [{ guests: userId }, { coHosts: userId }, { user: userId }],
     })
-      .populate({
-        path: "user",
-        select: "firstName lastName name profileImage",
-      })
-      .populate({
-        path: "guests.user",
-        select: "firstName lastName name profileImage",
-      })
-      .populate({
-        path: "coHosts.user",
-        select: "firstName lastName name profileImage",
-      })
+      .populate("user", "firstName lastName username profileImage")
+      .populate("guests.user", "firstName lastName username profileImage")
+      .populate("coHosts.user", "firstName lastName username profileImage")
       .exec();
 
-    // Filtrer les événements à venir et passés, etc.
-    const upcomingEvents = allEvents.filter(
+    const attendEvents = await Models.eventAttendesUserModel
+      .find({ userId: userId })
+      .exec();
+
+    const favouriteEvents = await Models.eventFavouriteUserModel
+      .find({ userId: userId, favourite: 1 })
+      .exec();
+    let attendEventsIds = attendEvents.map((e) => e.eventId.toString());
+    let favouriteEventsIds = favouriteEvents.map((e) => e.eventId.toString());
+
+    const differentiatedEvents = allEvents.map((event) => {
+      return {
+        ...event._doc,
+        isGoing: attendEventsIds.includes(event._id.toString()),
+        isFavourite: favouriteEventsIds.includes(event._id.toString()),
+        isHosted: event.user._id.toString() === userId.toString(),
+      };
+    });
+    const hostedEvents = differentiatedEvents.filter((event) => event.isHosted);
+
+    const activeEvents = differentiatedEvents.filter(
+      (event) => event.isGoing || event.isFavourite,
+    );
+    const upcomingEvents = activeEvents.filter(
       (event) => new Date(event.details.endDate) >= new Date(),
     );
-    const pastEvents = allEvents.filter(
+    const pastEvents = activeEvents.filter(
       (event) => new Date(event.details.endDate) < new Date(),
     );
+    let countFollowing = await Models.userFollowModel.countDocuments({
+      follower: userId,
+    });
+
+    let countTotalEventIAttended =
+      await Models.eventAttendesUserModel.countDocuments({
+        userId: userId,
+      });
+
+    userInfo._doc.following = countFollowing;
+    userInfo._doc.totalEventAttended = countTotalEventIAttended;
 
     let obj = {
       userInfo,
       upcomingEvents,
       pastEvents,
+      hostedEvents,
     };
-    console.log(obj);
     return res.status(200).json({
       status: true,
       message: "User profile fetched successfully",
