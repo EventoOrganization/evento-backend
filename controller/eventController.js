@@ -83,6 +83,59 @@ exports.addGuests = async (req, res) => {
     res.status(500).json({ message: "Server error." });
   }
 };
+exports.unGuestUser = async (req, res) => {
+  console.log("body", req.body);
+  try {
+    const { userId, eventId } = req.body;
+
+    // Check if the user ID and event ID are provided
+    if (!userId || !eventId) {
+      return res.status(400).json({
+        status: false,
+        message: "User ID and Event ID are required",
+      });
+    }
+
+    // Find the event by event ID
+    const event = await Event.findById(eventId);
+    if (!event) {
+      return res.status(404).json({
+        status: false,
+        message: "Event not found",
+      });
+    }
+
+    // Check if the user is in the 'guests' or 'tempGuests' array of the event
+    const userIndex = event.guests.indexOf(userId);
+    const tempGuestIndex = event.tempGuests.indexOf(userId);
+
+    // If the user is in the guests array, remove them
+    if (userIndex !== -1) {
+      event.guests.splice(userIndex, 1);
+    }
+
+    // If the user is in the tempGuests array, remove them
+    if (tempGuestIndex !== -1) {
+      event.tempGuests.splice(tempGuestIndex, 1);
+    }
+
+    // Save the event with the updated guests/tempGuests
+    await event.save();
+
+    return res.status(200).json({
+      status: true,
+      message: "User is no longer a guest for this event",
+    });
+  } catch (error) {
+    console.error("Error in un-guest user:", error);
+    return res.status(500).json({
+      status: false,
+      message: "An error occurred while updating the event",
+      error: error.message,
+    });
+  }
+};
+
 exports.updateGuestsAllowFriend = async (req, res) => {
   console.log("*************req.body*******", req.body);
   try {
@@ -258,7 +311,6 @@ exports.createEvent = async (req, res) => {
       .json({ status: false, message: "Internal server error" });
   }
 };
-
 exports.getEventById = async (req, res) => {
   try {
     const eventId = req.params.id;

@@ -243,14 +243,39 @@ exports.resetPassword = async (req, res) => {
 };
 exports.deleteAccount = async (req, res) => {
   try {
-    // Find the user by their ID (assuming you have their ID from the authenticated session)
+    // Get the user ID from the authenticated session
     const userId = req.user._id;
 
-    // Check if the user exists
+    // Find the user by their ID
     const user = await User.findById(userId);
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
+
+    // Delete associated records
+    await Promise.all([
+      // Delete event attendees
+      Models.eventAttendesUserModel.deleteMany({ userId }),
+
+      // Delete event favorites
+      Models.eventFavouriteUserModel.deleteMany({ userId }),
+
+      // Delete event refusals
+      Models.eventRefuseModel.deleteMany({ userId }),
+
+      // Delete co-host roles
+      Models.coHostModel.deleteMany({ userId }),
+
+      // Delete any social links associated with the user
+      Models.userSocialLinkModel.deleteMany({ userId }),
+
+      // Delete user-related sessions, notifications, messages, etc.
+      Models.userSessionModel.deleteMany({ userId }),
+      Models.userNotificationModel.deleteMany({ userId }),
+      Models.userMessageModel.deleteMany({ userId }),
+
+      // You can add other related models as necessary
+    ]);
 
     // Delete the user from the database
     await User.findByIdAndDelete(userId);
@@ -259,7 +284,9 @@ exports.deleteAccount = async (req, res) => {
     // For example, you could clear the auth token (optional)
     res.clearCookie("token");
 
-    return res.status(200).json({ message: "Account deleted successfully" });
+    return res
+      .status(200)
+      .json({ message: "Account and related data deleted successfully" });
   } catch (error) {
     console.error("Error deleting account:", error);
     return res
