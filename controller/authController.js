@@ -3,8 +3,10 @@ const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const User = require("../models/userModel");
 const Models = require("../models");
+const crypto = require("crypto");
 const { JWT_SECRET_KEY } = process.env;
 const { sendOTPEmail } = require("../helper/emailService");
+const { token } = require("morgan");
 exports.signup = async (req, res) => {
   const { email, password } = req.body;
 
@@ -133,5 +135,135 @@ exports.logout = async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ message: "Logout error", error });
+  }
+};
+exports.forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+    const user = await User.findOne({ email });
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    const otpCode = Math.floor(100000 + Math.random() * 900000);
+    const otpExpires = Date.now() + 10 * 60 * 1000;
+
+    user.email_otp = otpCode;
+    user.otpExpires = otpExpires;
+    await user.save();
+
+    await sendOTPEmail(email, otpCode);
+
+    return res.status(200).json({
+      message: "OTP sent to your email. Please check your inbox.",
+    });
+  } catch (error) {
+    console.error("Error in forgotPassword:", error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};
+exports.verifyOTP = async (req, res) => {
+  const { otpCode, flowType } = req.body;
+  console.log(otpCode, flowType, req.body);
+  try {
+    // Find user by OTP and check expiration
+    const user = await User.findOne({
+      email_otp: otpCode,
+      otpExpires: { $gt: Date.now() },
+    });
+
+    if (!user) {
+      return res.status(400).json({ message: "Invalid OTP or expired" });
+    }
+
+    // Handle different types of verification
+    switch (flowType) {
+      case "signup":
+        user.email_verified = true;
+        break;
+      case "forgot-password":
+        const resetPasswordToken = crypto.randomBytes(20).toString("hex");
+        user.resetPasswordToken = resetPasswordToken;
+        user.resetPasswordExpires = Date.now() + 3600000;
+        break;
+      default:
+        return res.status(400).json({ message: "Invalid verification type" });
+    }
+
+    // Clear OTP and expiration
+    user.email_otp = null;
+    user.otpExpires = null;
+
+    // Save the user after verification
+    await user.save();
+
+    return res.status(200).json({
+      message: `${
+        flowType.charAt(0).toUpperCase() + flowType.slice(1)
+      } verified successfully.`,
+      body: {
+        _id: user._id,
+        email: user.email,
+        token: user.resetPasswordToken,
+      },
+    });
+  } catch (error) {
+    console.error("OTP verification error:", error);
+    return res.status(500).json({ message: "Server error" });
+  }
+};
+exports.resetPassword = async (req, res) => {
+  const { password, token } = req.body; // Receive the token here
+
+  try {
+    const user = await User.findOne({
+      resetPasswordToken: token,
+      resetPasswordExpires: { $gt: Date.now() }, // Ensure token is still valid
+    });
+
+    if (!user) {
+      return res.status(400).json({ message: "Invalid or expired token" });
+    }
+    const hashedPassword = await bcrypt.hash(password, 10);
+    user.password = hashedPassword; // Set the new password (ensure it is hashed)
+    user.resetPasswordToken = null; // Clear the token
+    user.resetPasswordExpires = null; // Clear the expiration
+
+    await user.save();
+
+    return res
+      .status(200)
+      .json({ message: "Password has been reset successfully" });
+  } catch (error) {
+    console.error("Reset password error:", error);
+    return res
+      .status(500)
+      .json({ message: "Server error during password reset" });
+  }
+};
+exports.deleteAccount = async (req, res) => {
+  try {
+    // Find the user by their ID (assuming you have their ID from the authenticated session)
+    const userId = req.user._id;
+
+    // Check if the user exists
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Delete the user from the database
+    await User.findByIdAndDelete(userId);
+
+    // Optionally, clear the user session or invalidate the JWT
+    // For example, you could clear the auth token (optional)
+    res.clearCookie("token");
+
+    return res.status(200).json({ message: "Account deleted successfully" });
+  } catch (error) {
+    console.error("Error deleting account:", error);
+    return res
+      .status(500)
+      .json({ message: "Server error, unable to delete account" });
   }
 };
