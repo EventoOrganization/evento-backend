@@ -107,7 +107,6 @@ exports.getLoggedUserProfile = async (req, res) => {
       .json({ status: false, message: "Internal server error" });
   }
 };
-
 exports.getUserProfileById = async (req, res) => {
   try {
     const userId = req.params.userId;

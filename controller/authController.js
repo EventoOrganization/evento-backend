@@ -271,7 +271,6 @@ exports.deleteAccount = async (req, res) => {
 
       // Delete user-related sessions, notifications, messages, etc.
       Models.userSessionModel.deleteMany({ userId }),
-      Models.userNotificationModel.deleteMany({ userId }),
       Models.userMessageModel.deleteMany({ userId }),
 
       // You can add other related models as necessary
