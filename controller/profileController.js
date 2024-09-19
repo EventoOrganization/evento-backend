@@ -6,6 +6,7 @@ const mongoose = require("mongoose");
 const User = require("../models/userModel");
 const Event = require("../models/eventModel");
 exports.getLoggedUserProfile = async (req, res) => {
+  console.log("GET LOGGED USER PROFILE", req.user);
   try {
     if (!req.user || !req.user._id) {
       console.error("No user found in request");
@@ -53,11 +54,14 @@ exports.getLoggedUserProfile = async (req, res) => {
     let favouriteEventsIds = favouriteEvents.map((e) => e.eventId.toString());
 
     const differentiatedEvents = allEvents.map((event) => {
+      const isHosted = event.user
+        ? event.user._id.toString() === req.user._id.toString()
+        : false;
       return {
         ...event._doc,
         isGoing: attendEventsIds.includes(event._id.toString()),
         isFavourite: favouriteEventsIds.includes(event._id.toString()),
-        isHosted: event.user._id.toString() === req.user._id.toString(),
+        isHosted,
       };
     });
 
