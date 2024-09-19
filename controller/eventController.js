@@ -546,6 +546,7 @@ exports.deleteEvent = async (req, res) => {
         await Models.eventNotificationModel.deleteMany({
           eventId: req.params.id,
         });
+        await Models.groupChatModel.deleteOne({ eventId: req.params.id });
         return helper.success(res, "Event delete successfuly");
       }
     }
@@ -557,22 +558,44 @@ exports.deleteEvent = async (req, res) => {
 exports.attendEventStatus = async (req, res) => {
   console.log("req.body", req.body);
   try {
-    let objToSave = {
-      attendEvent: 1,
-      eventId: req.body.eventId,
-      userId: req.user._id,
+    const { eventId, userId, rsvpAnswers, attendStatus } = req.body;
+    const objToFind = {
+      eventId: eventId,
+      userId: userId,
     };
-    //Firstly find if exist then delete other wise create
-    let findData = await Models.eventAttendesUserModel.findOne(objToSave);
-    if (!findData) {
-      let save = await Models.eventAttendesUserModel.create(objToSave);
-      return helper.success(res, "Event Favourite", save);
+
+    if (attendStatus) {
+      // If already going, toggle to not going and remove RSVP answers
+      await Models.eventAttendesUserModel.deleteOne(objToFind);
+      await Models.RSVPSubmission.deleteMany(objToFind); // Assuming RSVP answers are stored separately
+      return helper.success(
+        res,
+        "You are no longer marked as going to this event",
+      );
     } else {
-      let save = await Models.eventAttendesUserModel.deleteOne(objToSave);
-      return helper.success(res, "Event not favourite", save);
+      // If not going, mark as going and save RSVP answers
+      await Models.eventAttendesUserModel.create({
+        ...objToFind,
+        attendEvent: 1,
+      });
+
+      // Save RSVP responses if provided
+      if (rsvpAnswers && rsvpAnswers.length > 0) {
+        await Models.RSVPSubmission.create({
+          eventId: eventId,
+          userId: userId,
+          rsvpAnswers: rsvpAnswers.map((answer) => ({
+            questionId: answer.questionId,
+            answer: answer.answer,
+          })),
+        });
+      }
+
+      return helper.success(res, "You are now marked as going to this event");
     }
   } catch (error) {
-    return res.status(401).json({ status: false, message: error.message });
+    console.error("Error managing event attendance status:", error);
+    return res.status(500).json({ status: false, message: error.message });
   }
 };
 
