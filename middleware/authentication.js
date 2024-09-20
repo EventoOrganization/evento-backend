@@ -10,24 +10,20 @@ module.exports = {
   // Middleware pour authentifier via JWT
   authenticateJWT: async (req, res, next) => {
     const authHeader = req.headers.authorization;
-
     if (!authHeader) {
       return res.status(401).json({
         success: false,
         message: "Authorization header missing",
       });
     }
-
     const token = authHeader.split(" ")[1];
-
     try {
-      const decoded = jwt.verify(token, JWT_SECRET_KEY); // Vérification du token
-      console.log("🚀 ~ decoded:", decoded);
+      const decoded = jwt.verify(token, JWT_SECRET_KEY);
+      console.log("🔑 ~ decoded:", decoded);
       const existingUser = await users.findOne({
         _id: decoded.id,
         email: decoded.email,
       });
-      // console.log("🚀 ~ existingUser:", existingUser);
       if (!existingUser) {
         return res.status(403).json({
           success: false,

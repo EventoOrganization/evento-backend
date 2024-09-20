@@ -4,14 +4,14 @@ var chatController = require("../controller/chatController");
 const authenticateJWT = require("../middleware/authentication").authenticateJWT;
 
 router.get(
-  "/myEventsWithChat",
+  "/fetchConversations",
   authenticateJWT,
-  chatController.myEventsWithChat,
+  chatController.fetchConversations,
 );
 router.get(
-  "/privateConversations",
+  "/fetchMessages/:chatId",
   authenticateJWT,
-  chatController.privateConversations,
+  chatController.fetchMessages,
 );
-router.post("/saveMessage", chatController.saveMessage);
+router.post("/sendMessage", chatController.sendMessage);
 module.exports = router;

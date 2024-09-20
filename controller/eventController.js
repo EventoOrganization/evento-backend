@@ -3,6 +3,7 @@ const Models = require("../models");
 const helper = require("../helper/helper");
 const { sendEventInviteEmail } = require("../helper/emailService");
 const TempGuest = require("../models/tempGuestModel");
+const moment = require("moment");
 exports.addGuests = async (req, res) => {
   const eventId = req.params.id;
   const { guests, tempGuests, user } = req.body;
@@ -280,9 +281,10 @@ exports.createEvent = async (req, res) => {
         );
       }
     }
-
+    console.log("includeChat", includeChat);
     // Step 3: Handle group chat creation if necessary
-    if (includeChat === "true") {
+    if (includeChat) {
+      console.log("Creating group chat", createdEvent._id);
       const initialUsers = [req.user.id, ...coHosts];
       const saveData = {
         eventId: createdEvent._id,
@@ -296,7 +298,30 @@ exports.createEvent = async (req, res) => {
         date: moment().format("YYYY-MM-DD"),
         time: moment().format("LTS"),
       };
-      await Models.groupChatModel.create(saveData);
+
+      console.log("Creating group chat with data:", saveData); // Log to see the group chat data
+
+      try {
+        const createdGroupChat = await Models.groupChatModel.create(saveData);
+        console.log("Group Chat Created: ", createdGroupChat); // Log to verify group chat creation
+
+        // Créer une constante de chat et y attacher le groupId
+        const createdChatConstant = await Models.chatconstant.create({
+          senderId: req.user._id,
+          groupId: createdGroupChat._id, // Lier le groupe de chat ici
+          groupUserIds: initialUsers,
+          lastmessage: null,
+          is_delete: 0,
+          is_favourite: 0,
+          is_block: 0,
+          unreadCount: 0,
+          date: moment().format("YYYY-MM-DD"),
+          time: moment().format("LTS"),
+        });
+        console.log("Chat Constant Created: ", createdChatConstant); // Log to verify chat constant creation
+      } catch (error) {
+        console.error("Error creating group chat or chat constant:", error); // Catch and log any error
+      }
     }
 
     return res.status(201).json({
