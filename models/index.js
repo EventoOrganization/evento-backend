@@ -13,6 +13,7 @@ module.exports = {
   userFollowModel: require("./userFollow"),
   chatconstant: require("./chatConstantModel"),
   message: require("./messageModel"),
+  eventRefuseSchema: require("./eventRefuse"),
   socketuser: require("./socketUserModel"),
   ReportModel: require("./reportModel"),
   eventRefuseModel: require("./eventRefuse"),

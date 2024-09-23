@@ -430,7 +430,7 @@ exports.getEventById = async (req, res) => {
       .populate("guests", "username email profileImage")
       .populate("tempGuests", "username email")
       .exec();
-    console.log("Raw event data:", event);
+
     if (!event) {
       return res.status(404).json({
         status: false,
@@ -450,7 +450,38 @@ exports.getEventById = async (req, res) => {
     let isAdmin = false;
     let isHosted = false;
     let isCoHost = false;
+    const rsvpSubmissions = await Models.RSVPSubmission.find({ eventId })
+      .populate("userId", "username firstName lastName profileImage")
+      .exec();
+    const refusedReason = await Models.eventRefuseSchema
+      .find({ eventId })
+      .populate("userId", "username firstName lastName profileImage")
+      .exec();
 
+    const attachRSVP = (user) => {
+      if (!user) return null;
+      const userObject = user.toObject ? user.toObject() : user;
+      const rsvp = rsvpSubmissions.find((submission) =>
+        submission.userId.equals(user._id),
+      );
+      return {
+        ...userObject,
+        rsvpSubmission: rsvp || null,
+      };
+    };
+    const attachRefusedReason = (user) => {
+      if (!user) return null;
+
+      const userObject = user.toObject ? user.toObject() : user;
+      const reason = refusedReason.find(
+        (submission) => submission.userId.toString() === user._id.toString(),
+      );
+
+      return {
+        ...userObject,
+        refusedReason: reason || null,
+      };
+    };
     const refused = await Models.eventRefuseModel
       .find({ eventId, refused: 1 })
       .populate("userId", "username firstName lastName profileImage")
@@ -523,7 +554,9 @@ exports.getEventById = async (req, res) => {
 
       // Enrich attendees with follow status if attendees exist
       const enrichedAttendees = attendees
-        ? attendees.map((attendee) => addFollowStatus(attendee.userId))
+        ? attendees.map((attendee) =>
+            attachRSVP(addFollowStatus(attendee.userId)),
+          )
         : [];
 
       // Enrich favouritees with follow status if favouritees exist
@@ -533,7 +566,9 @@ exports.getEventById = async (req, res) => {
 
       // Enrich refused users with follow status if refused exist
       const enrichedRefused = refused
-        ? refused.map((refuse) => addFollowStatus(refuse.userId))
+        ? refused.map((refuse) =>
+            attachRefusedReason(addFollowStatus(refuse.userId)),
+          )
         : [];
 
       // Check statuses for the logged-in user
@@ -734,7 +769,7 @@ exports.attendEventStatus = async (req, res) => {
 
       // Save RSVP responses if provided
       if (rsvpAnswers && rsvpAnswers.length > 0) {
-        await Models.RSVPSubmission.create({
+        const response = await Models.RSVPSubmission.create({
           eventId: eventId,
           userId: userId,
           rsvpAnswers: rsvpAnswers.map((answer) => ({
@@ -742,8 +777,8 @@ exports.attendEventStatus = async (req, res) => {
             answer: answer.answer,
           })),
         });
+        console.log("rsvpanswer", response);
       }
-
       return helper.success(res, "You are now marked as going to this event");
     }
   } catch (error) {

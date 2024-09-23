@@ -2,7 +2,7 @@ const mongoose = require("mongoose");
 const Schema = mongoose.Schema;
 
 const rsvpAnswerSchema = new Schema({
-  question: String,
+  questionId: String,
   answer: [String],
 });
 
