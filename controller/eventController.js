@@ -167,7 +167,7 @@ exports.updateEventField = async (req, res) => {
       case "description":
         event.details.description = value;
         break;
-      case "type":
+      case "eventType":
         event.eventType = value;
         break;
       case "mode":
@@ -473,13 +473,13 @@ exports.getEventById = async (req, res) => {
       if (!user) return null;
 
       const userObject = user.toObject ? user.toObject() : user;
-      const reason = refusedReason.find(
-        (submission) => submission.userId.toString() === user._id.toString(),
+      const reason = refusedReason.find((submission) =>
+        submission.userId.equals(user._id),
       );
 
       return {
         ...userObject,
-        refusedReason: reason || null,
+        refusedReason: reason ? reason.reason : null,
       };
     };
     const refused = await Models.eventRefuseModel
@@ -809,16 +809,13 @@ exports.favouriteEventStatus = async (req, res) => {
 };
 exports.refusedEventStatus = async (req, res) => {
   try {
-    // Search for an existing refusal status by userId and eventId only
     let objToFind = {
       eventId: req.body.eventId,
       userId: req.user._id,
     };
-
-    // Find if the refusal status already exists
+    console.log("req.body", req.body);
     let findData = await Models.eventRefuseModel.findOne(objToFind);
 
-    // If it doesn't exist, create a new refusal record
     if (!findData) {
       let objToSave = {
         refused: 1,
@@ -830,7 +827,6 @@ exports.refusedEventStatus = async (req, res) => {
       let save = await Models.eventRefuseModel.create(objToSave);
       return helper.success(res, "Event Refused", save);
     } else {
-      // If it exists, delete the refusal status (toggle off)
       let save = await Models.eventRefuseModel.deleteOne(objToFind);
       return helper.success(res, "Event not Refused", save);
     }
