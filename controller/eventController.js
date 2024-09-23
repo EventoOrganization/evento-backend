@@ -4,6 +4,7 @@ const helper = require("../helper/helper");
 const { sendEventInviteEmail } = require("../helper/emailService");
 const TempGuest = require("../models/tempGuestModel");
 const moment = require("moment");
+const interest = require("../models/interestModel");
 exports.addGuests = async (req, res) => {
   const eventId = req.params.id;
   const { guests, tempGuests, user } = req.body;
@@ -136,6 +137,79 @@ exports.unGuestUser = async (req, res) => {
     });
   }
 };
+exports.updateEventField = async (req, res) => {
+  const { eventId } = req.params;
+  const { field, value } = req.body;
+
+  console.log(`Received request to update event with ID: ${eventId}`);
+  console.log(`Field to update: ${field}, New value: ${JSON.stringify(value)}`);
+
+  if (!field || value === undefined) {
+    console.log("Missing field or value in the request body");
+    return res.status(400).json({ message: "Missing field or value" });
+  }
+
+  try {
+    const event = await Models.eventModel.findById(eventId);
+    if (!event) {
+      console.log("Event not found");
+      return res.status(404).json({ message: "Event not found" });
+    }
+
+    switch (field) {
+      case "title":
+        event.title = value;
+        break;
+      case "locationData":
+        event.details.location = value.location;
+        event.details.loc.coordinates = [value.longitude, value.latitude];
+        break;
+      case "description":
+        event.details.description = value;
+        break;
+      case "type":
+        event.eventType = value;
+        break;
+      case "mode":
+        event.details.mode = value;
+        break;
+      case "interests":
+        event.interests = value.map((interest) => interest._id);
+        break;
+      case "url":
+        event.details.URLlink = value;
+        break;
+      case "questions":
+        if (Array.isArray(value)) {
+          event.questions = value.map((question) => ({
+            id: question.id || new Date().getTime().toString(),
+            question: question.question || "",
+            type: question.type || "text",
+            options: question.options || [],
+            required: question.required || false,
+          }));
+        } else {
+          console.log("Invalid format for questions");
+          return res
+            .status(400)
+            .json({ message: "Invalid format for questions" });
+        }
+        break;
+      case "createRSVP":
+        event.details.createRSVP = value;
+        break;
+      default:
+        console.log("Invalid field specified");
+        return res.status(400).json({ message: "Invalid field" });
+    }
+
+    await event.save();
+    res.status(200).json({ message: `${field} updated successfully`, event });
+  } catch (error) {
+    console.error("Error updating event:", error);
+    res.status(500).json({ message: "Server error", error });
+  }
+};
 
 exports.updateGuestsAllowFriend = async (req, res) => {
   console.log("*************req.body*******", req.body);
@@ -201,6 +275,7 @@ exports.createEvent = async (req, res) => {
       additionalField,
       URL,
       includeChat,
+      createRSVP,
     } = req.body;
 
     let coHosts = [];
@@ -249,6 +324,7 @@ exports.createEvent = async (req, res) => {
         description,
         URLlink: URL,
         includeChat,
+        createRSVP,
         timeSlots: req.body.timeSlots,
       },
       initialMedia,
@@ -354,7 +430,7 @@ exports.getEventById = async (req, res) => {
       .populate("guests", "username email profileImage")
       .populate("tempGuests", "username email")
       .exec();
-
+    console.log("Raw event data:", event);
     if (!event) {
       return res.status(404).json({
         status: false,

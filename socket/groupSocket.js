@@ -19,7 +19,7 @@ function removeElementFromArray(array, element) {
 module.exports = function (io) {
   io.on("connection", (socket) => {
     // http://192.168.1.210:8747/ when from forntend side start on it give this url instead of localhost give ipV4
-    console.log("connected user in groupSocket.js", socket.id);
+    // console.log("connected user in groupSocket.js", socket.id);
     // Listener for "connect_user" event, which is triggered by the client to initiate user connection handling.
     socket.on("connect_user", async function (data) {
       try {
