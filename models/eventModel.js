@@ -73,8 +73,9 @@ const eventSchema = new Schema(
     ],
     postEventMedia: [
       {
-        url: { type: String },
-        type: { type: String, enum: ["image", "video"] },
+        url: { type: String, required: true },
+        type: { type: String, enum: ["image", "video"], required: true },
+        isThumbnail: { type: Boolean, default: false },
       },
     ],
     interests: [

@@ -85,6 +85,54 @@ exports.addGuests = async (req, res) => {
     res.status(500).json({ message: "Server error." });
   }
 };
+exports.storePostEventMedia = async (req, res) => {
+  const { eventId, media } = req.body;
+
+  try {
+    const updatedEvent = await Event.findByIdAndUpdate(
+      eventId,
+      {
+        $push: { postEventMedia: media },
+      },
+      { new: true },
+    );
+
+    res.status(200).json({
+      success: true,
+      data: updatedEvent,
+      message: "Post-event media added successfully.",
+    });
+  } catch (error) {
+    console.error("Error adding post-event media:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to add post-event media",
+    });
+  }
+};
+
+exports.toggleUploadMedia = async (req, res) => {
+  const { eventId, allow } = req.body;
+  if (!eventId || typeof allow !== "boolean") {
+    return res.status(400).json({ message: "Invalid request data" });
+  }
+
+  try {
+    // Find the event by ID and update the allUploadPhotoVideo field
+    const event = await Event.findById(eventId);
+    if (!event) {
+      return res.status(404).json({ message: "Event not found" });
+    }
+
+    event.allUploadPhotoVideo = !allow;
+    await event.save();
+
+    return res.status(200).json({ success: true, event });
+  } catch (error) {
+    console.error("Error updating event:", error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};
 exports.unGuestUser = async (req, res) => {
   console.log("body", req.body);
   try {
@@ -210,7 +258,6 @@ exports.updateEventField = async (req, res) => {
     res.status(500).json({ message: "Server error", error });
   }
 };
-
 exports.updateGuestsAllowFriend = async (req, res) => {
   console.log("*************req.body*******", req.body);
   try {
@@ -786,7 +833,6 @@ exports.attendEventStatus = async (req, res) => {
     return res.status(500).json({ status: false, message: error.message });
   }
 };
-
 exports.favouriteEventStatus = async (req, res) => {
   try {
     let objToSave = {

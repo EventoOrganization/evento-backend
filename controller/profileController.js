@@ -6,7 +6,6 @@ const mongoose = require("mongoose");
 const User = require("../models/userModel");
 const Event = require("../models/eventModel");
 exports.getLoggedUserProfile = async (req, res) => {
-  console.log("GET LOGGED USER PROFILE", req.user);
   try {
     if (!req.user || !req.user._id) {
       console.error("No user found in request");

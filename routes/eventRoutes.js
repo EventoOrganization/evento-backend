@@ -16,6 +16,17 @@ router.put(
   authenticateJWT,
   eventController.updateEventField,
 );
+router.post(
+  "/storePostEventMedia",
+  authenticateJWT,
+  eventController.storePostEventMedia,
+);
+// toggle allowed postEventMedia
+router.patch(
+  "/toggle-upload-media",
+  authenticateJWT,
+  eventController.toggleUploadMedia,
+);
 
 // handle Guests
 router.patch("/addGuests/:id", authenticateJWT, eventController.addGuests);
