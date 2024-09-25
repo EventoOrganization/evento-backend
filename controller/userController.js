@@ -2,6 +2,10 @@ const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const JWT_SECRET_KEY = process.env.JWT_SECRET_KEY;
 const helper = require("../helper/helper");
+const {
+  sendBirthdayEmail,
+  sendEventReminderEmail,
+} = require("../helper/emailService");
 const Models = require("../models/index");
 const moment = require("moment");
 const SendOtp = require("../helper/sendOTP");
@@ -16,147 +20,258 @@ const fs = require("fs");
 const Event = require("../models/eventModel");
 const schedule = require("node-schedule");
 // const cronSchedule="* * * * *";
-const cronSchedule = "0 0 * * *"; // Runs every night at 12:00 AM
 // const cronSchedule1 = "*/10 * * * * *"; // Runs every 10 sec
+const cronSchedule = "0 0 * * *"; // Runs every night at 12:00 AM
 const cronSchedule1 = "01 0 * * *";
-
 schedule.scheduleJob(cronSchedule, async function () {
   try {
     const todayDate = moment().format("YYYY-MM-DD");
     const findBirthdayUsers = await Models.userModel.find({ DOB: todayDate });
 
-    for (const user of findBirthdayUsers) {
+    for (const birthdayUser of findBirthdayUsers) {
       const followUserList = await Models.userFollowModel.find({
-        following: user._id,
+        following: birthdayUser._id,
       });
 
       for (const followUser of followUserList) {
-        const followerUser = await Models.userModel.findOne({
+        const follower = await Models.userModel.findOne({
           _id: followUser.follower,
         });
-        console.log("followerUser", followerUser);
-        const senderDetail = await Models.userModel.findOne({ role: "admin" });
 
-        const birthdayPersonName =
-          user.name || `${user.firstName} ${user.lastName}`;
-        const senderName =
-          senderDetail.name ||
-          `${senderDetail.firstName} ${senderDetail.lastName}`;
-        const senderProfile = senderDetail.profileImage || senderDetail.image;
-        const deviceToken = followerUser.deviceToken;
-        const deviceType = followerUser.deviceType;
+        // Send birthday email
+        await sendBirthdayEmail(follower, birthdayUser);
 
-        const sendNotification = {
-          senderId: senderDetail._id.toString(),
-          senderName,
-          senderProfile,
-          reciverId: followerUser._id.toString(),
-          deviceType,
-          deviceToken,
-          message: `It's ${birthdayPersonName}'s birthday today!`,
-          notificationType: 4,
-        };
-
+        // Save the notification in the database (optional)
         const dataSave = {
-          senderId: senderDetail._id.toString(),
-          reciverId: followerUser._id.toString(),
-          message: `It's ${birthdayPersonName}'s birthday today!`,
+          senderId: birthdayUser._id.toString(),
+          reciverId: follower._id.toString(),
+          message: `It's ${
+            birthdayUser.username || "your friend's"
+          } birthday today!`,
           is_read: 0,
           isBirthday: 1,
         };
         await Models.followingNotificationModel.create(dataSave);
-        if (deviceToken) {
-          await helper.sendPushToIos(sendNotification);
-        }
       }
     }
   } catch (error) {
-    throw error;
+    console.error("Error in birthday reminder job:", error);
   }
 });
 
 schedule.scheduleJob(cronSchedule1, async function () {
   try {
-    const tomorrow = moment.utc().add(1, "days").startOf("day"); // Get UTC date for tomorrow at 00:00:00;
-    const pastEvents = await Models.eventModel.find({
-      "details.date": { $eq: tomorrow },
+    const twoDaysFromNow = moment.utc().add(2, "days").startOf("day");
+
+    const upcomingEvents = await Models.eventModel.find({
+      "details.date": { $eq: twoDaysFromNow },
     });
 
-    let attendEventUserId = [];
-    let favouriteEventUserId = [];
-    for (const eventIds of pastEvents) {
-      let eventName = eventIds.details.name;
-      let eventStartTime = eventIds.details.startTime;
-      const attendEvent = await Models.eventAttendesUserModel.find({
-        eventId: eventIds._id.toString(),
-      });
-      let favouriteEvent = await Models.eventFavouriteUserModel.find({
-        eventId: eventIds._id.toString(),
-      });
-      if (attendEvent && attendEvent.length > 0) {
-        attendEventUserId = attendEvent.map((a) => a.userId.toString());
-      }
-      if (favouriteEvent && favouriteEvent.length > 0) {
-        favouriteEventUserId = favouriteEvent.map((f) => f.userId.toString());
-      }
-      let userIds = [];
-      userIds.push(eventIds.user.toString());
-      const userIdsCoHost = eventIds.coHosts.map((e) => e.toString());
-      const userIdsGuest = eventIds.guests.map((e) => e.toString());
-      let combinedArray = [
-        ...userIds,
-        ...userIdsCoHost,
-        ...userIdsGuest,
-        ...attendEventUserId,
-        ...favouriteEventUserId,
-      ];
-      for (let i = 0; i < combinedArray.length - 1; i++) {
-        const senderDetail = await Models.userModel.findOne({ role: "admin" });
-        const senderName =
-          senderDetail.name ||
-          `${senderDetail.firstName} ${senderDetail.lastName}`;
-        const senderProfile = senderDetail.profileImage || senderDetail.image;
-        const reciverId = await Models.userModel.findOne({
-          _id: combinedArray[i],
-        });
-        const deviceToken = reciverId.deviceToken;
-        const deviceType = reciverId.deviceType;
-        const sendNotification = {
-          senderId: senderDetail._id.toString(),
-          senderName,
-          senderProfile,
-          reciverId: reciverId._id.toString(),
-          deviceType,
-          deviceToken,
-          message: ` Reminder you have ${eventName} tomorrow at ${eventStartTime}`,
-          eventId: eventIds._id,
-        };
+    for (const event of upcomingEvents) {
+      // Use a Set to store unique participant IDs and avoid duplicates
+      let uniqueParticipants = new Set();
 
-        const dataSave = {
-          senderId: senderDetail._id.toString(),
-          reciverId: reciverId._id.toString(),
-          message: ` Reminder you have ${eventName} tomorrow at ${eventStartTime}`,
-          is_read: 0,
-          eventId: eventIds._id,
-          eventName: eventIds?.details?.name,
-          data: eventIds?.details?.date,
-          startTime: eventIds?.details?.startTime,
-          endTime: eventIds?.details?.endTime,
-          location: eventIds?.details?.location,
-          longitude: eventIds?.details?.longitude,
-          latitude: eventIds?.details?.latitude,
-          createRSVP: eventIds?.details?.createRSVP,
-        };
-        await Models.eventNotificationModel.create(dataSave);
-        if (deviceToken) {
-          await helper.sendPushToIosForEvent(sendNotification);
+      // Collect attendees
+      const attendees = await Models.eventAttendesUserModel.find({
+        eventId: event._id.toString(),
+      });
+      if (attendees) {
+        attendees.forEach((attendee) =>
+          uniqueParticipants.add(attendee.userId.toString()),
+        );
+      }
+
+      // Collect favorites
+      const favorites = await Models.eventFavouriteUserModel.find({
+        eventId: event._id.toString(),
+      });
+      if (favorites) {
+        favorites.forEach((favorite) =>
+          uniqueParticipants.add(favorite.userId.toString()),
+        );
+      }
+
+      // Collect co-hosts
+      const coHosts = event.coHosts.map((coHost) => coHost.toString());
+      coHosts.forEach((coHostId) => uniqueParticipants.add(coHostId));
+
+      // Collect guests
+      const guests = event.guests.map((guest) => guest.toString());
+      guests.forEach((guestId) => uniqueParticipants.add(guestId));
+
+      // Also add the event host (owner)
+      uniqueParticipants.add(event.user.toString());
+
+      // Iterate over unique participants and send emails
+      for (const userId of uniqueParticipants) {
+        const recipient = await Models.userModel.findOne({ _id: userId });
+
+        if (recipient) {
+          // Send event reminder email
+          await sendEventReminderEmail(recipient, event);
+
+          // Save the notification in the database (optional)
+          const dataSave = {
+            senderId: event.user.toString(),
+            reciverId: recipient._id.toString(),
+            message: `Reminder: You have ${event.details.name} in 2 days at ${event.details.startTime}`,
+            is_read: 0,
+            eventId: event._id,
+            eventName: event.details.name,
+            data: event.details.date,
+            startTime: event.details.startTime,
+            endTime: event.details.endTime,
+            location: event.details.location,
+            longitude: event.details.longitude,
+            latitude: event.details.latitude,
+            createRSVP: event.details.createRSVP,
+          };
+          await Models.eventNotificationModel.create(dataSave);
         }
       }
     }
   } catch (error) {
-    throw error;
+    console.error("Error in event reminder job:", error);
   }
 });
+
+// schedule.scheduleJob(cronSchedule, async function () {
+//   try {
+//     const todayDate = moment().format("YYYY-MM-DD");
+//     const findBirthdayUsers = await Models.userModel.find({ DOB: todayDate });
+
+//     for (const user of findBirthdayUsers) {
+//       const followUserList = await Models.userFollowModel.find({
+//         following: user._id,
+//       });
+
+//       for (const followUser of followUserList) {
+//         const followerUser = await Models.userModel.findOne({
+//           _id: followUser.follower,
+//         });
+//         console.log("followerUser", followerUser);
+//         const senderDetail = await Models.userModel.findOne({ role: "admin" });
+
+//         const birthdayPersonName =
+//           user.name || `${user.firstName} ${user.lastName}`;
+//         const senderName =
+//           senderDetail.name ||
+//           `${senderDetail.firstName} ${senderDetail.lastName}`;
+//         const senderProfile = senderDetail.profileImage || senderDetail.image;
+//         const deviceToken = followerUser.deviceToken;
+//         const deviceType = followerUser.deviceType;
+
+//         const sendNotification = {
+//           senderId: senderDetail._id.toString(),
+//           senderName,
+//           senderProfile,
+//           reciverId: followerUser._id.toString(),
+//           deviceType,
+//           deviceToken,
+//           message: `It's ${birthdayPersonName}'s birthday today!`,
+//           notificationType: 4,
+//         };
+
+//         const dataSave = {
+//           senderId: senderDetail._id.toString(),
+//           reciverId: followerUser._id.toString(),
+//           message: `It's ${birthdayPersonName}'s birthday today!`,
+//           is_read: 0,
+//           isBirthday: 1,
+//         };
+//         await Models.followingNotificationModel.create(dataSave);
+//         if (deviceToken) {
+//           await helper.sendPushToIos(sendNotification);
+//         }
+//       }
+//     }
+//   } catch (error) {
+//     throw error;
+//   }
+// });
+
+// schedule.scheduleJob(cronSchedule1, async function () {
+//   try {
+//     const tomorrow = moment.utc().add(1, "days").startOf("day"); // Get UTC date for tomorrow at 00:00:00;
+//     const pastEvents = await Models.eventModel.find({
+//       "details.date": { $eq: tomorrow },
+//     });
+
+//     let attendEventUserId = [];
+//     let favouriteEventUserId = [];
+//     for (const eventIds of pastEvents) {
+//       let eventName = eventIds.details.name;
+//       let eventStartTime = eventIds.details.startTime;
+//       const attendEvent = await Models.eventAttendesUserModel.find({
+//         eventId: eventIds._id.toString(),
+//       });
+//       let favouriteEvent = await Models.eventFavouriteUserModel.find({
+//         eventId: eventIds._id.toString(),
+//       });
+//       if (attendEvent && attendEvent.length > 0) {
+//         attendEventUserId = attendEvent.map((a) => a.userId.toString());
+//       }
+//       if (favouriteEvent && favouriteEvent.length > 0) {
+//         favouriteEventUserId = favouriteEvent.map((f) => f.userId.toString());
+//       }
+//       let userIds = [];
+//       userIds.push(eventIds.user.toString());
+//       const userIdsCoHost = eventIds.coHosts.map((e) => e.toString());
+//       const userIdsGuest = eventIds.guests.map((e) => e.toString());
+//       let combinedArray = [
+//         ...userIds,
+//         ...userIdsCoHost,
+//         ...userIdsGuest,
+//         ...attendEventUserId,
+//         ...favouriteEventUserId,
+//       ];
+//       for (let i = 0; i < combinedArray.length - 1; i++) {
+//         const senderDetail = await Models.userModel.findOne({ role: "admin" });
+//         const senderName =
+//           senderDetail.name ||
+//           `${senderDetail.firstName} ${senderDetail.lastName}`;
+//         const senderProfile = senderDetail.profileImage || senderDetail.image;
+//         const reciverId = await Models.userModel.findOne({
+//           _id: combinedArray[i],
+//         });
+//         const deviceToken = reciverId.deviceToken;
+//         const deviceType = reciverId.deviceType;
+//         const sendNotification = {
+//           senderId: senderDetail._id.toString(),
+//           senderName,
+//           senderProfile,
+//           reciverId: reciverId._id.toString(),
+//           deviceType,
+//           deviceToken,
+//           message: ` Reminder you have ${eventName} tomorrow at ${eventStartTime}`,
+//           eventId: eventIds._id,
+//         };
+
+//         const dataSave = {
+//           senderId: senderDetail._id.toString(),
+//           reciverId: reciverId._id.toString(),
+//           message: ` Reminder you have ${eventName} tomorrow at ${eventStartTime}`,
+//           is_read: 0,
+//           eventId: eventIds._id,
+//           eventName: eventIds?.details?.name,
+//           data: eventIds?.details?.date,
+//           startTime: eventIds?.details?.startTime,
+//           endTime: eventIds?.details?.endTime,
+//           location: eventIds?.details?.location,
+//           longitude: eventIds?.details?.longitude,
+//           latitude: eventIds?.details?.latitude,
+//           createRSVP: eventIds?.details?.createRSVP,
+//         };
+//         await Models.eventNotificationModel.create(dataSave);
+//         if (deviceToken) {
+//           await helper.sendPushToIosForEvent(sendNotification);
+//         }
+//       }
+//     }
+//   } catch (error) {
+//     throw error;
+//   }
+// });
 
 module.exports = {
   // signup: async (req, res) => {

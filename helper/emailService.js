@@ -55,7 +55,7 @@ const sendEventInviteEmail = async (
                   event.title
                 }</strong></p>
               </div>
-              <a href="${eventLink}" target="_blank" style="text-decoration: none;">
+              <a href="${eventLink}" target="_blank" style="text-decoration: none; max-width: 600px; width: 90%;margin: auto;">
                 <div style="padding: 20px; background-color: #ffffff; border: 1px solid #dddddd; border-radius: 8px; margin-top: 20px; max-width: 600px; width: 100%;">
                   <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 10px; border-bottom: 1px solid #dddddd;">
                     <div style="display: flex; align-items: center;">
@@ -93,8 +93,6 @@ const sendEventInviteEmail = async (
     console.error(`Error sending invitation email to ${guest.email}:`, error);
   }
 };
-
-module.exports = { sendEventInviteEmail };
 const sendOTPEmail = async (email, otpCode) => {
   try {
     const request = mailjetClient.post("send", { version: "v3.1" }).request({
@@ -126,7 +124,6 @@ const sendOTPEmail = async (email, otpCode) => {
     console.error("Error sending verification email:", error);
   }
 };
-
 const sendResetPasswordEmail = async (email, resetLink) => {
   try {
     const request = mailjet.post("send", { version: "v3.1" }).request({
@@ -160,5 +157,90 @@ const sendResetPasswordEmail = async (email, resetLink) => {
     console.error("Error sending reset password email:", error);
   }
 };
+const sendBirthdayEmail = async (follower, birthdayPerson) => {
+  try {
+    const request = mailjetClient.post("send", { version: "v3.1" }).request({
+      Messages: [
+        {
+          From: {
+            Email: process.env.MJ_FROM_EMAIL,
+            Name: "Evento - Your Event Platform",
+          },
+          To: [
+            {
+              Email: follower.email,
+              Name: follower.username || "User",
+            },
+          ],
+          Subject: `It's ${
+            birthdayPerson.username || "your friend's"
+          } birthday today!`,
+          HTMLPart: `
+            <h3>Happy Birthday to ${
+              birthdayPerson.username || "Your Friend"
+            }!</h3>
+            <p>Today is a special day! Don't forget to wish <strong>${
+              birthdayPerson.username || "your friend"
+            }</strong> a happy birthday.</p>
+          `,
+          CustomID: "BirthdayReminder",
+        },
+      ],
+    });
 
-module.exports = { sendOTPEmail, sendResetPasswordEmail, sendEventInviteEmail };
+    const result = await request;
+    console.log(`Birthday email sent to ${follower.email}:`, result.body);
+  } catch (error) {
+    console.error(`Error sending birthday email to ${follower.email}:`, error);
+  }
+};
+const sendEventReminderEmail = async (recipient, event) => {
+  try {
+    const request = mailjetClient.post("send", { version: "v3.1" }).request({
+      Messages: [
+        {
+          From: {
+            Email: process.env.MJ_FROM_EMAIL,
+            Name: "Evento - Your Event Platform",
+          },
+          To: [
+            {
+              Email: recipient.email,
+              Name: recipient.username || "User",
+            },
+          ],
+          Subject: `Reminder: ${event.details.name} is happening tomorrow!`,
+          HTMLPart: `
+            <h3>Event Reminder</h3>
+            <p>This is a reminder for the event: <strong>${event.details.name}</strong>, happening tomorrow at ${event.details.startTime}.</p>
+            <p>Make sure to be there! Here are the details:</p>
+            <ul>
+              <li><strong>Location:</strong> ${event.details.location}</li>
+              <li><strong>Start Time:</strong> ${event.details.startTime}</li>
+            </ul>
+          `,
+          CustomID: "EventReminder",
+        },
+      ],
+    });
+
+    const result = await request;
+    console.log(
+      `Event reminder email sent to ${recipient.email}:`,
+      result.body,
+    );
+  } catch (error) {
+    console.error(
+      `Error sending event reminder email to ${recipient.email}:`,
+      error,
+    );
+  }
+};
+
+module.exports = {
+  sendOTPEmail,
+  sendResetPasswordEmail,
+  sendEventInviteEmail,
+  sendBirthdayEmail,
+  sendEventReminderEmail,
+};

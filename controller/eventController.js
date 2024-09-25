@@ -443,20 +443,26 @@ exports.createEvent = async (req, res) => {
 
     // Step 3: Send email to each co-host
     for (const coHostId of coHosts) {
-      const coHostUser = await Models.userModel.findById(coHostId); // Fetch co-host details using user_id
-      if (coHostUser) {
-        const emailTo = coHostUser.email;
-        const usernameTo = coHostUser.username;
-        console.log(
-          `Sending co-host invitation email to ${usernameTo} at ${emailTo} from ${usernameFrom}`,
-        );
-        await sendEventInviteEmail(
-          req.user,
-          coHostUser,
-          createdEvent,
-          eventLink,
-          true,
-        );
+      // First, retrieve the co-host document using its ObjectId
+      const coHostDoc = await Models.coHostModel.findById(coHostId);
+      if (coHostDoc) {
+        // Then retrieve the user details using the user_id from the co-host document
+        const coHostUser = await Models.userModel.findById(coHostDoc.user_id);
+
+        if (coHostUser) {
+          const emailTo = coHostUser.email;
+          const usernameTo = coHostUser.username;
+          console.log(
+            `Sending co-host invitation email to ${usernameTo} at ${emailTo} from ${usernameFrom}`,
+          );
+          await sendEventInviteEmail(
+            req.user,
+            coHostUser,
+            createdEvent,
+            eventLink,
+            true,
+          );
+        }
       }
     }
 
