@@ -37,7 +37,10 @@ exports.getLoggedUserProfile = async (req, res) => {
       })
       .populate({
         path: "coHosts",
-        select: "firstName lastName username profileImage",
+        populate: {
+          path: "user_id",
+          select: "username email profileImage",
+        },
       })
       .exec();
 

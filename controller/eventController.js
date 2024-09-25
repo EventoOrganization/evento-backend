@@ -110,7 +110,6 @@ exports.storePostEventMedia = async (req, res) => {
     });
   }
 };
-
 exports.toggleUploadMedia = async (req, res) => {
   const { eventId, allow } = req.body;
   if (!eventId || typeof allow !== "boolean") {
@@ -246,6 +245,27 @@ exports.updateEventField = async (req, res) => {
       case "createRSVP":
         event.details.createRSVP = value;
         break;
+      case "coHosts":
+        if (Array.isArray(value) && value.length > 0) {
+          // Supprimer les co-hôtes existants
+          await Models.coHostModel.deleteMany({ event_id: eventId });
+
+          // Ajouter les nouveaux co-hôtes
+          const newCoHosts = await Promise.all(
+            value.map(async (coHost) => {
+              const newCoHost = await Models.coHostModel.create({
+                user_id: coHost.userId,
+                event_id: eventId,
+                status: coHost.status || "read-only",
+              });
+              return newCoHost._id;
+            }),
+          );
+
+          // Mettre à jour l'événement avec les nouveaux co-hôtes
+          event.coHosts = newCoHosts;
+        }
+        break;
       default:
         console.log("Invalid field specified");
         return res.status(400).json({ message: "Invalid field" });
@@ -325,21 +345,27 @@ exports.createEvent = async (req, res) => {
       createRSVP,
     } = req.body;
 
-    let coHosts = [];
-
-    // Step 1: Create the coHosts and collect their ObjectIds
-    if (Array.isArray(req.body.coHosts) && req.body.coHosts.length > 0) {
-      coHosts = await Promise.all(
-        req.body.coHosts.map(async (coHost) => {
-          const newCohost = await Models.coHostModel.create({
-            user_id: coHost.userId,
-            event_id: req.body.eventId, // Make sure event_id is available at this point
-            status: coHost.status || "read-only",
-          });
-          return newCohost.user_id; // Return the ObjectId of the co-host
-        }),
-      );
-    }
+    // Log all fields to verify they are being processed correctly
+    console.log("Title:", title);
+    console.log("Username:", username);
+    console.log("Event Type:", eventType);
+    console.log("Mode:", mode);
+    console.log("Location:", location);
+    console.log("Latitude:", latitude);
+    console.log("Longitude:", longitude);
+    console.log("Date:", date);
+    console.log("End Date:", endDate);
+    console.log("Start Time:", startTime);
+    console.log("End Time:", endTime);
+    console.log("Description:", description);
+    console.log("Guests:", guests);
+    console.log("Interests:", interests);
+    console.log("Uploaded Media:", uploadedMedia);
+    console.log("Questions:", questions);
+    console.log("Additional Field:", additionalField);
+    console.log("URL:", URL);
+    console.log("Include Chat:", includeChat);
+    console.log("Create RSVP:", createRSVP);
 
     // Handle media for event
     let initialMedia = [];
@@ -351,7 +377,9 @@ exports.createEvent = async (req, res) => {
       .map((media) => ({ url: media.url, type: "video" }));
     initialMedia = [...imageUrls, ...videoUrls];
 
-    // Save the event
+    console.log("Initial Media (Images and Videos):", initialMedia);
+
+    // Step 1: Save the event first (without co-hosts)
     const objToSave = {
       user: req.user._id,
       title,
@@ -375,18 +403,45 @@ exports.createEvent = async (req, res) => {
         timeSlots: req.body.timeSlots,
       },
       initialMedia,
-      coHosts,
       guests,
       interests,
       questions,
       additionalField,
     };
+
+    console.log("Event Object to Save:", objToSave);
+
     const createdEvent = await Models.eventModel.create(objToSave);
+    console.log("Created Event:", createdEvent);
 
     const eventLink = `${process.env.CLIENT_URL}/event/${createdEvent._id}`;
     const usernameFrom = req.user.username;
 
-    // Step 2: Send email to each co-host
+    // Step 2: Create the coHosts and associate them with the created event
+    let coHosts = [];
+    if (Array.isArray(req.body.coHosts) && req.body.coHosts.length > 0) {
+      console.log("Co-hosts Array Found:", req.body.coHosts);
+
+      coHosts = await Promise.all(
+        req.body.coHosts.map(async (coHost) => {
+          console.log("Processing Co-host:", coHost);
+          const newCohost = await Models.coHostModel.create({
+            user_id: coHost.userId,
+            event_id: createdEvent._id, // Use the ID of the created event here
+            status: coHost.status || "read-only",
+          });
+          console.log("Created Co-host:", newCohost);
+          return newCohost._id; // Return the ObjectId of the co-host
+        }),
+      );
+
+      // Update event with the co-hosts' references
+      createdEvent.coHosts = coHosts;
+      await createdEvent.save();
+      console.log("Updated Event with Co-hosts:", createdEvent);
+    }
+
+    // Step 3: Send email to each co-host
     for (const coHostId of coHosts) {
       const coHostUser = await Models.userModel.findById(coHostId); // Fetch co-host details using user_id
       if (coHostUser) {
@@ -404,10 +459,10 @@ exports.createEvent = async (req, res) => {
         );
       }
     }
-    console.log("includeChat", includeChat);
-    // Step 3: Handle group chat creation if necessary
+
+    // Step 4: Handle group chat creation if necessary
     if (includeChat) {
-      console.log("Creating group chat", createdEvent._id);
+      console.log("Creating group chat for event:", createdEvent._id);
       const initialUsers = [req.user.id, ...coHosts];
       const saveData = {
         eventId: createdEvent._id,
@@ -422,16 +477,15 @@ exports.createEvent = async (req, res) => {
         time: moment().format("LTS"),
       };
 
-      console.log("Creating group chat with data:", saveData); // Log to see the group chat data
+      console.log("Group Chat Data to Save:", saveData);
 
       try {
         const createdGroupChat = await Models.groupChatModel.create(saveData);
-        console.log("Group Chat Created: ", createdGroupChat); // Log to verify group chat creation
+        console.log("Group Chat Created:", createdGroupChat);
 
-        // Créer une constante de chat et y attacher le groupId
         const createdChatConstant = await Models.chatconstant.create({
           senderId: req.user._id,
-          groupId: createdGroupChat._id, // Lier le groupe de chat ici
+          groupId: createdGroupChat._id,
           groupUserIds: initialUsers,
           lastmessage: null,
           is_delete: 0,
@@ -441,9 +495,9 @@ exports.createEvent = async (req, res) => {
           date: moment().format("YYYY-MM-DD"),
           time: moment().format("LTS"),
         });
-        console.log("Chat Constant Created: ", createdChatConstant); // Log to verify chat constant creation
+        console.log("Chat Constant Created:", createdChatConstant);
       } catch (error) {
-        console.error("Error creating group chat or chat constant:", error); // Catch and log any error
+        console.error("Error creating group chat or chat constant:", error);
       }
     }
 
@@ -462,11 +516,14 @@ exports.createEvent = async (req, res) => {
 exports.getEventById = async (req, res) => {
   try {
     const eventId = req.params.id;
+    console.log(`Fetching event with ID: ${eventId}`);
 
     // Fetch the event with all necessary populations
     const event = await Event.findById(eventId)
       .populate("user", "username email profileImage")
       .populate("interests", "_id name")
+      .populate("guests", "username email profileImage")
+      .populate("tempGuests", "username email")
       .populate({
         path: "coHosts",
         populate: {
@@ -474,16 +531,15 @@ exports.getEventById = async (req, res) => {
           select: "username email profileImage",
         },
       })
-      .populate("guests", "username email profileImage")
-      .populate("tempGuests", "username email")
       .exec();
-
+    console.log("******************", event.coHosts);
     if (!event) {
       return res.status(404).json({
         status: false,
         message: "Event not found",
       });
     }
+
     if (!req.query.userId) {
       return res.status(200).json({
         status: true,
@@ -491,15 +547,19 @@ exports.getEventById = async (req, res) => {
         data: event,
       });
     }
+
     let isGoing = false;
     let isFavourite = false;
     let isRefused = false;
     let isAdmin = false;
     let isHosted = false;
     let isCoHost = false;
+    const userId = req.query.userId;
+
     const rsvpSubmissions = await Models.RSVPSubmission.find({ eventId })
       .populate("userId", "username firstName lastName profileImage")
       .exec();
+
     const refusedReason = await Models.eventRefuseSchema
       .find({ eventId })
       .populate("userId", "username firstName lastName profileImage")
@@ -516,19 +576,19 @@ exports.getEventById = async (req, res) => {
         rsvpSubmission: rsvp || null,
       };
     };
+
     const attachRefusedReason = (user) => {
       if (!user) return null;
-
       const userObject = user.toObject ? user.toObject() : user;
       const reason = refusedReason.find((submission) =>
         submission.userId.equals(user._id),
       );
-
       return {
         ...userObject,
         refusedReason: reason ? reason.reason : null,
       };
     };
+
     const refused = await Models.eventRefuseModel
       .find({ eventId, refused: 1 })
       .populate("userId", "username firstName lastName profileImage")
@@ -545,9 +605,6 @@ exports.getEventById = async (req, res) => {
       .exec();
 
     if (req.query.userId) {
-      const userId = req.query.userId;
-
-      // Fetch the following and followers list
       const followingList = await Models.userFollowModel.find({
         follower: userId,
       });
@@ -555,7 +612,6 @@ exports.getEventById = async (req, res) => {
         following: userId,
       });
 
-      // Create maps for following and followers status
       const followingMap = new Map();
       followingList.forEach((follow) => {
         followingMap.set(follow.following.toString(), true);
@@ -566,9 +622,8 @@ exports.getEventById = async (req, res) => {
         followersMap.set(follow.follower.toString(), true);
       });
 
-      // Helper function to add follow status
       const addFollowStatus = (user) => {
-        if (!user) return null; // Si l'utilisateur est null, renvoyez null.
+        if (!user) return null;
         const userIdStr = user._id.toString();
         return {
           ...user.toObject(),
@@ -576,21 +631,10 @@ exports.getEventById = async (req, res) => {
           isFollowingMe: followersMap.has(userIdStr),
         };
       };
-
-      // Enrich coHosts with follow status if coHosts exist
-      const enrichedCoHosts = event.coHosts
-        ? event.coHosts.map((coHost) => ({
-            ...coHost,
-            user: addFollowStatus(coHost.user),
-          }))
-        : [];
-
-      // Enrich guests with follow status if guests exist
       const enrichedGuests = event.guests
         ? event.guests.map((guest) => addFollowStatus(guest))
         : [];
 
-      // Enrich tempGuests (these don't have follow status) if they exist
       const enrichedTempGuests = event.tempGuests
         ? event.tempGuests.map((tempGuest) => ({
             ...tempGuest.toObject(),
@@ -599,26 +643,22 @@ exports.getEventById = async (req, res) => {
           }))
         : [];
 
-      // Enrich attendees with follow status if attendees exist
       const enrichedAttendees = attendees
         ? attendees.map((attendee) =>
             attachRSVP(addFollowStatus(attendee.userId)),
           )
         : [];
 
-      // Enrich favouritees with follow status if favouritees exist
       const enrichedFavouritees = favouritees
         ? favouritees.map((favourite) => addFollowStatus(favourite.userId))
         : [];
 
-      // Enrich refused users with follow status if refused exist
       const enrichedRefused = refused
         ? refused.map((refuse) =>
             attachRefusedReason(addFollowStatus(refuse.userId)),
           )
         : [];
 
-      // Check statuses for the logged-in user
       const attendeeStatus = await Models.eventAttendesUserModel
         .findOne({ userId, eventId, attendEvent: 1 })
         .exec();
@@ -637,13 +677,11 @@ exports.getEventById = async (req, res) => {
         status: "admin",
       });
 
-      if (
-        event.coHosts &&
-        event.coHosts.some(
-          (coHost) => coHost.user._id.toString() === userId.toString(),
-        )
-      ) {
-        isCoHost = true;
+      if (event.coHosts && Array.isArray(event.coHosts)) {
+        isCoHost = event.coHosts.some(
+          (coHost) =>
+            coHost.user && coHost.user._id.toString() === userId.toString(),
+        );
       }
 
       const hostStatus = event.user._id.toString() === userId.toString();
@@ -654,15 +692,14 @@ exports.getEventById = async (req, res) => {
       isAdmin = !!adminStatus;
       isHosted = !!hostStatus;
 
-      // Build the enriched event object
       const enrichedEvent = {
         ...event.toObject(),
-        coHosts: enrichedCoHosts,
         guests: enrichedGuests,
         tempGuests: enrichedTempGuests,
         attendees: enrichedAttendees,
         favouritees: enrichedFavouritees,
         refused: enrichedRefused,
+        // coHosts: enrichedCoHosts,
         coHostStatus: isCoHost,
         isGoing,
         isFavourite,
@@ -671,7 +708,6 @@ exports.getEventById = async (req, res) => {
         isHosted,
       };
 
-      // Return the enriched event
       return res.status(200).json({
         status: true,
         message: "Event retrieved successfully",
@@ -698,7 +734,13 @@ exports.getUpcomingEvents = async (req, res) => {
     })
       .sort({ createdAt: -1 })
       .populate("user", "username firstName lastName profileImage")
-      .populate("coHosts", " usernamefirstName lastName profileImage")
+      .populate({
+        path: "coHosts",
+        populate: {
+          path: "user_id",
+          select: "username email profileImage",
+        },
+      })
       .populate("guests", " usernamefirstName lastName profileImage")
       .populate("interests", "name image")
       .exec();
