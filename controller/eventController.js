@@ -158,17 +158,16 @@ exports.toggleUploadMedia = async (req, res) => {
   if (!eventId || typeof allow !== "boolean") {
     return res.status(400).json({ message: "Invalid request data" });
   }
-
+  console.log(eventId, allow);
   try {
     // Find the event by ID and update the allUploadPhotoVideo field
     const event = await Event.findById(eventId);
     if (!event) {
       return res.status(404).json({ message: "Event not found" });
     }
-
-    event.allUploadPhotoVideo = !allow;
+    console.log("event.allUploadPhotoVideo", event.allUploadPhotoVideo);
+    event.allUploadPhotoVideo = allow;
     await event.save();
-
     return res.status(200).json({ success: true, event });
   } catch (error) {
     console.error("Error updating event:", error);
