@@ -3,6 +3,16 @@ var router = express.Router();
 var chatController = require("../controller/chatController");
 const authenticateJWT = require("../middleware/authentication").authenticateJWT;
 
+router.delete(
+  "/deleteConversation/:conversationId",
+  authenticateJWT,
+  chatController.deleteConversation,
+);
+router.post(
+  "/startPrivateConversation",
+  authenticateJWT,
+  chatController.startPrivateConversation,
+);
 router.get(
   "/fetchConversations",
   authenticateJWT,
