@@ -798,6 +798,17 @@ exports.getUpcomingEvents = async (req, res) => {
       isGoing: false,
       isFavourite: false,
     }));
+    const eventIds = events.map((event) => event._id);
+    const attendeesData = await Models.eventAttendesUserModel
+      .find({ eventId: { $in: eventIds }, attendEvent: 1 })
+      .populate("userId", "username firstName lastName profileImage");
+    const attendeesMap = {};
+    attendeesData.forEach((att) => {
+      if (!attendeesMap[att.eventId]) {
+        attendeesMap[att.eventId] = [];
+      }
+      attendeesMap[att.eventId].push(att.userId);
+    });
     // add LoggedUser's status
     if (req.query.userId) {
       const attendeeStatus = await Models.eventAttendesUserModel
@@ -837,6 +848,7 @@ exports.getUpcomingEvents = async (req, res) => {
             ...event.toObject(),
             isGoing,
             isFavourite,
+            attendees: attendeesMap[event._id] || [],
           };
         });
       }
