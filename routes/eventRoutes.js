@@ -21,6 +21,11 @@ router.post(
   authenticateJWT,
   eventController.storePostEventMedia,
 );
+router.delete(
+  "/deletePostEventMedia/:eventId",
+  authenticateJWT,
+  eventController.deletePostEventMedia,
+);
 // toggle allowed postEventMedia
 router.patch(
   "/toggle-upload-media",

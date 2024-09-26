@@ -4,7 +4,50 @@ const helper = require("../helper/helper");
 const { sendEventInviteEmail } = require("../helper/emailService");
 const TempGuest = require("../models/tempGuestModel");
 const moment = require("moment");
-const interest = require("../models/interestModel");
+
+exports.deletePostEventMedia = async (req, res) => {
+  const { eventId } = req.params;
+  const { currentMediaIndex } = req.body;
+
+  if (!eventId || currentMediaIndex === undefined) {
+    // Ensure currentMediaIndex is not undefined
+    return res
+      .status(400)
+      .json({ message: "Missing eventId or currentMediaIndex" });
+  }
+
+  try {
+    // Fetch the event by ID
+    const event = await Event.findById(eventId);
+    if (!event) {
+      return res.status(404).json({ message: "Event not found" });
+    }
+
+    // Check if the currentMediaIndex is valid
+    if (
+      currentMediaIndex < 0 ||
+      currentMediaIndex >= event.postEventMedia.length
+    ) {
+      return res.status(400).json({ message: "Invalid media index" });
+    }
+
+    // Remove the media item at the given index
+    event.postEventMedia.splice(currentMediaIndex, 1);
+
+    // Save the updated event
+    await event.save();
+
+    // Success response
+    return res
+      .status(200)
+      .json({ message: "Media deleted from database successfully" });
+  } catch (error) {
+    console.error("Error deleting media from DB:", error);
+    return res
+      .status(500)
+      .json({ message: "Internal server error", error: error.message });
+  }
+};
 exports.addGuests = async (req, res) => {
   const eventId = req.params.id;
   const { guests, tempGuests, user } = req.body;
