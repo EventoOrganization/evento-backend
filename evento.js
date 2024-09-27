@@ -44,6 +44,7 @@ app.use(cookieParser());
 app.use(bodyParser.urlencoded({ extended: true })); // Use body-parser for url-encoded bodies
 app.use(bodyParser.json()); // Parse JSON bodies
 app.use((req, res, next) => {
+  req.io = io;
   if (req.url == "/") {
     res.redirect("/login");
     return;
@@ -63,7 +64,8 @@ const io = require("socket.io")(http, {
 });
 
 // Load the socket.io groupSocket handler
-require("./socket/groupSocket")(io);
+require("./socket/socketHandlers")(io);
+// require("./socket/groupSocket")(io);
 
 // Configure session
 app.set("trust proxy", 1);

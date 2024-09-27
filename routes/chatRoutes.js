@@ -8,6 +8,11 @@ router.delete(
   authenticateJWT,
   chatController.deleteConversation,
 );
+router.delete(
+  "/deleteMessage/:messageId",
+  authenticateJWT,
+  chatController.deleteMessage,
+);
 router.post(
   "/startPrivateConversation",
   authenticateJWT,

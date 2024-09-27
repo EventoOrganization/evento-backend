@@ -1,4 +1,5 @@
 const Models = require("../models");
+const socket = require("socket.io");
 exports.sendMessage = async (req, res) => {
   console.log(
     "🛠️ ~ file: chatController.js:exports.sendMessage ~ req:",
@@ -38,18 +39,66 @@ exports.sendMessage = async (req, res) => {
       message,
       message_type: messageType,
     });
+
     await newMessage.save();
-    // console.log("✅ ~ Message saved successfully:", newMessage);
+
+    // Now, populate the sender's information
+    const populatedMessage = await Models.message
+      .findById(newMessage._id)
+      .populate("senderId", "username profileImage");
+
+    if (!populatedMessage.senderId) {
+      console.error(`❌ ~ User not found for senderId: ${senderId}`);
+      return res.status(500).json({
+        status: false,
+        message: `User not found for senderId: ${senderId}`,
+      });
+    }
+
+    // Emit the message via socket
+    if (req.io) {
+      req.io.to(conversationId).emit("send_message_emit", populatedMessage); // Émet le message à tous les clients connectés à la conversation
+      console.log("Message broadcasted via Socket.IO:", populatedMessage);
+    } else {
+      console.error("❌ ~ Socket.io instance not found on req object.");
+    }
 
     res.status(200).json({
       status: true,
       message: "Message sent successfully",
-      data: newMessage,
+      data: populatedMessage,
+    });
+  } catch (error) {
+    console.error("Error sending message:", error);
+    res.status(500).json({
+      status: false,
+      message: "Failed to send message",
+      error: error.message,
+    });
+  }
+};
+exports.fetchMessages = async (req, res) => {
+  console.log(
+    "🛠️ ~ file: chatController.js:exports.fetchMessages ~ req:",
+    req.params,
+  );
+  const { chatId } = req.params;
+  try {
+    const messages = await Models.message
+      .find({
+        $or: [{ constantId: chatId }, { groupId: chatId }],
+      })
+      .populate("senderId", "username profileImage")
+      .populate("reciverId", "username profileImage");
+
+    res.status(200).json({
+      status: true,
+      data: messages,
     });
   } catch (error) {
     res.status(500).json({
       status: false,
-      message: "Failed to send message",
+      message: "Error fetching messages",
       error: error.message,
     });
   }
@@ -139,31 +188,6 @@ exports.fetchConversations = async (req, res) => {
     });
   }
 };
-exports.fetchMessages = async (req, res) => {
-  console.log(
-    "🛠️ ~ file: chatController.js:exports.fetchMessages ~ req:",
-    req.params,
-  );
-  const { chatId } = req.params;
-  try {
-    const messages = await Models.message
-      .find({
-        $or: [{ constantId: chatId }, { groupId: chatId }],
-      })
-      .populate("senderId", "username profileImage");
-
-    res.status(200).json({
-      status: true,
-      data: messages,
-    });
-  } catch (error) {
-    res.status(500).json({
-      status: false,
-      message: "Error fetching messages",
-      error: error.message,
-    });
-  }
-};
 exports.deleteConversation = async (req, res) => {
   try {
     const { conversationId } = req.params;
@@ -179,6 +203,42 @@ exports.deleteConversation = async (req, res) => {
   } catch (error) {
     console.error("Delete conversation error:", error);
     res.status(500).json({ success: false, message: "Internal server error" });
+  }
+};
+exports.deleteMessage = async (req, res) => {
+  const { messageId } = req.params;
+  const userId = req.user._id; // Id de l'utilisateur connecté via le token JWT
+
+  try {
+    // Cherche le message par son ID
+    const message = await Models.message.findById(messageId);
+
+    if (!message) {
+      return res
+        .status(404)
+        .json({ status: false, message: "Message not found" });
+    }
+
+    // Vérifie si l'utilisateur est bien celui qui a envoyé le message
+    if (message.senderId.toString() !== userId.toString()) {
+      return res
+        .status(403)
+        .json({ status: false, message: "You cannot delete this message" });
+    }
+
+    // Supprime le message
+    await message.deleteOne();
+
+    res
+      .status(200)
+      .json({ status: true, message: "Message deleted successfully" });
+  } catch (error) {
+    console.error("Error deleting message:", error);
+    res.status(500).json({
+      status: false,
+      message: "Failed to delete message",
+      error: error.message,
+    });
   }
 };
 exports.startPrivateConversation = async (req, res) => {
