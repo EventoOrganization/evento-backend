@@ -5,6 +5,10 @@ exports.sendMessage = async (req, res) => {
     "🛠️ ~ file: chatController.js:exports.sendMessage ~ req:",
     req.body,
   );
+  console.log(
+    "🛠️ ~ file: chatController.js:exports.sendMessage ~ req:",
+    req.io,
+  );
   const { message, senderId, conversationId, messageType } = req.body;
 
   if (!message || !senderId || !conversationId || !messageType) {
@@ -29,12 +33,9 @@ exports.sendMessage = async (req, res) => {
       });
     }
 
-    const { isGroup, targetId } = conversation;
-
     const newMessage = new Models.message({
       senderId,
-      reciverId: isGroup ? undefined : targetId,
-      groupId: isGroup ? targetId : undefined,
+      reciverId: conversation.targetId,
       constantId: conversationId,
       message,
       message_type: messageType,
@@ -42,23 +43,21 @@ exports.sendMessage = async (req, res) => {
 
     await newMessage.save();
 
-    // Now, populate the sender's information
     const populatedMessage = await Models.message
       .findById(newMessage._id)
       .populate("senderId", "username profileImage");
 
-    if (!populatedMessage.senderId) {
-      console.error(`❌ ~ User not found for senderId: ${senderId}`);
-      return res.status(500).json({
-        status: false,
-        message: `User not found for senderId: ${senderId}`,
-      });
-    }
+    console.log(
+      "Message about to be broadcasted via Socket.IO:",
+      populatedMessage,
+    );
 
     // Emit the message via socket
     if (req.io) {
-      req.io.to(conversationId).emit("send_message_emit", populatedMessage); // Émet le message à tous les clients connectés à la conversation
-      console.log("Message broadcasted via Socket.IO:", populatedMessage);
+      req.io.to(conversationId).emit("send_message_emit", populatedMessage);
+      console.log(
+        `Message emitted to conversationId: ${conversationId} from ${req.io.id}`,
+      );
     } else {
       console.error("❌ ~ Socket.io instance not found on req object.");
     }
@@ -106,7 +105,6 @@ exports.fetchMessages = async (req, res) => {
 exports.fetchConversations = async (req, res) => {
   try {
     const userId = req.user._id;
-    console.log("Fetching conversations for user:", userId);
 
     const conversations = await Models.chatconstant
       .find({
@@ -144,12 +142,8 @@ exports.fetchConversations = async (req, res) => {
       })
       .exec();
 
-    console.log("Raw conversations before population:", conversations);
-
     // Log the populated fields for each conversation
     conversations.forEach((conversation, index) => {
-      console.log(`Conversation #${index + 1}:`);
-
       if (conversation.groupId) {
         console.log("Group ID:", conversation.groupId);
         console.log("Populated event ID:", conversation.groupId.eventId);
