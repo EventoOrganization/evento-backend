@@ -137,41 +137,41 @@ exports.fetchConversations = async (req, res) => {
         path: "lastmessage", // Last message for both group and private convos
         populate: {
           path: "senderId reciverId",
-          select: "username",
+          select: "username profileImage",
         },
       })
       .exec();
 
-    // Log the populated fields for each conversation
-    conversations.forEach((conversation, index) => {
-      if (conversation.groupId) {
-        console.log("Group ID:", conversation.groupId);
-        console.log("Populated event ID:", conversation.groupId.eventId);
-        console.log("Event title:", conversation.groupId.eventId?.title);
-        console.log("Guests:", conversation.groupId.eventId?.guests);
-      }
+    // Fetch the last 10 messages for each conversation
+    const conversationsWithMessages = await Promise.all(
+      conversations.map(async (conversation) => {
+        const messageQuery = conversation.groupId
+          ? {
+              $or: [
+                { constantId: conversation._id },
+                { groupId: conversation.groupId },
+              ],
+            }
+          : { constantId: conversation._id };
 
-      if (conversation.senderId) {
-        console.log("Sender ID:", conversation.senderId);
-      }
+        const messages = await Models.message
+          .find(messageQuery)
+          .sort({ createdAt: -1 }) // Trier par date de création, du plus récent au plus ancien
+          .limit(10) // Limiter à 10 messages récents
+          .populate("senderId", "username profileImage")
+          .populate("reciverId", "username profileImage")
+          .exec();
 
-      if (conversation.reciverId) {
-        console.log("Receiver ID:", conversation.reciverId);
-      }
-
-      if (conversation.lastmessage) {
-        console.log("Last Message:", conversation.lastmessage);
-        console.log("Last Message Sender:", conversation.lastmessage.senderId);
-        console.log(
-          "Last Message Receiver:",
-          conversation.lastmessage.reciverId,
-        );
-      }
-    });
-
+        return {
+          ...conversation.toObject(), // Convert Mongoose document to plain object
+          recentMessages: messages, // Attach recent messages
+        };
+      }),
+    );
+    console.log(conversationsWithMessages);
     res.status(200).json({
       status: true,
-      data: conversations,
+      data: conversationsWithMessages,
     });
   } catch (error) {
     console.error("Error fetching conversations:", error);
