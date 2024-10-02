@@ -157,7 +157,7 @@ exports.fetchConversations = async (req, res) => {
         const messages = await Models.message
           .find(messageQuery)
           .sort({ createdAt: -1 }) // Trier par date de création, du plus récent au plus ancien
-          .limit(10) // Limiter à 10 messages récents
+          .limit(20) // Limiter à 10 messages récents
           .populate("senderId", "username profileImage")
           .populate("reciverId", "username profileImage")
           .exec();
@@ -168,7 +168,6 @@ exports.fetchConversations = async (req, res) => {
         };
       }),
     );
-    console.log(conversationsWithMessages);
     res.status(200).json({
       status: true,
       data: conversationsWithMessages,

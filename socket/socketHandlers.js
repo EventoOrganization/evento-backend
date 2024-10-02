@@ -54,7 +54,6 @@ module.exports = (io) => {
         socket.emit("error", "Failed to send message.");
       }
     });
-
     socket.on("disconnect", () => {
       console.log(`Client disconnected: ${socket.id}`);
     });

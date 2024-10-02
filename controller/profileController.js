@@ -112,6 +112,11 @@ exports.getLoggedUserProfile = async (req, res) => {
 exports.getUserProfileById = async (req, res) => {
   try {
     const userId = req.params.userId;
+    const currentUser = req.body;
+    console.log(
+      "🛠️ ~ file: profileController.js:exports.getUserProfileById ~ currentUser:",
+      currentUser,
+    );
     const userInfo = await User.findById(userId)
       .select(
         "firstName lastName username email profileImage bio URL socialLinks interests",
