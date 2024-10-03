@@ -51,13 +51,19 @@ We use `migrate-mongo` for database migrations. Follow these steps to run and ma
 ### Initial Setup
 
 1. **Install migrate-mongo**:
+
    ```sh
    npm install -g migrate-mongo
 
+   ```
+
 2. **Initialize migrate-mongo**:
+
    ```sh
    migrate-mongo init
-   
+
+   ```
+
 3. **Configure migrate-mongo**:
    Update `migrate-mongo-config.js` with your MongoDB connection details.
 
@@ -66,12 +72,15 @@ We use `migrate-mongo` for database migrations. Follow these steps to run and ma
 1. **Create a new migration**:
    ```sh
    migrate-mongo create <migration-name>
+   ```
 2. **Apply migrations**:
    ```sh
    migrate-mongo up
+   ```
 3. **Rollback migrations**:
    ```sh
    migrate-mongo down
+   ```
 
 For more details, refer to the [migrate-mongo documentation](https://github.com/seppevs/migrate-mongo)
 
@@ -148,3 +157,272 @@ For any questions or concerns, please open an issue or contact the project maint
 - Express.js Documentation (https://expressjs.com/en/)
 - Mongoose Documentation (https://mongoosejs.com/docs/)
 - PNPM Documentation (https://pnpm.io/)
+
+### API Documentation - Authentication Routes
+
+#### **POST /auth/signup**
+
+- **Description**: Registers a new user.
+- **Request Body**:
+  - `email`: User's email.
+  - `password`: User's password.
+- **Response**: Returns user ID and email.
+
+#### **POST /auth/login**
+
+- **Description**: Authenticates a user.
+- **Request Body**:
+  - `email`: User's email.
+  - `password`: User's password.
+- **Response**: Returns user ID, email, and JWT token.
+
+#### **POST /auth/logout** _(Requires Authentication)_
+
+- **Description**: Logs out the current user.
+- **Authentication**: Requires `JWT` token in the `Authorization` header (`Bearer <token>`).
+- **Response**: Success message.
+
+#### **POST /auth/forgot-password**
+
+- **Description**: Sends OTP for password reset.
+- **Request Body**:
+  - `email`: User's email.
+- **Response**: OTP sent message.
+
+#### **POST /auth/verify-otp**
+
+- **Description**: Verifies the OTP.
+- **Request Body**:
+  - `otpCode`: OTP to be verified.
+- **Response**: OTP verification result.
+
+#### **POST /auth/reset-password**
+
+- **Description**: Resets user’s password.
+- **Request Body**:
+  - `email`: User's email.
+  - `password`: New password.
+- **Response**: Password reset confirmation.
+
+#### **DELETE /auth/delete-account** _(Requires Authentication)_
+
+- **Description**: Deletes the user account.
+- **Authentication**: Requires `JWT` token in the `Authorization` header (`Bearer <token>`).
+- **Response**: Account deletion confirmation.
+
+### API Documentation - Profile Routes
+
+#### **GET /profile/getLoggedUserProfile** _(Requires Authentication)_
+
+- **Description**: Retrieves the logged-in user's profile.
+- **Authentication**: Requires `JWT` token in the `Authorization` header (`Bearer <token>`).
+- **Response**:
+  - `userInfo`: Detailed user information.
+  - `upcomingEvents`: List of upcoming events.
+  - `pastEvents`: List of past events.
+  - `hostedEvents`: List of events hosted by the user.
+
+#### **PUT /profile/updateProfile** _(Requires Authentication)_
+
+- **Description**: Updates the logged-in user's profile information.
+- **Authentication**: Requires `JWT` token in the `Authorization` header (`Bearer <token>`).
+- **Request Body**:
+  - `username`: User's new username.
+  - `firstName`: User's new first name.
+  - `lastName`: User's new last name.
+  - `email`: User's new email.
+  - `password`: User's new password (hashed).
+  - `phoneNumber`: User's phone number.
+  - `address`: User's address.
+  - `bio`: User's bio.
+  - `DOB`: Date of birth.
+  - `profileImage`: Profile image file (only image files allowed).
+  - `socialLinks`: Social media links in JSON format.
+  - `interests`: List of interest IDs in JSON format.
+- **Response**: Updated user profile.
+
+#### **GET /profile/userProfile/:userId**
+
+- **Description**: Retrieves the profile of a specific user by their ID.
+- **Request Parameters**:
+  - `userId`: ID of the user to retrieve.
+- **Response**:
+  - `userInfo`: Detailed user information.
+  - `upcomingEvents`: List of upcoming events.
+  - `pastEvents`: List of past events.
+  - `hostedEvents`: List of events hosted by the user.
+
+### API Documentation - Event Routes
+
+#### **POST /events/createEvent** _(Requires Authentication)_
+
+- **Description**: Creates a new event.
+- **Authentication**: Requires `JWT` token in the `Authorization` header (`Bearer <token>`).
+- **Request Body**: Various event details such as title, location, guests, etc.
+- **Response**: Success message with event details.
+
+#### **GET /events/getEvent/:id**
+
+- **Description**: Fetches event details by ID.
+- **Request Parameters**:
+  - `id`: Event ID.
+- **Response**: Event details including guests, co-hosts, and attendees.
+
+#### **GET /events/getUpcomingEvents**
+
+- **Description**: Retrieves all upcoming public events.
+- **Response**: List of upcoming public events.
+
+#### **PUT /events/updateEvent/:eventId** _(Requires Authentication)_
+
+- **Description**: Updates specific fields in the event.
+- **Authentication**: Requires `JWT` token in the `Authorization` header.
+- **Request Body**:
+  - `field`: The field to update.
+  - `value`: The new value.
+- **Response**: Updated event information.
+
+#### **POST /events/storePostEventMedia** _(Requires Authentication)_
+
+- **Description**: Stores post-event media for an event.
+- **Authentication**: Requires `JWT` token in the `Authorization` header.
+- **Request Body**:
+  - `eventId`: ID of the event.
+  - `media`: Media data to be stored.
+- **Response**: Success message with updated event details.
+
+#### **DELETE /events/deletePostEventMedia/:eventId** _(Requires Authentication)_
+
+- **Description**: Deletes media from the post-event section.
+- **Authentication**: Requires `JWT` token in the `Authorization` header.
+- **Request Parameters**:
+  - `eventId`: ID of the event.
+- **Request Body**:
+  - `currentMediaIndex`: Index of the media to delete.
+- **Response**: Success message confirming deletion.
+
+#### **PATCH /events/toggle-upload-media** _(Requires Authentication)_
+
+- **Description**: Toggles whether media uploads are allowed after the event.
+- **Authentication**: Requires `JWT` token in the `Authorization` header.
+- **Request Body**:
+  - `eventId`: ID of the event.
+  - `allow`: Boolean value to enable or disable media uploads.
+- **Response**: Updated event details.
+
+#### **PATCH /events/addGuests/:id** _(Requires Authentication)_
+
+- **Description**: Adds guests to an event.
+- **Authentication**: Requires `JWT` token in the `Authorization` header.
+- **Request Parameters**:
+  - `id`: Event ID.
+- **Request Body**:
+  - `guests`: List of user IDs to invite.
+  - `tempGuests`: List of temporary guests (with email and username).
+- **Response**: Success message with updated event guest details.
+
+#### **POST /events/unGuestUser** _(Requires Authentication)_
+
+- **Description**: Removes a guest from the event.
+- **Authentication**: Requires `JWT` token in the `Authorization` header.
+- **Request Body**:
+  - `userId`: User ID of the guest.
+  - `eventId`: ID of the event.
+- **Response**: Success message confirming the user is no longer a guest.
+
+#### **PUT /events/:id/updateGuestsAllowFriend** _(Requires Authentication)_
+
+- **Description**: Updates the `guestsAllowFriend` field of an event.
+- **Authentication**: Requires `JWT` token in the `Authorization` header.
+- **Request Parameters**:
+  - `id`: Event ID.
+- **Request Body**:
+  - `guestsAllowFriend`: Boolean value to allow or disallow guests to bring friends.
+- **Response**: Updated event details.
+
+#### **POST /events/attendEventStatus** _(Requires Authentication)_
+
+- **Description**: Toggles the attendance status for a user at an event.
+- **Authentication**: Requires `JWT` token in the `Authorization` header.
+- **Request Body**:
+  - `eventId`: Event ID.
+  - `userId`: User ID.
+  - `rsvpAnswers`: Optional answers to RSVP questions.
+  - `attendStatus`: Current attendance status.
+- **Response**: Success message confirming attendance status change.
+
+#### **POST /events/favouriteEventStatus** _(Requires Authentication)_
+
+- **Description**: Toggles the favorite status for an event.
+- **Authentication**: Requires `JWT` token in the `Authorization` header.
+- **Request Body**:
+  - `eventId`: Event ID.
+- **Response**: Success message confirming the event is favorited or unfavorited.
+
+#### **POST /events/refusedEventStatus** _(Requires Authentication)_
+
+- **Description**: Toggles the refusal status for an event.
+- **Authentication**: Requires `JWT` token in the `Authorization` header.
+- **Request Body**:
+  - `eventId`: Event ID.
+  - `reason`: Optional reason for refusing the event.
+- **Response**: Success message confirming the event refusal.
+
+#### **DELETE /events/deleteEvent/:id** _(Requires Authentication)_
+
+- **Description**: Deletes an event.
+- **Authentication**: Requires `JWT` token in the `Authorization` header.
+- **Request Parameters**:
+  - `id`: Event ID.
+- **Response**: Success message confirming event deletion.
+
+### API Documentation - Chat Routes
+
+#### **POST /chat/sendMessage**
+
+- **Description**: Sends a message in a conversation.
+- **Authentication**: No authentication required.
+- **Request Body**:
+  - `message`: Message text.
+  - `senderId`: ID of the sender.
+  - `conversationId`: ID of the conversation.
+  - `messageType`: Type of message (text, image, etc.).
+- **Response**: Success message with message details.
+
+#### **GET /chat/fetchMessages/:chatId** _(Requires Authentication)_
+
+- **Description**: Fetches messages in a conversation.
+- **Authentication**: Requires `JWT` token in the `Authorization` header (`Bearer <token>`).
+- **Request Parameters**:
+  - `chatId`: Chat ID.
+- **Response**: List of messages.
+
+#### **GET /chat/fetchConversations** _(Requires Authentication)_
+
+- **Description**: Fetches all conversations for the authenticated user.
+- **Authentication**: Requires `JWT` token in the `Authorization` header.
+- **Response**: List of conversations with the most recent messages.
+
+#### **POST /chat/startPrivateConversation** _(Requires Authentication)_
+
+- **Description**: Starts a private conversation between two users.
+- **Authentication**: Requires `JWT` token in the `Authorization` header.
+- **Request Body**:
+  - `userId`: ID of the other user.
+- **Response**: Success message with conversation details.
+
+#### **DELETE /chat/deleteMessage/:messageId** _(Requires Authentication)_
+
+- **Description**: Deletes a message sent by the authenticated user.
+- **Authentication**: Requires `JWT` token in the `Authorization` header.
+- **Request Parameters**:
+  - `messageId`: ID of the message.
+- **Response**: Success message confirming message deletion.
+
+#### **DELETE /chat/deleteConversation/:conversationId** _(Requires Authentication)_
+
+- **Description**: Deletes a conversation by ID.
+- **Authentication**: Requires `JWT` token in the `Authorization` header.
+- **Request Parameters**:
+  - `conversationId`: ID of the conversation.
+- **Response**: Success message confirming conversation deletion.
