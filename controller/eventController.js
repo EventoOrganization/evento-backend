@@ -882,6 +882,7 @@ exports.deleteEvent = async (req, res) => {
           eventId: req.params.id,
         });
         await Models.groupChatModel.deleteOne({ eventId: req.params.id });
+        await Models.chatconstant.deleteMany({ groupId: req.params.id });
         return helper.success(res, "Event delete successfuly");
       }
     }
