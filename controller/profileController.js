@@ -223,8 +223,6 @@ exports.updateProfile = async (req, res) => {
       password,
     } = req.body;
 
-    console.log("Request body:", req.body); // Log données de la requête
-
     if (username && username !== user.username) updateData.username = username;
     if (firstName && firstName !== user.firstName)
       updateData.firstName = firstName;
@@ -296,23 +294,21 @@ exports.updateProfile = async (req, res) => {
           error: error.message,
         });
       }
-
-      socialLinks.forEach((link) => {
-        if (!link.platform || !link.url) {
-          return res.status(400).json({
-            status: false,
-            message: "Each social link must include a platform and a URL",
-          });
-        }
-      });
-
-      const uniqueLinks = Array.from(
-        new Set(socialLinks.map((link) => link.platform)),
-      ).map((platform) =>
-        socialLinks.find((link) => link.platform === platform),
+      const validSocialLinks = socialLinks.filter(
+        (link) => link.platform && link.url,
       );
+      if (validSocialLinks.length === 0) {
+        updateData.socialLinks = null;
+      } else {
+        // Supprimer les doublons par platform
+        const uniqueLinks = Array.from(
+          new Set(validSocialLinks.map((link) => link.platform)),
+        ).map((platform) =>
+          validSocialLinks.find((link) => link.platform === platform),
+        );
 
-      updateData.socialLinks = uniqueLinks;
+        updateData.socialLinks = uniqueLinks;
+      }
     } else {
       updateData.socialLinks = null;
     }
