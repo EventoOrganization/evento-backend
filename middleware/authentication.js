@@ -34,9 +34,15 @@ module.exports = {
       next();
     } catch (error) {
       console.error("JWT verification error:", error.message);
+      let message = "Invalid token";
+      if (error instanceof jwt.TokenExpiredError) {
+        message = "Token has expired";
+      } else if (error instanceof jwt.JsonWebTokenError) {
+        message = "Token is invalid";
+      }
       return res.status(403).json({
         success: false,
-        message: "Invalid or expired token",
+        message: message,
       });
     }
   },

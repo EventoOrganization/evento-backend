@@ -1436,16 +1436,24 @@ module.exports = {
 
   allUserListing: async (req, res) => {
     try {
-      let result = await Models.userModel.find({
-        role: { $ne: "admin" },
-      });
+      let result = await Models.userModel.find(
+        {
+          role: { $ne: "admin" }, // Exclure les utilisateurs ayant le rôle "admin"
+        },
+        {
+          username: 1, // Inclure le champ `username`
+          firstName: 1, // Inclure le champ `firstName`
+          lastName: 1, // Inclure le champ `lastName`
+          profileImage: 1, // Inclure le champ `profileImage`
+          _id: 1, // Inclure le champ `_id`
+        },
+      );
 
-      return helper.success(res, "ALl user list", result);
+      return helper.success(res, "All user list", result);
     } catch (error) {
       return res.status(401).json({ status: false, message: error.message });
     }
   },
-
   createEventAndRSVPform: async (req, res) => {
     console.log("Received request body:", req.body);
     console.log("Received files", req.files);
@@ -4513,9 +4521,18 @@ module.exports = {
       const loggedInUserInterests = loggedInUser.interests || [];
 
       // Get the list of users excluding the logged-in user and admins
-      const userList = await Models.userModel.find({
-        $and: [{ _id: { $ne: loggedInUserId } }, { role: { $ne: "admin" } }],
-      });
+      const userList = await Models.userModel
+        .find({
+          $and: [{ _id: { $ne: loggedInUserId } }, { role: { $ne: "admin" } }],
+        })
+        .select({
+          username: 1, // Inclure le champ `username`
+          firstName: 1, // Inclure le champ `firstName`
+          lastName: 1, // Inclure le champ `lastName`
+          profileImage: 1, // Inclure le champ `profileImage`
+          _id: 1, // Inclure le champ `_id`
+          interests: 1, // Inclure les intérêts pour le calcul des correspondances
+        });
 
       const followingList = await Models.userFollowModel.find({
         follower: loggedInUserId,
