@@ -84,8 +84,6 @@ exports.addGuests = async (req, res) => {
         const { email, username } = tempGuestData;
         const existingUser = await Models.userModel.findOne({ email });
         if (existingUser) {
-          // Si l'utilisateur existe, l'ignorer et continuer avec le suivant
-          console.log(`User with email ${email} already exists, skipping...`);
           continue;
         }
         let tempGuest = await TempGuest.findOne({ email });
@@ -228,11 +226,7 @@ exports.updateEventField = async (req, res) => {
   const { eventId } = req.params;
   const { field, value } = req.body;
 
-  console.log(`Received request to update event with ID: ${eventId}`);
-  console.log(`Field to update: ${field}, New value: ${JSON.stringify(value)}`);
-
   if (!field || value === undefined) {
-    console.log("Missing field or value in the request body");
     return res.status(400).json({ message: "Missing field or value" });
   }
 
@@ -319,7 +313,6 @@ exports.updateEventField = async (req, res) => {
   }
 };
 exports.updateGuestsAllowFriend = async (req, res) => {
-  console.log("*************req.body*******", req.body);
   try {
     const eventId = req.params.id;
     const { guestsAllowFriend } = req.body;
@@ -360,7 +353,6 @@ exports.updateGuestsAllowFriend = async (req, res) => {
   }
 };
 exports.createEvent = async (req, res) => {
-  console.log("*************req.body*******", req.body);
   try {
     const {
       title,
@@ -384,28 +376,6 @@ exports.createEvent = async (req, res) => {
       includeChat,
       createRSVP,
     } = req.body;
-
-    // Log all fields to verify they are being processed correctly
-    console.log("Title:", title);
-    console.log("Username:", username);
-    console.log("Event Type:", eventType);
-    console.log("Mode:", mode);
-    console.log("Location:", location);
-    console.log("Latitude:", latitude);
-    console.log("Longitude:", longitude);
-    console.log("Date:", date);
-    console.log("End Date:", endDate);
-    console.log("Start Time:", startTime);
-    console.log("End Time:", endTime);
-    console.log("Description:", description);
-    console.log("Guests:", guests);
-    console.log("Interests:", interests);
-    console.log("Uploaded Media:", uploadedMedia);
-    console.log("Questions:", questions);
-    console.log("Additional Field:", additionalField);
-    console.log("URL:", URL);
-    console.log("Include Chat:", includeChat);
-    console.log("Create RSVP:", createRSVP);
 
     // Handle media for event
     let initialMedia = [];
@@ -449,10 +419,7 @@ exports.createEvent = async (req, res) => {
       additionalField,
     };
 
-    console.log("Event Object to Save:", objToSave);
-
     const createdEvent = await Models.eventModel.create(objToSave);
-    console.log("Created Event:", createdEvent);
 
     const eventLink = `${process.env.CLIENT_URL}/event/${createdEvent._id}`;
     const usernameFrom = req.user.username;
@@ -460,17 +427,13 @@ exports.createEvent = async (req, res) => {
     // Step 2: Create the coHosts and associate them with the created event
     let coHosts = [];
     if (Array.isArray(req.body.coHosts) && req.body.coHosts.length > 0) {
-      console.log("Co-hosts Array Found:", req.body.coHosts);
-
       coHosts = await Promise.all(
         req.body.coHosts.map(async (coHost) => {
-          console.log("Processing Co-host:", coHost);
           const newCohost = await Models.coHostModel.create({
             user_id: coHost.userId,
             event_id: createdEvent._id, // Use the ID of the created event here
             status: coHost.status || "read-only",
           });
-          console.log("Created Co-host:", newCohost);
           return newCohost._id; // Return the ObjectId of the co-host
         }),
       );
@@ -478,7 +441,6 @@ exports.createEvent = async (req, res) => {
       // Update event with the co-hosts' references
       createdEvent.coHosts = coHosts;
       await createdEvent.save();
-      console.log("Updated Event with Co-hosts:", createdEvent);
     }
 
     // Step 3: Send email to each co-host
@@ -492,9 +454,7 @@ exports.createEvent = async (req, res) => {
         if (coHostUser) {
           const emailTo = coHostUser.email;
           const usernameTo = coHostUser.username;
-          console.log(
-            `Sending co-host invitation email to ${usernameTo} at ${emailTo} from ${usernameFrom}`,
-          );
+
           await sendEventInviteEmail(
             req.user,
             coHostUser,
@@ -508,7 +468,6 @@ exports.createEvent = async (req, res) => {
 
     // Step 4: Handle group chat creation if necessary
     if (includeChat) {
-      console.log("Creating group chat for event:", createdEvent._id);
       const initialUsers = [req.user.id, ...coHosts];
       const saveData = {
         eventId: createdEvent._id,
@@ -523,11 +482,8 @@ exports.createEvent = async (req, res) => {
         time: moment().format("LTS"),
       };
 
-      console.log("Group Chat Data to Save:", saveData);
-
       try {
         const createdGroupChat = await Models.groupChatModel.create(saveData);
-        console.log("Group Chat Created:", createdGroupChat);
 
         const createdChatConstant = await Models.chatconstant.create({
           senderId: req.user._id,
@@ -541,7 +497,6 @@ exports.createEvent = async (req, res) => {
           date: moment().format("YYYY-MM-DD"),
           time: moment().format("LTS"),
         });
-        console.log("Chat Constant Created:", createdChatConstant);
       } catch (error) {
         console.error("Error creating group chat or chat constant:", error);
       }
@@ -562,9 +517,8 @@ exports.createEvent = async (req, res) => {
 exports.getEventById = async (req, res) => {
   try {
     const eventId = req.params.id;
-    console.log(`Fetching event with ID: ${eventId}`);
 
-    // Fetch the event with all necessary populations
+    // Récupère l'événement avec les populations nécessaires
     const event = await Event.findById(eventId)
       .populate("user", "username email profileImage")
       .populate("interests", "_id name")
@@ -578,7 +532,7 @@ exports.getEventById = async (req, res) => {
         },
       })
       .exec();
-    console.log("******************", event.coHosts);
+
     if (!event) {
       return res.status(404).json({
         status: false,
@@ -586,6 +540,7 @@ exports.getEventById = async (req, res) => {
       });
     }
 
+    // Si l'utilisateur n'est pas authentifié, retourne simplement l'événement
     if (!req.query.userId) {
       return res.status(200).json({
         status: true,
@@ -594,172 +549,90 @@ exports.getEventById = async (req, res) => {
       });
     }
 
+    const userId = req.query.userId;
+
+    // Récupère le statut de l'utilisateur pour cet événement depuis le nouveau schema `eventStatusSchema`
+    const eventStatus = await Models.eventStatusSchema.findOne({
+      eventId,
+      userId,
+    });
+
     let isGoing = false;
     let isFavourite = false;
     let isRefused = false;
-    let isAdmin = false;
-    let isHosted = false;
-    let isCoHost = false;
-    const userId = req.query.userId;
 
-    const rsvpSubmissions = await Models.RSVPSubmission.find({ eventId })
-      .populate("userId", "username firstName lastName profileImage")
-      .exec();
-
-    const refusedReason = await Models.eventRefuseSchema
-      .find({ eventId })
-      .populate("userId", "username firstName lastName profileImage")
-      .exec();
-
-    const attachRSVP = (user) => {
-      if (!user) return null;
-      const userObject = user.toObject ? user.toObject() : user;
-      const rsvp = rsvpSubmissions.find((submission) =>
-        submission.userId.equals(user._id),
-      );
-      return {
-        ...userObject,
-        rsvpSubmission: rsvp || null,
-      };
-    };
-
-    const attachRefusedReason = (user) => {
-      if (!user) return null;
-      const userObject = user.toObject ? user.toObject() : user;
-      const reason = refusedReason.find((submission) =>
-        submission.userId.equals(user._id),
-      );
-      return {
-        ...userObject,
-        refusedReason: reason ? reason.reason : null,
-      };
-    };
-
-    const refused = await Models.eventRefuseModel
-      .find({ eventId, refused: 1 })
-      .populate("userId", "username firstName lastName profileImage")
-      .exec();
-
-    const attendees = await Models.eventAttendesUserModel
-      .find({ eventId, attendEvent: 1 })
-      .populate("userId", "username firstName lastName profileImage")
-      .exec();
-
-    const favouritees = await Models.eventFavouriteUserModel
-      .find({ eventId, favourite: 1 })
-      .populate("userId", "username firstName lastName profileImage")
-      .exec();
-
-    if (req.query.userId) {
-      const followingList = await Models.userFollowModel.find({
-        follower: userId,
-      });
-      const followersList = await Models.userFollowModel.find({
-        following: userId,
-      });
-
-      const followingMap = new Map();
-      followingList.forEach((follow) => {
-        followingMap.set(follow.following.toString(), true);
-      });
-
-      const followersMap = new Map();
-      followersList.forEach((follow) => {
-        followersMap.set(follow.follower.toString(), true);
-      });
-
-      const addFollowStatus = (user) => {
-        if (!user) return null;
-        const userIdStr = user._id.toString();
-        return {
-          ...user.toObject(),
-          isIFollowingHim: followingMap.has(userIdStr),
-          isFollowingMe: followersMap.has(userIdStr),
-        };
-      };
-      const enrichedGuests = event.guests
-        ? event.guests.map((guest) => addFollowStatus(guest))
-        : [];
-
-      const enrichedTempGuests = event.tempGuests
-        ? event.tempGuests.map((tempGuest) => ({
-            ...tempGuest.toObject(),
-            isIFollowingHim: false,
-            isFollowingMe: false,
-          }))
-        : [];
-
-      const enrichedAttendees = attendees
-        ? attendees.map((attendee) =>
-            attachRSVP(addFollowStatus(attendee.userId)),
-          )
-        : [];
-
-      const enrichedFavouritees = favouritees
-        ? favouritees.map((favourite) => addFollowStatus(favourite.userId))
-        : [];
-
-      const enrichedRefused = refused
-        ? refused.map((refuse) =>
-            attachRefusedReason(addFollowStatus(refuse.userId)),
-          )
-        : [];
-
-      const attendeeStatus = await Models.eventAttendesUserModel
-        .findOne({ userId, eventId, attendEvent: 1 })
-        .exec();
-
-      const favouriteStatus = await Models.eventFavouriteUserModel
-        .findOne({ userId, eventId, favourite: 1 })
-        .exec();
-
-      const refuseStatus = await Models.eventRefuseModel
-        .findOne({ userId, eventId, refused: 1 })
-        .exec();
-
-      const adminStatus = await Models.coHostModel.findOne({
-        eventId,
-        userId,
-        status: "admin",
-      });
-
-      if (event.coHosts && Array.isArray(event.coHosts)) {
-        isCoHost = event.coHosts.some(
-          (coHost) =>
-            coHost.user && coHost.user._id.toString() === userId.toString(),
-        );
+    if (eventStatus) {
+      // Définir le statut en fonction du statut trouvé
+      if (eventStatus.status === "isGoing") {
+        isGoing = true;
+      } else if (eventStatus.status === "isFavourite") {
+        isFavourite = true;
+      } else if (eventStatus.status === "isRefused") {
+        isRefused = true;
       }
-
-      const hostStatus = event.user._id.toString() === userId.toString();
-
-      isRefused = !!refuseStatus;
-      isGoing = !!attendeeStatus;
-      isFavourite = !!favouriteStatus;
-      isAdmin = !!adminStatus;
-      isHosted = !!hostStatus;
-
-      const enrichedEvent = {
-        ...event.toObject(),
-        guests: enrichedGuests,
-        tempGuests: enrichedTempGuests,
-        attendees: enrichedAttendees,
-        favouritees: enrichedFavouritees,
-        refused: enrichedRefused,
-        // coHosts: enrichedCoHosts,
-        coHostStatus: isCoHost,
-        isGoing,
-        isFavourite,
-        isRefused,
-        isAdmin,
-        isHosted,
-      };
-
-      return res.status(200).json({
-        status: true,
-        message: "Event retrieved successfully",
-        data: enrichedEvent,
-      });
     }
+
+    // Récupère les invités enrichis avec les informations de suivi
+    const followingList = await Models.userFollowModel.find({
+      follower: userId,
+    });
+    const followersList = await Models.userFollowModel.find({
+      following: userId,
+    });
+
+    const followingMap = new Map();
+    followingList.forEach((follow) => {
+      followingMap.set(follow.following.toString(), true);
+    });
+
+    const followersMap = new Map();
+    followersList.forEach((follow) => {
+      followersMap.set(follow.follower.toString(), true);
+    });
+
+    const addFollowStatus = (user) => {
+      if (!user) return null;
+      const userIdStr = user._id.toString();
+      return {
+        ...user.toObject(),
+        isIFollowingHim: followingMap.has(userIdStr),
+        isFollowingMe: followersMap.has(userIdStr),
+      };
+    };
+
+    const enrichedGuests = event.guests
+      ? event.guests.map((guest) => addFollowStatus(guest))
+      : [];
+    const enrichedTempGuests = event.tempGuests
+      ? event.tempGuests.map((tempGuest) => ({
+          ...tempGuest.toObject(),
+          isIFollowingHim: false,
+          isFollowingMe: false,
+        }))
+      : [];
+
+    const hostStatus = event.user._id.toString() === userId.toString();
+    const isCoHost = event.coHosts.some(
+      (coHost) =>
+        coHost.user && coHost.user._id.toString() === userId.toString(),
+    );
+
+    const enrichedEvent = {
+      ...event.toObject(),
+      guests: enrichedGuests,
+      tempGuests: enrichedTempGuests,
+      isGoing,
+      isFavourite,
+      isRefused,
+      isCoHost,
+      isHosted: hostStatus,
+    };
+
+    return res.status(200).json({
+      status: true,
+      message: "Event retrieved successfully",
+      data: enrichedEvent,
+    });
   } catch (error) {
     console.error("Error retrieving event:", error);
     return res.status(500).json({
@@ -769,14 +642,65 @@ exports.getEventById = async (req, res) => {
     });
   }
 };
+exports.getRSVPAndReasons = async (req, res) => {
+  const { eventId } = req.params;
+
+  try {
+    // Récupérer les utilisateurs avec des réponses RSVP (status 'isGoing')
+    const rsvpSubmissions = await Models.eventStatusSchema
+      .find({
+        eventId: eventId,
+        status: "isGoing",
+      })
+      .populate("userId", "username profileImage")
+      .select("userId rsvpAnswers");
+
+    // Récupérer les utilisateurs qui ont refusé l'invitation (status 'isRefused') avec la raison
+    const refusedStatuses = await Models.eventStatusSchema
+      .find({
+        eventId: eventId,
+        status: "isRefused",
+      })
+      .populate("userId", "username profileImage")
+      .select("userId reason");
+
+    // Structurer la réponse
+    res.status(200).json({
+      success: true,
+      data: {
+        rsvpSubmissions, // Utilisateurs avec RSVP et leurs réponses
+        refusedStatuses, // Utilisateurs qui ont refusé et leurs raisons
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching RSVP and refused info:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch RSVP and refused info",
+      error: error.message,
+    });
+  }
+};
 exports.getUpcomingEvents = async (req, res) => {
   try {
-    console.log("Start getting getAllUpcomingPublicEvents");
+    const userId = req.query.userId;
     const currentDate = new Date();
-    // Récupération des événements publics à venir
+
+    // Récupérer les événements publics et privés à venir
     const events = await Event.find({
-      eventType: "public",
-      "details.endDate": { $gt: currentDate },
+      $or: [
+        { eventType: "public", "details.endDate": { $gt: currentDate } },
+        {
+          eventType: "private",
+          "details.endDate": { $gt: currentDate },
+          $or: [
+            { user: userId }, // host
+            { guests: userId }, // guest
+            { tempGuests: userId }, // temp guest
+            { coHosts: { $elemMatch: { user_id: userId } } }, // cohost
+          ],
+        },
+      ],
     })
       .sort({ createdAt: -1 })
       .populate("user", "username firstName lastName profileImage")
@@ -787,83 +711,104 @@ exports.getUpcomingEvents = async (req, res) => {
           select: "username email profileImage",
         },
       })
-      .populate("guests", " usernamefirstName lastName profileImage")
+      .populate("guests", "username firstName lastName profileImage")
       .populate("interests", "name image")
       .exec();
+
+    // Préparer un tableau pour contenir les événements enrichis
     let enrichedEvents = events.map((event) => ({
       ...event.toObject(),
       isGoing: false,
       isFavourite: false,
+      isRefused: false,
+      attendees: [],
+      favouritees: [],
+      refused: [],
     }));
+
+    // Récupérer les IDs des événements pour chercher les statuts d'événements
     const eventIds = events.map((event) => event._id);
-    const attendeesData = await Models.eventAttendesUserModel
-      .find({ eventId: { $in: eventIds }, attendEvent: 1 })
-      .populate("userId", "username firstName lastName profileImage");
-    const attendeesMap = {};
-    attendeesData.forEach((att) => {
-      if (!attendeesMap[att.eventId]) {
-        attendeesMap[att.eventId] = [];
+
+    // Récupérer les statuts d'événements associés à ces événements
+    const eventStatuses = await Models.eventStatusSchema
+      .find({
+        eventId: { $in: eventIds },
+      })
+      .populate("userId", "username profileImage") // Peupler les infos de l'utilisateur
+      .exec();
+
+    // Construire une map des statuts par événement
+    const statusMap = {};
+    eventStatuses.forEach((status) => {
+      if (!statusMap[status.eventId]) {
+        statusMap[status.eventId] = {
+          attendees: [],
+          favouritees: [],
+          refused: [],
+        };
       }
-      attendeesMap[att.eventId].push(att.userId);
+
+      // Ajouter les utilisateurs dans les tableaux appropriés selon leur statut
+      if (status.status === "isGoing") {
+        statusMap[status.eventId].attendees.push(status.userId);
+      } else if (status.status === "isFavourite") {
+        statusMap[status.eventId].favouritees.push(status.userId);
+      } else if (status.status === "isRefused") {
+        statusMap[status.eventId].refused.push(status.userId);
+      }
     });
-    // add LoggedUser's status
-    if (req.query.userId) {
-      const attendeeStatus = await Models.eventAttendesUserModel
-        .find({
-          userId: req.query.userId,
-          eventId: { $in: events.map((event) => event._id) },
-        })
-        .exec();
 
-      const favoriteStatus = await Models.eventFavouriteUserModel
-        .find({
-          userId: req.query.userId,
-          eventId: { $in: events.map((event) => event._id) },
-        })
-        .exec();
-      if (attendeeStatus && Array.isArray(attendeeStatus)) {
-        const goingStatusMap = {};
-        attendeeStatus.forEach((status) => {
-          if (status && status.eventId) {
-            goingStatusMap[status.eventId] = status.attendEvent === 1;
-          }
-        });
+    // Enrichir les événements avec les statuts d'utilisateurs pour l'utilisateur connecté
+    if (userId) {
+      enrichedEvents = enrichedEvents.map((event) => {
+        const userStatus = statusMap[event._id] || {
+          attendees: [],
+          favouritees: [],
+          refused: [],
+        };
 
-        const favouriteStatusMap = {};
-        if (favoriteStatus && Array.isArray(favoriteStatus)) {
-          favoriteStatus.forEach((status) => {
-            if (status && status.eventId) {
-              favouriteStatusMap[status.eventId] = status.favourite === 1;
-            }
-          });
-        }
+        // Vérifier si l'utilisateur connecté est dans les tableaux
+        const isGoing = userStatus.attendees.some(
+          (user) => user._id.toString() === userId,
+        );
+        const isFavourite = userStatus.favouritees.some(
+          (user) => user._id.toString() === userId,
+        );
+        const isRefused = userStatus.refused.some(
+          (user) => user._id.toString() === userId,
+        );
 
-        enrichedEvents = events.map((event) => {
-          const isGoing = !!goingStatusMap[event._id];
-          const isFavourite = !!favouriteStatusMap[event._id];
-          return {
-            ...event.toObject(),
-            isGoing,
-            isFavourite,
-            attendees: attendeesMap[event._id] || [],
-          };
-        });
-      }
+        const isHosted = event.user._id.toString() === userId;
+
+        return {
+          ...event,
+          isGoing,
+          isFavourite,
+          isRefused,
+          attendees: userStatus.attendees || [], // Liste des utilisateurs qui sont "isGoing"
+          favouritees: userStatus.favouritees || [], // Liste des utilisateurs qui sont "isFavourite"
+          refused: userStatus.refused || [], // Liste des utilisateurs qui ont "refusé"
+          isHosted,
+        };
+      });
     }
+
+    // Répondre avec les événements enrichis
     res.status(200).json({
       success: true,
-      message: "Upcoming public events retrieved successfully",
+      message: "Upcoming events retrieved successfully",
       data: enrichedEvents,
     });
   } catch (error) {
-    console.error("Error in getAllUpcomingPublicEvents controller: ", error);
+    console.error("Error in getUpcomingEvents controller:", error);
     res.status(500).json({
       success: false,
-      message: "Failed to retrieve upcoming public events",
+      message: "Failed to retrieve upcoming events",
       error: error.message,
     });
   }
 };
+
 exports.deleteEvent = async (req, res) => {
   try {
     //Fistly check created event is by logged in user or not
@@ -891,93 +836,38 @@ exports.deleteEvent = async (req, res) => {
     return res.status(500).json({ status: false, message: error.message });
   }
 };
-exports.attendEventStatus = async (req, res) => {
-  console.log("req.body", req.body);
-  try {
-    const { eventId, userId, rsvpAnswers, attendStatus } = req.body;
-    const objToFind = {
-      eventId: eventId,
-      userId: userId,
-    };
+exports.updateEventStatus = async (req, res) => {
+  const { eventId, userId, status, rsvpAnswers, reason } = req.body;
 
-    if (attendStatus) {
-      // If already going, toggle to not going and remove RSVP answers
-      await Models.eventAttendesUserModel.deleteOne(objToFind);
-      await Models.RSVPSubmission.deleteMany(objToFind); // Assuming RSVP answers are stored separately
-      return helper.success(
-        res,
-        "You are no longer marked as going to this event",
-      );
-    } else {
-      // If not going, mark as going and save RSVP answers
-      await Models.eventAttendesUserModel.create({
-        ...objToFind,
-        attendEvent: 1,
+  try {
+    // Vérifier si l'utilisateur essaie de retirer un statut en envoyant null
+    if (!status) {
+      // Supprimer l'entrée du statut si le statut est null
+      await Models.eventStatusSchema.deleteOne({ eventId, userId });
+      return res.status(200).json({
+        success: true,
+        message: "Event status removed successfully",
       });
-
-      // Save RSVP responses if provided
-      if (rsvpAnswers && rsvpAnswers.length > 0) {
-        const response = await Models.RSVPSubmission.create({
-          eventId: eventId,
-          userId: userId,
-          rsvpAnswers: rsvpAnswers.map((answer) => ({
-            questionId: answer.questionId,
-            answer: answer.answer,
-          })),
-        });
-        console.log("rsvpanswer", response);
-      }
-      return helper.success(res, "You are now marked as going to this event");
     }
-  } catch (error) {
-    console.error("Error managing event attendance status:", error);
-    return res.status(500).json({ status: false, message: error.message });
-  }
-};
-exports.favouriteEventStatus = async (req, res) => {
-  try {
-    let objToSave = {
-      favourite: 1,
-      eventId: req.body.eventId,
-      userId: req.user._id,
-    };
-    //Firstly find if exist then delete other wise create
-    let findData = await Models.eventFavouriteUserModel.findOne(objToSave);
-    if (!findData) {
-      let save = await Models.eventFavouriteUserModel.create(objToSave);
-      return helper.success(res, "Event Favourite", save);
-    } else {
-      let save = await Models.eventFavouriteUserModel.deleteOne(objToSave);
-      return helper.success(res, "Event not favourite", save);
-    }
-  } catch (error) {
-    return res.status(401).json({ status: false, message: error.message });
-  }
-};
-exports.refusedEventStatus = async (req, res) => {
-  try {
-    let objToFind = {
-      eventId: req.body.eventId,
-      userId: req.user._id,
-    };
-    console.log("req.body", req.body);
-    let findData = await Models.eventRefuseModel.findOne(objToFind);
 
-    if (!findData) {
-      let objToSave = {
-        refused: 1,
-        eventId: req.body.eventId,
-        reason: req.body.reason ? req.body.reason : "",
-        userId: req.user._id,
-      };
+    // Mettre à jour ou créer un nouveau statut
+    const eventStatus = await Models.eventStatusSchema.findOneAndUpdate(
+      { eventId, userId },
+      { status, rsvpAnswers, reason },
+      { new: true, upsert: true, runValidators: true }, // Crée un nouveau statut si aucun n'existe
+    );
 
-      let save = await Models.eventRefuseModel.create(objToSave);
-      return helper.success(res, "Event Refused", save);
-    } else {
-      let save = await Models.eventRefuseModel.deleteOne(objToFind);
-      return helper.success(res, "Event not Refused", save);
-    }
+    res.status(200).json({
+      success: true,
+      message: "Event status updated successfully",
+      data: eventStatus,
+    });
   } catch (error) {
-    return res.status(401).json({ status: false, message: error.message });
+    console.error("Error updating event status:", error);
+    res.status(500).json({
+      success: false,
+      message: "An error occurred while updating the event status",
+      error: error.message,
+    });
   }
 };

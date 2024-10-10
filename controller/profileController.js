@@ -25,6 +25,7 @@ exports.getLoggedUserProfile = async (req, res) => {
       return res.status(404).json({ status: false, message: "User not found" });
     }
 
+    // Fetch all events
     const allEvents = await Event.find({})
       .populate({
         path: "user",
@@ -44,63 +45,59 @@ exports.getLoggedUserProfile = async (req, res) => {
       })
       .exec();
 
-    const attendEvents = await Models.eventAttendesUserModel
-      .find({ userId: req.user._id })
-      .exec();
+    const userId = req.user._id;
+    const eventStatuses = await Models.eventStatusSchema.find({ userId });
+    const attendEventsIds = eventStatuses
+      .filter((es) => es.status === "isGoing")
+      .map((es) => es.eventId.toString());
+    const favouriteEventsIds = eventStatuses
+      .filter((es) => es.status === "isFavourite")
+      .map((es) => es.eventId.toString());
 
-    const favouriteEvents = await Models.eventFavouriteUserModel
-      .find({ userId: req.user._id, favourite: 1 })
-      .exec();
+    const enrichedEvents = allEvents
+      .filter((event) => event.user && event.user._id) // Filtrer les événements sans utilisateur valide
+      .map((event) => {
+        const isHosted =
+          event.user && event.user._id
+            ? event.user._id.toString() === req.user._id.toString()
+            : false;
 
-    let attendEventsIds = attendEvents.map((e) => e.eventId.toString());
-    let favouriteEventsIds = favouriteEvents.map((e) => e.eventId.toString());
+        return {
+          ...event._doc,
+          isGoing: attendEventsIds.includes(event._id.toString()),
+          isFavourite: favouriteEventsIds.includes(event._id.toString()),
+          isHosted,
+        };
+      });
 
-    const differentiatedEvents = allEvents.map((event) => {
-      const isHosted = event.user
-        ? event.user._id.toString() === req.user._id.toString()
-        : false;
-      return {
-        ...event._doc,
-        isGoing: attendEventsIds.includes(event._id.toString()),
-        isFavourite: favouriteEventsIds.includes(event._id.toString()),
-        isHosted,
-      };
+    // Filter past events
+    const pastEvents = enrichedEvents.filter((event) => {
+      const eventEndDate = new Date(event.details.endDate);
+      return eventEndDate < new Date() && event.isGoing;
     });
 
-    const hostedEvents = differentiatedEvents.filter((event) => event.isHosted);
-
-    const activeEvents = differentiatedEvents.filter(
-      (event) => event.isGoing || event.isFavourite,
-    );
-    const upcomingEvents = activeEvents.filter(
-      (event) => new Date(event.details.endDate) >= new Date(),
-    );
-    const pastEvents = activeEvents.filter(
-      (event) => new Date(event.details.endDate) < new Date(),
-    );
-    let countFollowing = await Models.userFollowModel.countDocuments({
+    // Calculate additional user information
+    const countFollowing = await Models.userFollowModel.countDocuments({
       follower: req.user._id,
     });
 
-    let countTotalEventIAttended =
-      await Models.eventAttendesUserModel.countDocuments({
+    const countTotalEventIAttended =
+      await Models.eventStatusSchema.countDocuments({
         userId: req.user._id,
+        status: "isGoing",
       });
 
     userInfo._doc.following = countFollowing;
     userInfo._doc.totalEventAttended = countTotalEventIAttended;
 
-    let obj = {
-      userInfo,
-      upcomingEvents,
-      pastEvents,
-      hostedEvents,
-    };
-
     return res.status(200).json({
       status: true,
       message: "Profile retrieved successfully",
-      data: obj,
+      data: {
+        ...userInfo._doc,
+        pastEvents,
+        hostedEvents: enrichedEvents.filter((event) => event.isHosted),
+      },
     });
   } catch (error) {
     console.error("Error in getLoggedUserProfile:", error);
@@ -109,14 +106,11 @@ exports.getLoggedUserProfile = async (req, res) => {
       .json({ status: false, message: "Internal server error" });
   }
 };
+
 exports.getUserProfileById = async (req, res) => {
   try {
     const userId = req.params.userId;
-    const currentUser = req.body;
-    console.log(
-      "🛠️ ~ file: profileController.js:exports.getUserProfileById ~ currentUser:",
-      currentUser,
-    );
+
     const userInfo = await User.findById(userId)
       .select(
         "firstName lastName username email profileImage bio URL socialLinks interests",
@@ -130,6 +124,7 @@ exports.getUserProfileById = async (req, res) => {
         .json({ status: false, message: "User not found." });
     }
 
+    // Fetch all events related to the user
     const allEvents = await Event.find({
       $or: [{ guests: userId }, { coHosts: userId }, { user: userId }],
     })
@@ -139,63 +134,70 @@ exports.getUserProfileById = async (req, res) => {
       .populate("coHosts.user", "firstName lastName username profileImage")
       .exec();
 
-    const attendEvents = await Models.eventAttendesUserModel
-      .find({ userId: userId })
-      .exec();
+    // Fetch event statuses for the user (isGoing, isFavourite)
+    const eventStatuses = await Models.eventStatusSchema.find({ userId });
+    const attendEventsIds = eventStatuses
+      .filter((es) => es.status === "isGoing")
+      .map((es) => es.eventId.toString());
+    const favouriteEventsIds = eventStatuses
+      .filter((es) => es.status === "isFavourite")
+      .map((es) => es.eventId.toString());
 
-    const favouriteEvents = await Models.eventFavouriteUserModel
-      .find({ userId: userId, favourite: 1 })
-      .exec();
-    let attendEventsIds = attendEvents.map((e) => e.eventId.toString());
-    let favouriteEventsIds = favouriteEvents.map((e) => e.eventId.toString());
+    // Enrich the events with user-specific status (isGoing, isFavourite, isHosted)
+    const enrichedEvents = allEvents.map((event) => {
+      const isHosted = event.user
+        ? event.user._id.toString() === userId.toString()
+        : false;
 
-    const differentiatedEvents = allEvents.map((event) => {
       return {
         ...event._doc,
         isGoing: attendEventsIds.includes(event._id.toString()),
         isFavourite: favouriteEventsIds.includes(event._id.toString()),
-        isHosted: event.user._id.toString() === userId.toString(),
+        isHosted,
       };
     });
-    const hostedEvents = differentiatedEvents.filter((event) => event.isHosted);
 
-    const activeEvents = differentiatedEvents.filter(
-      (event) => event.isGoing || event.isFavourite,
+    // Separate the events into upcoming and past based on their end date
+    const upcomingEvents = enrichedEvents.filter(
+      (event) => new Date(event.details.endDate) >= new Date() && event.isGoing,
     );
-    const upcomingEvents = activeEvents.filter(
-      (event) => new Date(event.details.endDate) >= new Date(),
+    const pastEvents = enrichedEvents.filter(
+      (event) => new Date(event.details.endDate) < new Date() && event.isGoing,
     );
-    const pastEvents = activeEvents.filter(
-      (event) => new Date(event.details.endDate) < new Date(),
-    );
+
+    // Calculate additional user information
     let countFollowing = await Models.userFollowModel.countDocuments({
       follower: userId,
     });
 
     let countTotalEventIAttended =
-      await Models.eventAttendesUserModel.countDocuments({
+      await Models.eventStatusSchema.countDocuments({
         userId: userId,
+        status: "isGoing",
       });
 
     userInfo._doc.following = countFollowing;
     userInfo._doc.totalEventAttended = countTotalEventIAttended;
 
-    let obj = {
-      userInfo,
-      upcomingEvents,
-      pastEvents,
-      hostedEvents,
-    };
+    // Structure the response
     return res.status(200).json({
       status: true,
       message: "User profile fetched successfully",
-      data: obj,
+      data: {
+        ...userInfo._doc,
+        upcomingEvents,
+        pastEvents,
+        hostedEvents: enrichedEvents.filter((event) => event.isHosted),
+      },
     });
   } catch (error) {
     console.error("Error fetching user profile by ID:", error);
-    return res.status(500).json({ status: false, message: error.message });
+    return res
+      .status(500)
+      .json({ status: false, message: "Internal server error" });
   }
 };
+
 exports.updateProfile = async (req, res) => {
   try {
     const userId = req.user._id;

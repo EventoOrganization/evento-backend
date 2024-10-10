@@ -8,6 +8,7 @@ router.post("/createEvent", authenticateJWT, eventController.createEvent);
 
 // Get events
 router.get("/getEvent/:id", eventController.getEventById);
+router.get("/getRSVPAndReasons/:eventId", eventController.getRSVPAndReasons);
 router.get("/getUpcomingEvents", eventController.getUpcomingEvents);
 
 // Update events
@@ -43,20 +44,25 @@ router.put(
 );
 // Handling Status
 router.post(
-  "/attendEventStatus",
+  "/updateEventStatus",
   authenticateJWT,
-  eventController.attendEventStatus,
+  eventController.updateEventStatus,
 );
-router.post(
-  "/favouriteEventStatus",
-  authenticateJWT,
-  eventController.favouriteEventStatus,
-);
-router.post(
-  "/refusedEventStatus",
-  authenticateJWT,
-  eventController.refusedEventStatus,
-);
+// router.post(
+//   "/attendEventStatus",
+//   authenticateJWT,
+//   eventController.attendEventStatus,
+// );
+// router.post(
+//   "/favouriteEventStatus",
+//   authenticateJWT,
+//   eventController.favouriteEventStatus,
+// );
+// router.post(
+//   "/refusedEventStatus",
+//   authenticateJWT,
+//   eventController.refusedEventStatus,
+// );
 
 // Delete events
 router.delete("/deleteEvent/:id", authenticateJWT, eventController.deleteEvent);

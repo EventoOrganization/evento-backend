@@ -164,7 +164,7 @@ exports.forgotPassword = async (req, res) => {
 };
 exports.verifyOTP = async (req, res) => {
   const { otpCode, flowType } = req.body;
-  console.log(otpCode, flowType, req.body);
+
   try {
     // Find user by OTP and check expiration
     const user = await User.findOne({
@@ -248,9 +248,6 @@ exports.deleteAccount = async (req, res) => {
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
-
-    // Log models to check if they're correctly imported
-    console.log(Models);
 
     // Delete associated records
     await Promise.all([

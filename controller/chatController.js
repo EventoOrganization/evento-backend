@@ -1,14 +1,6 @@
 const Models = require("../models");
 const socket = require("socket.io");
 exports.sendMessage = async (req, res) => {
-  console.log(
-    "🛠️ ~ file: chatController.js:exports.sendMessage ~ req:",
-    req.body,
-  );
-  console.log(
-    "🛠️ ~ file: chatController.js:exports.sendMessage ~ req:",
-    req.io,
-  );
   const { message, senderId, conversationId, messageType } = req.body;
 
   if (!message || !senderId || !conversationId || !messageType) {
@@ -20,13 +12,9 @@ exports.sendMessage = async (req, res) => {
   }
 
   try {
-    console.log(
-      `ℹ️ ~ Looking up conversation for conversationId: ${conversationId}`,
-    );
     const conversation = await Models.chatconstant.findById(conversationId);
 
     if (!conversation) {
-      console.log("❌ ~ Conversation not found");
       return res.status(404).json({
         status: false,
         message: "Conversation not found.",
@@ -47,17 +35,9 @@ exports.sendMessage = async (req, res) => {
       .findById(newMessage._id)
       .populate("senderId", "username profileImage");
 
-    console.log(
-      "Message about to be broadcasted via Socket.IO:",
-      populatedMessage,
-    );
-
     // Emit the message via socket
     if (req.io) {
       req.io.to(conversationId).emit("send_message_emit", populatedMessage);
-      console.log(
-        `Message emitted to conversationId: ${conversationId} from ${req.io.id}`,
-      );
     } else {
       console.error("❌ ~ Socket.io instance not found on req object.");
     }
@@ -77,10 +57,6 @@ exports.sendMessage = async (req, res) => {
   }
 };
 exports.fetchMessages = async (req, res) => {
-  console.log(
-    "🛠️ ~ file: chatController.js:exports.fetchMessages ~ req:",
-    req.params,
-  );
   const { chatId } = req.params;
   try {
     const messages = await Models.message

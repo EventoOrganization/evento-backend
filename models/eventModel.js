@@ -109,18 +109,6 @@ const eventSchema = new Schema(
         ref: "user",
       },
     ],
-    attendees: [
-      {
-        type: Schema.Types.ObjectId,
-        ref: "EventAttendee",
-      },
-    ],
-    favouritees: [
-      {
-        type: Schema.Types.ObjectId,
-        ref: "user",
-      },
-    ],
     allUploadPhotoVideo: {
       type: Boolean,
       default: false,

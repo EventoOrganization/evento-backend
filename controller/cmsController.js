@@ -27,7 +27,6 @@ module.exports = {
   },
   update: async (req, res) => {
     try {
-      console.log("updasadfffffffffffff", req.body);
       let { description, role, title } = req.body;
       const result = await cmsModel.findByIdAndUpdate(
         { _id: role },
