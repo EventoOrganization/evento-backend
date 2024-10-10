@@ -72,6 +72,7 @@ exports.addGuests = async (req, res) => {
               username: guestUser.username,
               email: guestUser.email,
             };
+            console.log("email send to", guest);
             await sendEventInviteEmail(user, guest, event, eventLink);
           }
         }
@@ -113,13 +114,13 @@ exports.addGuests = async (req, res) => {
           username: tempGuest.username,
           email: tempGuest.email,
         };
+        console.log("email send to", guest);
         await sendEventInviteEmail(user, guest, event, eventLink);
       }
     }
 
     // Sauvegarder les modifications de l'événement
     await event.save();
-
     res.status(200).json({ message: "Guests added successfully.", event });
   } catch (error) {
     console.error("Error adding guests:", error);
