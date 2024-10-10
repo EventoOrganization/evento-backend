@@ -4272,12 +4272,13 @@ module.exports = {
           $and: [{ _id: { $ne: loggedInUserId } }, { role: { $ne: "admin" } }],
         })
         .select({
-          username: 1, // Inclure le champ `username`
-          firstName: 1, // Inclure le champ `firstName`
-          lastName: 1, // Inclure le champ `lastName`
-          profileImage: 1, // Inclure le champ `profileImage`
-          _id: 1, // Inclure le champ `_id`
-          interests: 1, // Inclure les intérêts pour le calcul des correspondances
+          username: 1,
+          email: 1,
+          firstName: 1,
+          lastName: 1,
+          profileImage: 1,
+          _id: 1,
+          interests: 1,
         });
 
       const followingList = await Models.userFollowModel.find({
