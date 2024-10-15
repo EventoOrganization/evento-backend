@@ -1,0 +1,44 @@
+name: Deploy to Elastic Beanstalk
+
+on:
+  push:
+    branches:
+      - main # Changez par la branche que vous souhaitez utiliser pour le déploiement.
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: "16" # Remplacez par la version de Node.js que vous utilisez.
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build project
+        run: npm run build # Si nécessaire pour votre projet.
+
+      - name: Archive project files
+        run: zip -r deploy.zip * .[^.]* # Créez un fichier ZIP contenant le projet.
+
+      - name: Deploy to Elastic Beanstalk
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: "ap-southeast-2" # Remplacez par votre région AWS.
+          S3_BUCKET_NAME: "evento-media-bucket" # Votre bucket S3 pour les builds et les médias
+        run: |
+          # Chargez le fichier ZIP dans un dossier "builds" dans le bucket S3
+          aws s3 cp deploy.zip s3://$S3_BUCKET_NAME/builds/deploy-${{ github.sha }}.zip
+
+          # Créez une nouvelle version dans Elastic Beanstalk à partir du fichier ZIP stocké dans S3
+          aws elasticbeanstalk create-application-version --application-name "Evento-backend-env" --version-label ${{ github.sha }} --source-bundle S3Bucket=$S3_BUCKET_NAME,S3Key=builds/deploy-${{ github.sha }}.zip
+
+          # Déployez cette nouvelle version dans Elastic Beanstalk
+          aws elasticbeanstalk update-environment --environment-name "Evento-backend-env" --version-label ${{ github.sha }}
