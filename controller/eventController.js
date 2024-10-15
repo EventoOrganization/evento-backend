@@ -226,7 +226,7 @@ exports.unGuestUser = async (req, res) => {
 exports.updateEventField = async (req, res) => {
   const { eventId } = req.params;
   const { field, value } = req.body;
-
+  console.log("field", field, "value", value);
   if (!field || value === undefined) {
     return res.status(400).json({ message: "Missing field or value" });
   }
@@ -296,9 +296,25 @@ exports.updateEventField = async (req, res) => {
               return newCoHost._id;
             }),
           );
-
-          // Mettre à jour l'événement avec les nouveaux co-hôtes
           event.coHosts = newCoHosts;
+        }
+        break;
+      case "date":
+        event.details.date = value;
+        event.details.endDate = value;
+        event.details.startTime = value;
+        event.details.endTime = value;
+        if (Array.isArray(value)) {
+          event.details.timeSlots = value.map((slot) => ({
+            date: slot.date,
+            startTime: slot.startTime,
+            endTime: slot.endTime,
+          }));
+        } else {
+          console.log("Invalid format for time slots");
+          return res
+            .status(400)
+            .json({ message: "Invalid format for time slots" });
         }
         break;
       default:
