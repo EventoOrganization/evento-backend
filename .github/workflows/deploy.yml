@@ -21,9 +21,6 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Build project
-        run: npm run build # Si nécessaire pour votre projet
-
       - name: Archive project files
         run: zip -r deploy.zip * .[^.]* # Créez un fichier ZIP contenant le projet
 
