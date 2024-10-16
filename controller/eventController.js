@@ -437,7 +437,12 @@ exports.createEvent = async (req, res) => {
     };
 
     const createdEvent = await Models.eventModel.create(objToSave);
-
+    const fullUser = await Models.userModel
+      .findById(req.user._id)
+      .select("_id username firstName lastName profileImage");
+    if (fullUser) {
+      createdEvent.user = fullUser; // Assign the full user object instead of just the user ID
+    }
     const eventLink = `${process.env.CLIENT_URL}/event/${createdEvent._id}`;
     const usernameFrom = req.user.username;
 
