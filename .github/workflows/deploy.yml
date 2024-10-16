@@ -8,7 +8,6 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    environment: evento_CI/CD
 
     steps:
       - name: Checkout code
@@ -29,8 +28,8 @@ jobs:
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_REGION: "ap-southeast-2" # Remplacez par votre région AWS
-          S3_BUCKET_NAME: "evento-media-bucket" # Votre bucket S3 pour les builds et les médias
+          AWS_REGION: "ap-southeast-2"
+          S3_BUCKET_NAME: "evento-media-bucket"
         run: |
           # Chargez le fichier ZIP dans un dossier "builds" dans le bucket S3
           aws s3 cp deploy.zip s3://$S3_BUCKET_NAME/builds/deploy-${{ github.sha }}.zip
