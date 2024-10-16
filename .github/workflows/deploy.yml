@@ -35,7 +35,7 @@ jobs:
           aws s3 cp deploy.zip s3://$S3_BUCKET_NAME/builds/deploy-${{ github.sha }}.zip
 
           # Créez une nouvelle version dans Elastic Beanstalk à partir du fichier ZIP stocké dans S3
-          aws elasticbeanstalk create-application-version --application-name "Evento-backend-env" --version-label ${{ github.sha }} --source-bundle S3Bucket=$S3_BUCKET_NAME,S3Key=builds/deploy-${{ github.sha }}.zip
+          aws elasticbeanstalk create-application-version --application-name "evento-backend" --version-label ${{ github.sha }} --source-bundle S3Bucket=$S3_BUCKET_NAME,S3Key=builds/deploy-${{ github.sha }}.zip
 
           # Déployez cette nouvelle version dans Elastic Beanstalk
           aws elasticbeanstalk update-environment --environment-name "Evento-backend-env" --version-label ${{ github.sha }}
