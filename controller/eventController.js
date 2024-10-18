@@ -300,22 +300,35 @@ exports.updateEventField = async (req, res) => {
         }
         break;
       case "date":
-        event.details.date = value;
-        event.details.endDate = value;
-        event.details.startTime = value;
-        event.details.endTime = value;
-        if (Array.isArray(value)) {
-          event.details.timeSlots = value.map((slot) => ({
-            date: slot.date,
-            startTime: slot.startTime,
-            endTime: slot.endTime,
-          }));
-        } else {
+        if (
+          !value.startDate ||
+          !value.endDate ||
+          !value.timeSlots ||
+          !Array.isArray(value.timeSlots)
+        ) {
+          console.log("Missing startDate, endDate, or timeSlots");
+          return res.status(400).json({ message: "Invalid date structure" });
+        }
+        event.details.date = value.startDate;
+        event.details.endDate = value.endDate;
+        event.details.startTime = value.startTime;
+        event.details.endTime = value.endTime;
+        const validTimeSlots = value.timeSlots.every(
+          (slot) => slot.date && slot.startTime && slot.endTime,
+        );
+
+        if (!validTimeSlots) {
           console.log("Invalid format for time slots");
           return res
             .status(400)
             .json({ message: "Invalid format for time slots" });
         }
+
+        event.details.timeSlots = value.timeSlots.map((slot) => ({
+          date: slot.date,
+          startTime: slot.startTime,
+          endTime: slot.endTime,
+        }));
         break;
       default:
         console.log("Invalid field specified");
