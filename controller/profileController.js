@@ -208,22 +208,6 @@ exports.getUserProfileById = async (req, res) => {
       .exec();
     const followingUserIds = followingUsers.map((follow) => follow.following);
 
-    const existingFollowingUsers = [];
-    const missingFollowingUsers = [];
-    // check if followingUserIds exist in the database
-    for (const followingId of followingUserIds) {
-      const user = await User.findById(followingId);
-      if (user) {
-        existingFollowingUsers.push(followingId);
-      } else {
-        console.warn(
-          `User with ID ${followingId} does not exist in the database. It might be deleted but has residual follow status.`,
-        );
-        missingFollowingUsers.push(followingId);
-      }
-    }
-    console.log("missingFollowingUsers", missingFollowingUsers);
-    console.log("existingFollowingUsers", existingFollowingUsers);
     let countTotalEventIAttended =
       await Models.eventStatusSchema.countDocuments({
         userId: userId,
@@ -371,12 +355,10 @@ exports.updateProfile = async (req, res) => {
 
     // Gestion des intérêts
     if (req.body.interest) {
-      console.log("Processing interests");
       let interestsArray = [];
       try {
         interestsArray = JSON.parse(req.body.interest);
       } catch (error) {
-        console.log("Failed to parse interests:", error);
         return res.status(400).json({
           status: false,
           message: "Failed to parse interests",
