@@ -1,7 +1,10 @@
 const Event = require("../models/eventModel");
 const Models = require("../models");
 const helper = require("../helper/helper");
-const { sendEventInviteEmail } = require("../helper/emailService");
+const {
+  sendEventInviteEmail,
+  sendUpdateNotification,
+} = require("../helper/emailService");
 const TempGuest = require("../models/tempGuestModel");
 const moment = require("moment");
 
@@ -226,7 +229,7 @@ exports.unGuestUser = async (req, res) => {
 exports.updateEventField = async (req, res) => {
   const { eventId } = req.params;
   const { field, value } = req.body;
-  console.log("field", field, "value", value);
+
   if (!field || value === undefined) {
     return res.status(400).json({ message: "Missing field or value" });
   }
@@ -234,17 +237,22 @@ exports.updateEventField = async (req, res) => {
   try {
     const event = await Models.eventModel.findById(eventId);
     if (!event) {
-      console.log("Event not found");
       return res.status(404).json({ message: "Event not found" });
     }
+
+    // Pour vérifier si des changements critiques ont été faits
+    let oldData = {};
+    let changeType = "";
 
     switch (field) {
       case "title":
         event.title = value;
         break;
       case "locationData":
+        oldData = { location: event.details.location };
         event.details.location = value.location;
         event.details.loc.coordinates = [value.longitude, value.latitude];
+        changeType = "location";
         break;
       case "description":
         event.details.description = value;
@@ -261,74 +269,18 @@ exports.updateEventField = async (req, res) => {
       case "url":
         event.details.URLlink = value;
         break;
-      case "questions":
-        if (Array.isArray(value)) {
-          event.questions = value.map((question) => ({
-            id: question.id || new Date().getTime().toString(),
-            question: question.question || "",
-            type: question.type || "text",
-            options: question.options || [],
-            required: question.required || false,
-          }));
-        } else {
-          console.log("Invalid format for questions");
-          return res
-            .status(400)
-            .json({ message: "Invalid format for questions" });
-        }
-        break;
-      case "createRSVP":
-        event.details.createRSVP = value;
-        break;
-      case "coHosts":
-        if (Array.isArray(value) && value.length > 0) {
-          // Supprimer les co-hôtes existants
-          await Models.coHostModel.deleteMany({ event_id: eventId });
-
-          // Ajouter les nouveaux co-hôtes
-          const newCoHosts = await Promise.all(
-            value.map(async (coHost) => {
-              const newCoHost = await Models.coHostModel.create({
-                user_id: coHost.userId,
-                event_id: eventId,
-                status: coHost.status || "read-only",
-              });
-              return newCoHost._id;
-            }),
-          );
-          event.coHosts = newCoHosts;
-        }
-        break;
       case "date":
-        if (
-          !value.startDate ||
-          !value.endDate ||
-          !value.timeSlots ||
-          !Array.isArray(value.timeSlots)
-        ) {
-          console.log("Missing startDate, endDate, or timeSlots");
-          return res.status(400).json({ message: "Invalid date structure" });
-        }
+        oldData = {
+          date: event.details.date,
+          endDate: event.details.endDate,
+          startTime: event.details.startTime,
+          endTime: event.details.endTime,
+        };
         event.details.date = value.startDate;
         event.details.endDate = value.endDate;
         event.details.startTime = value.startTime;
         event.details.endTime = value.endTime;
-        const validTimeSlots = value.timeSlots.every(
-          (slot) => slot.date && slot.startTime && slot.endTime,
-        );
-
-        if (!validTimeSlots) {
-          console.log("Invalid format for time slots");
-          return res
-            .status(400)
-            .json({ message: "Invalid format for time slots" });
-        }
-
-        event.details.timeSlots = value.timeSlots.map((slot) => ({
-          date: slot.date,
-          startTime: slot.startTime,
-          endTime: slot.endTime,
-        }));
+        changeType = "date/time";
         break;
       default:
         console.log("Invalid field specified");
@@ -336,6 +288,19 @@ exports.updateEventField = async (req, res) => {
     }
 
     await event.save();
+
+    if (changeType) {
+      const goingStatuses = await Models.eventStatusSchema
+        .find({
+          eventId: eventId,
+          status: "isGoing",
+        })
+        .populate("userId");
+
+      const goingUsers = goingStatuses.map((status) => status.userId);
+      await sendUpdateNotification(goingUsers, event, changeType, oldData);
+    }
+
     res.status(200).json({ message: `${field} updated successfully`, event });
   } catch (error) {
     console.error("Error updating event:", error);
