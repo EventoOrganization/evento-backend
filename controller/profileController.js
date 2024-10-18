@@ -76,10 +76,47 @@ exports.getLoggedUserProfile = async (req, res) => {
       return eventEndDate < new Date() && event.isGoing;
     });
 
-    // Calculate additional user information
-    const countFollowing = await Models.userFollowModel.countDocuments({
-      follower: req.user._id,
-    });
+    // retrieve followingUserIds and followerUserIds
+    const followingUsers = await Models.userFollowModel
+      .find({ follower: req.user._id })
+      .select("following")
+      .exec();
+    const followingUserIds = followingUsers.map((follow) =>
+      follow.following.toString(),
+    );
+
+    const existingFollowingUsers = [];
+    const missingFollowingUsers = [];
+    // check if followingUserIds exist in the database
+    for (const followingId of followingUserIds) {
+      const user = await User.findById(followingId);
+      if (user) {
+        existingFollowingUsers.push(followingId);
+      } else {
+        console.warn(
+          `User with ID ${followingId} does not exist in the database. It might be deleted but has residual follow status.`,
+        );
+        missingFollowingUsers.push(followingId);
+
+        // **Supprimer les enregistrements résiduels**
+        await Models.userFollowModel.deleteOne({
+          follower: req.user._id,
+          following: followingId,
+        });
+
+        // Supprimer aussi les statuts d'événements résiduels si nécessaire
+        await Models.eventStatusSchema.deleteMany({ userId: followingId });
+      }
+    }
+
+    // retrieve followerUserIds
+    const followerUsers = await Models.userFollowModel
+      .find({ following: req.user._id })
+      .select("follower")
+      .exec();
+    const followerUserIds = followerUsers.map((follow) =>
+      follow.follower.toString(),
+    );
 
     const countTotalEventIAttended =
       await Models.eventStatusSchema.countDocuments({
@@ -87,7 +124,6 @@ exports.getLoggedUserProfile = async (req, res) => {
         status: "isGoing",
       });
 
-    userInfo._doc.following = countFollowing;
     userInfo._doc.totalEventAttended = countTotalEventIAttended;
 
     return res.status(200).json({
@@ -97,6 +133,8 @@ exports.getLoggedUserProfile = async (req, res) => {
         ...userInfo._doc,
         pastEvents,
         hostedEvents: enrichedEvents.filter((event) => event.isHosted),
+        followingUserIds: existingFollowingUsers,
+        followerUserIds,
       },
     });
   } catch (error) {
@@ -164,19 +202,34 @@ exports.getUserProfileById = async (req, res) => {
     const pastEvents = enrichedEvents.filter(
       (event) => new Date(event.details.endDate) < new Date() && event.isGoing,
     );
+    const followingUsers = await Models.userFollowModel
+      .find({ follower: userId })
+      .select("following")
+      .exec();
+    const followingUserIds = followingUsers.map((follow) => follow.following);
 
-    // Calculate additional user information
-    let countFollowing = await Models.userFollowModel.countDocuments({
-      follower: userId,
-    });
-
+    const existingFollowingUsers = [];
+    const missingFollowingUsers = [];
+    // check if followingUserIds exist in the database
+    for (const followingId of followingUserIds) {
+      const user = await User.findById(followingId);
+      if (user) {
+        existingFollowingUsers.push(followingId);
+      } else {
+        console.warn(
+          `User with ID ${followingId} does not exist in the database. It might be deleted but has residual follow status.`,
+        );
+        missingFollowingUsers.push(followingId);
+      }
+    }
+    console.log("missingFollowingUsers", missingFollowingUsers);
+    console.log("existingFollowingUsers", existingFollowingUsers);
     let countTotalEventIAttended =
       await Models.eventStatusSchema.countDocuments({
         userId: userId,
         status: "isGoing",
       });
 
-    userInfo._doc.following = countFollowing;
     userInfo._doc.totalEventAttended = countTotalEventIAttended;
 
     // Structure the response
@@ -188,6 +241,7 @@ exports.getUserProfileById = async (req, res) => {
         upcomingEvents,
         pastEvents,
         hostedEvents: enrichedEvents.filter((event) => event.isHosted),
+        followingUserIds,
       },
     });
   } catch (error) {
