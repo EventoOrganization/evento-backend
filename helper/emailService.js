@@ -254,90 +254,61 @@ const sendUpdateNotification = async (
   changeType,
   oldData = {},
 ) => {
-  users.forEach(async (user) => {
-    console.log(`Sending notification email to ${user.email}`);
-    try {
-      // Construire le contenu de l'email en fonction du type de changement
-      let changeDetails = "";
-      switch (changeType) {
-        case "location":
-          changeDetails = `
-            <p>The location of the event has changed.</p>
-            <p><strong>Old Location:</strong> ${
-              oldData.location || "Not provided"
-            }</p>
-            <p><strong>New Location:</strong> ${
-              event.details.location || "Not provided"
-            }</p>
-          `;
-          break;
-        case "date/time":
-          changeDetails = `
-            <p>The date or time of the event has changed.</p>
-            <p><strong>Old Start Date:</strong> ${new Date(
-              oldData.date,
-            ).toLocaleDateString()} at ${
-            oldData.startTime || "Not provided"
-          }</p>
-            <p><strong>Old End Date:</strong> ${new Date(
-              oldData.endDate,
-            ).toLocaleDateString()} at ${oldData.endTime || "Not provided"}</p>
-            <p><strong>New Start Date:</strong> ${new Date(
-              event.details.date,
-            ).toLocaleDateString()} at ${
-            event.details.startTime || "Not provided"
-          }</p>
-            <p><strong>New End Date:</strong> ${new Date(
-              event.details.endDate,
-            ).toLocaleDateString()} at ${
-            event.details.endTime || "Not provided"
-          }</p>
-          `;
-          break;
-        default:
-          changeDetails =
-            "<p>There has been an important update to the event.</p>";
-      }
+  try {
+    await Promise.all(
+      users.map(async (user) => {
+        console.log(`Sending notification email to ${user.email}`);
+        const changeDetails = buildChangeDetails(changeType, oldData, event); // Supposons une fonction pour construire les détails
+        const eventLink = `https://www.evento-app.io/event/${event._id}`;
 
-      // Lien vers l'événement sur le site
-      const eventLink = `https://www.evento-app.io/event/${event._id}`;
-
-      const request = mailjetClient.post("send", { version: "v3.1" }).request({
-        Messages: [
-          {
-            From: {
-              Email: process.env.MJ_FROM_EMAIL,
-              Name: "Evento Notifications",
-            },
-            To: [
+        const request = mailjetClient
+          .post("send", { version: "v3.1" })
+          .request({
+            Messages: [
               {
-                Email: user.email,
-                Name: user.username,
-              },
-            ],
-            Subject: `Update to ${event.title}`,
-            HTMLPart: `
+                From: {
+                  Email: process.env.MJ_FROM_EMAIL,
+                  Name: "Evento Notifications",
+                },
+                To: [
+                  {
+                    Email: user.email,
+                    Name: user.username,
+                  },
+                ],
+                Subject: `Update to ${event.title}`,
+                HTMLPart: `
               <h3>Event Update Notification</h3>
               <p>There has been a ${changeType} to the event <strong>${event.title}</strong>.</p>
               ${changeDetails}
               <p>Check out the latest details on our site:</p>
               <a href="${eventLink}" target="_blank">View Event</a>
             `,
-            CustomID: "EventUpdateNotification",
-          },
-        ],
-      });
-
-      const result = await request;
-      console.log(`Notification sent to ${user.email} for ${changeType}`);
-    } catch (error) {
-      console.error(
-        `Error sending notification email to ${user.email}:`,
-        error,
-      );
-    }
-  });
+                CustomID: "EventUpdateNotification",
+              },
+            ],
+          });
+        const result = await request;
+        console.log(`Notification sent to ${user.email} for ${changeType}`);
+      }),
+    );
+  } catch (error) {
+    console.error("Error sending notification emails:", error);
+  }
 };
+
+function buildChangeDetails(changeType, oldData, event) {
+  let changeDetails = "";
+  switch (changeType) {
+    case "location":
+      changeDetails = `<p>The location of the event has changed.</p>`;
+      break;
+    case "date":
+      changeDetails = `<p>The date or time of the event has changed.</p>`;
+      break;
+  }
+  return changeDetails;
+}
 
 module.exports = {
   sendOTPEmail,

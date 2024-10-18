@@ -275,11 +275,13 @@ exports.updateEventField = async (req, res) => {
           endDate: event.details.endDate,
           startTime: event.details.startTime,
           endTime: event.details.endTime,
+          timeSlots: event.details.timeSlots,
         };
         event.details.date = value.startDate;
         event.details.endDate = value.endDate;
         event.details.startTime = value.startTime;
         event.details.endTime = value.endTime;
+        event.details.timeSlots = value.timeSlots;
         changeType = "date/time";
         break;
       default:
