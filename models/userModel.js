@@ -3,11 +3,12 @@ const crypto = require("crypto");
 const userSchema = new mongoose.Schema(
   {
     // standards userInfo
-    username: { type: String, default: "" },
-    firstName: { type: String, default: "" },
-    lastName: { type: String, default: "" },
+    username: { type: String, default: "anonymous", unique: true, trim: true },
+    usernameNormalized: { type: String, default: "Anomymous", trim: true },
+    firstName: { type: String, default: "", trim: true },
+    lastName: { type: String, default: "", trim: true },
     password: { type: String, required: true },
-    email: { type: String, unique: true, required: true },
+    email: { type: String, unique: true, required: true, trim: true },
     email_verified: { type: String, default: false },
     countryCode: { type: String, default: "+" },
     phoneNumber: { type: String, default: "" },
@@ -54,9 +55,6 @@ const userSchema = new mongoose.Schema(
         url: { type: String, default: "" },
       },
     ],
-    // socialId: { type: String },
-    // socialType: { type: Number },
-    // image: { type: String },
     role: {
       type: String,
       enum: ["admin", "user"],
@@ -78,12 +76,8 @@ const userSchema = new mongoose.Schema(
 );
 userSchema.index(
   { username: 1 },
-  { unique: true, partialFilterExpression: { username: { $ne: null } } },
+  { unique: true, partialFilterExpression: { username: { $ne: "anonymous" } } },
 );
-userSchema.methods.generateResetPasswordToken = function () {
-  const token = crypto.randomBytes(20).toString("hex");
-  return token;
-};
 
 const user = mongoose.model("user", userSchema);
 module.exports = user;

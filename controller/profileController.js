@@ -263,7 +263,22 @@ exports.updateProfile = async (req, res) => {
       password,
     } = req.body;
 
-    if (username && username !== user.username) updateData.username = username;
+    if (username && username !== user.username) {
+      const normalizedUsername = username.trim().toLowerCase();
+      const isUsernameExist = await Models.userModel.findOne({
+        username: normalizedUsername,
+        _id: { $ne: userId },
+      });
+      if (isUsernameExist) {
+        return res.status(409).json({
+          status: false,
+          message: "Username already exists. Please choose another one.",
+        });
+      }
+      updateData.username = normalizedUsername;
+    }
+
+    // Vérification des autres champs
     if (firstName && firstName !== user.firstName)
       updateData.firstName = firstName;
     if (lastName && lastName !== user.lastName) updateData.lastName = lastName;
@@ -381,11 +396,9 @@ exports.updateProfile = async (req, res) => {
       updateData.interests = null;
     }
 
-    const updatedUser = await Models.userModel.findByIdAndUpdate(
-      userId,
-      { $set: updateData },
-      { new: true },
-    );
+    const updatedUser = await Models.userModel
+      .findByIdAndUpdate(userId, { $set: updateData }, { new: true })
+      .populate("interests");
 
     if (!updatedUser) {
       return res.status(500).json({
