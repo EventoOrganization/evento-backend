@@ -1,63 +1,95 @@
-
 <% if(msg !='' ) { %>
-  <div class="alert alert-success msg" style="position: absolute; z-index: 9999; color:white; background-color: #195780; right: 10px; top: 10px;">
-    <span style="font-size: 16px;">
-      <%= msg %>
-    </span>
+<div
+  class="alert alert-success msg"
+  style="
+    position: absolute;
+    z-index: 9999;
+    color: white;
+    background-color: #195780;
+    right: 10px;
+    top: 10px;
+  "
+>
+  <span style="font-size: 16px"> <%= msg %> </span>
+</div>
+<% } %>
+<section class="section">
+  <div class="section-header">
+    <h1>Interest Add</h1>
   </div>
-  <% } %>
-  <section class="section">
-    <div class="section-header">
-      <h1>Interest Add</h1>
-    </div>
-    <div class="section-body">
-      <form action="/addInterest" method="post" enctype="multipart/form-data" id="addForm">
-        <div class="card-body">
-            <div class="form-group row mb-4">
-              <label class="col-form-label text-md-right col-12 col-md-3 col-lg-3">Interest Name</label>
-              <div class="col-sm-12 col-md-7">
-                <input type="text" name="name"  class="form-control">
-              </div>
-            </div>
-           
-              <div class="form-group row mb-4">
-                <label for="images" class="col-form-label text-md-right col-12 col-md-3 col-lg-3">Image</label>
-                <div class="col-sm-12 col-md-7">
-                  <input type="file" name="image" class="form-control" id="imgInp">
-                  <img id="blah" src="/images/dummy.jpeg" alt="Preview Image" width="100" height="100" style="margin-top: 10px;" class="rounded-circle"/>
-                </div>
-              </div>
-    
-  
-            <div class="form-group row mb-4">
-              <label class="col-form-label text-md-right col-12 col-md-3 col-lg-3"></label>
-              <div class="col-sm-12 col-md-7">
-                <button type="submit" class="btn btn-primary">Submit</button>
-              </div>
-            </div>
+  <div class="section-body">
+    <form
+      action="/addInterest"
+      method="post"
+      enctype="multipart/form-data"
+      id="addForm"
+    >
+      <div class="card-body">
+        <div class="form-group row mb-4">
+          <label class="col-form-label text-md-right col-12 col-md-3 col-lg-3"
+            >Interest Name</label
+          >
+          <div class="col-sm-12 col-md-7">
+            <input type="text" name="name" class="form-control" />
           </div>
-        </form>
-    </div>
-  </section>
- 
+        </div>
+
+        <div class="form-group row mb-4">
+          <label
+            for="images"
+            class="col-form-label text-md-right col-12 col-md-3 col-lg-3"
+            >Image</label
+          >
+          <div class="col-sm-12 col-md-7">
+            <input type="file" name="image" class="form-control" id="imgInp" />
+            <img
+              id="blah"
+              src="/images/dummy.jpeg"
+              alt="Preview Image"
+              width="100"
+              height="100"
+              style="margin-top: 10px"
+              class="rounded-circle"
+            />
+          </div>
+        </div>
+
+        <div class="form-group row mb-4">
+          <label
+            class="col-form-label text-md-right col-12 col-md-3 col-lg-3"
+          ></label>
+          <div class="col-sm-12 col-md-7">
+            <button type="submit" class="btn btn-primary">Submit</button>
+          </div>
+        </div>
+      </div>
+    </form>
+  </div>
+</section>
+
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 
 <script>
-  $(document).ready(function() {
-
-    jQuery.validator.addMethod("noSpace", function(value, element) {
-        return value == '' || value.trim().length != 0;
+  $(document).ready(function () {
+    jQuery.validator.addMethod(
+      "noSpace",
+      function (value, element) {
+        return value == "" || value.trim().length != 0;
       },
 
-      jQuery.validator.addMethod("emailExt", function(value, element, param) {
-        return value.match(/^[a-zA-Z0-9_\.%\+\-]+@[a-zA-Z0-9\.\-]+\.[a-zA-Z]{2,}$/);
-      }, 'Your e-mail is wrong'),
+      jQuery.validator.addMethod(
+        "emailExt",
+        function (value, element, param) {
+          return value.match(
+            /^[a-zA-Z0-9_\.%\+\-]+@[a-zA-Z0-9\.\-]+\.[a-zA-Z]{2,}$/,
+          );
+        },
+        "Your e-mail is wrong",
+      ),
 
       $('form[id="addForm"]').validate({
-
-        keypress: function(element) {
-
-          var element_id = $(element).attr('id');
+        keypress: function (element) {
+          var element_id = $(element).attr("id");
           if (this.settings.rules[element_id].keypress !== false) {
             $(element).valid();
           }
@@ -67,37 +99,44 @@
           name: {
             required: true,
             noSpace: true,
-            maxlength: 30
+            maxlength: 30,
           },
 
-          image:{
-            required:true
-          }
+          image: {
+            required: true,
+          },
         },
         messages: {
-
           name: {
             required: "This field is required.",
             noSpace: "Space not allowed",
-            maxlength: "Name should be 30 charcater"
+            maxlength: "Name should be 30 charcater",
           },
 
-          image:{
-            required: "This filed is required"
-          }
+          image: {
+            required: "This filed is required",
+          },
         },
-        submitHandler: function(form) {
+        submitHandler: function (form) {
           form.submit();
-        }
-      }));
+        },
+      }),
+    );
   });
 </script>
-  <script>
-    profileImage.onchange = (evt) => {
-      const [file] = profileImage.files;
-      if (file) {
-        blah.src = URL.createObjectURL(file);
-        console.log(blah);
-      }
-    };
-  </script>
+<script>
+  document.getElementById("imgInp").onchange = (evt) => {
+    const [file] = evt.target.files;
+    if (file) {
+      document.getElementById("blah").src = URL.createObjectURL(file);
+    }
+  };
+
+  // profileImage.onchange = (evt) => {
+  //   const [file] = profileImage.files;
+  //   if (file) {
+  //     blah.src = URL.createObjectURL(file);
+  //     console.log(blah);
+  //   }
+  // };
+</script>

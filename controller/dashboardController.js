@@ -3,6 +3,7 @@ const bcrypt = require("bcrypt");
 const uuid = require("uuid").v4;
 const jwt = require("jsonwebtoken");
 const JWT_SECRET_KEY = process.env.JWT_SECRET_KEY;
+const { fileUploadLarge } = require("../helper/helper");
 const helper = require("../middleware/helpers");
 const user = require("../models/userModel");
 const cohost = require("../models/cohost");
@@ -231,7 +232,26 @@ module.exports = {
   },
 
   //********** Interest*********************** */
+  addNewInterest: async (req, res) => {
+    try {
+      if (!req.session.user) return res.redirect("/login");
+      const { name } = req.body; // Get the name and image from req.body
 
+      if (req.files && req.files.image) {
+        fileImageUrl = await fileUploadLarge(req.files.image, "interest");
+      }
+
+      await interest.create({
+        name: name,
+        image: fileImageUrl,
+      });
+
+      req.flash("msg", "Interst Add Successfully");
+      res.redirect("/interests");
+    } catch (error) {
+      console.log("errr+++++++++++++++++", error);
+    }
+  },
   addInterest: async (req, res) => {
     try {
       if (!req.session.user) return res.redirect("/login");
@@ -241,34 +261,34 @@ module.exports = {
       console.log("errr+++++++++++++++++", error);
     }
   },
-  adddInterest: async (req, res) => {
-    try {
-      if (!req.session.user) return res.redirect("/login");
-      const { name } = req.body; // Get the name and image from req.body
+  // adddInterest: async (req, res) => {
+  //   try {
+  //     if (!req.session.user) return res.redirect("/login");
+  //     const { name } = req.body; // Get the name and image from req.body
 
-      if (req.files && req.files.image) {
-        // Access the file using the correct name attribute
-        var extension = path.extname(req.files.image.name);
-        var fileImage = uuid() + extension;
-        req.files.image.mv(
-          process.cwd() + "/public/images/" + fileImage,
-          function (err) {
-            if (err) console.log(err);
-          },
-        );
-      }
+  //     if (req.files && req.files.image) {
+  //       // Access the file using the correct name attribute
+  //       var extension = path.extname(req.files.image.name);
+  //       var fileImage = uuid() + extension;
+  //       req.files.image.mv(
+  //         process.cwd() + "/public/images/" + fileImage,
+  //         function (err) {
+  //           if (err) console.log(err);
+  //         },
+  //       );
+  //     }
 
-      const result = await interest.create({
-        name: name,
-        image: fileImage, // Use the correct variable containing the image file name
-      });
+  //     const result = await interest.create({
+  //       name: name,
+  //       image: fileImage, // Use the correct variable containing the image file name
+  //     });
 
-      req.flash("msg", "Interst Add Successfully");
-      res.redirect("/interests");
-    } catch (error) {
-      console.log("errr+++++++++++++++++", error);
-    }
-  },
+  //     req.flash("msg", "Interst Add Successfully");
+  //     res.redirect("/interests");
+  //   } catch (error) {
+  //     console.log("errr+++++++++++++++++", error);
+  //   }
+  // },
   editInterest: async (req, res) => {
     try {
       if (!req.session.user) return res.redirect("/login");
