@@ -8,6 +8,7 @@ const helper = require("../middleware/helpers");
 const user = require("../models/userModel");
 const cohost = require("../models/cohost");
 const contactUs = require("../models/contactUs");
+const SubInterest = require("../models/subInterestModel");
 const interest = require("../models/interestModel");
 const events = require("../models/eventModel");
 const moment = require("moment");
@@ -236,16 +237,22 @@ module.exports = {
     try {
       if (!req.session.user) return res.redirect("/login");
       const { name } = req.body; // Get the name and image from req.body
+      let fileImageUrl = "";
 
-      if (req.files && req.files.image) {
-        fileImageUrl = await fileUploadLarge(req.files.image, "interest");
-      }
-
-      await interest.create({
+      const newInterest = await interest.create({
         name: name,
         image: fileImageUrl,
       });
 
+      if (req.files && req.files.image) {
+        fileImageUrl = await fileUploadLarge(
+          req.files.image,
+          `interests/${newInterest._id}`,
+        );
+        await interest.findByIdAndUpdate(newInterest._id, {
+          image: fileImageUrl,
+        });
+      }
       req.flash("msg", "Interst Add Successfully");
       res.redirect("/interests");
     } catch (error) {
@@ -386,6 +393,54 @@ module.exports = {
     } catch (error) {
       console.error("Error deleting interest:", error);
       res.status(500).send("Failed to delete interest");
+    }
+  },
+  addSubInterest: async (req, res) => {
+    const interestId = req.params.interestId;
+    const interestData = await interest.findById(interestId);
+
+    if (!interestData) {
+      req.flash("msg", "Interest not found");
+      return res.redirect("/interests");
+    }
+    const messages = req.flash("msg");
+    res.render("interest/addSubInterest", {
+      interest: interestData,
+      msg: messages.join(" "),
+    });
+  },
+  saveSubInterest: async (req, res) => {
+    try {
+      const interestId = req.params.interestId;
+      const { name } = req.body;
+      let imageUrl = "";
+
+      const newSubInterest = await SubInterest.create({
+        name: name,
+        interest: interestId,
+      });
+
+      if (req.files && req.files.image) {
+        imageUrl = await fileUploadLarge(
+          req.files.image,
+          `interests/${interestId}/subInterests/${newSubInterest._id}`,
+        );
+
+        await SubInterest.findByIdAndUpdate(newSubInterest._id, {
+          image: imageUrl,
+        });
+      }
+
+      await interest.findByIdAndUpdate(interestId, {
+        $push: { subInterests: newSubInterest._id },
+      });
+
+      req.flash("msg", "Sub-interest added successfully");
+      res.redirect(`/interests`);
+    } catch (error) {
+      console.error("Error adding sub-interest:", error);
+      req.flash("msg", "Error adding sub-interest");
+      res.redirect(`/addsubInterest/${req.params.interestId}`);
     }
   },
 

@@ -8,10 +8,11 @@ router.post("/login", dashBoardController.loginAdmin);
 // router.get('/profile',dashBoardController.profile)
 router.get("/view/:id", dashBoardController.view);
 router.get("/viewInterest/:id", dashBoardController.viewInterest);
-// router.post('/addInterest',dashBoardController.adddInterest)
 router.post("/addInterest", dashBoardController.addNewInterest);
 router.get("/addInterest", dashBoardController.addInterest);
 router.get("/editInterest/:id", dashBoardController.editInterest);
+router.get("/addsubInterest/:interestId", dashBoardController.addSubInterest);
+router.post("/addsubInterest/:interestId", dashBoardController.saveSubInterest);
 router.get("/viewEvent/:id", dashBoardController.viewEvent);
 router.post("/deleteuser", dashBoardController.deleteuser);
 router.post("/deleteInterest", dashBoardController.deleteInterest);
