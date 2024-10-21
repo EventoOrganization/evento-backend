@@ -1,4 +1,5 @@
 const eventRefuse = require("./eventRefuse");
+const SubInterest = require("./subInterestModel");
 
 module.exports = {
   userModel: require("./userModel"),
@@ -6,6 +7,7 @@ module.exports = {
   coHostModel: require("./cohost"),
   eventModel: require("./eventModel"),
   interestModel: require("./interestModel"),
+  SubInterest: require("./subInterestModel"),
   // rsvpModel:require("./rsvpForm"),
   eventStatusSchema: require("./eventStatusSchema"),
   contactUsModel: require("./contactUs"),
