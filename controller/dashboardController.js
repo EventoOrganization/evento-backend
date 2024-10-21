@@ -3,7 +3,7 @@ const bcrypt = require("bcrypt");
 const uuid = require("uuid").v4;
 const jwt = require("jsonwebtoken");
 const JWT_SECRET_KEY = process.env.JWT_SECRET_KEY;
-const { fileUploadLarge } = require("../helper/helper");
+const { fileUploadLarge, deleteFileFromS3 } = require("../helper/helper");
 const helper = require("../middleware/helpers");
 const user = require("../models/userModel");
 const cohost = require("../models/cohost");
@@ -360,19 +360,35 @@ module.exports = {
   },
   deleteInterest: async (req, res) => {
     try {
-      const deldata = await interest.findByIdAndDelete({
-        _id: req.body.id,
-      });
-      console.log(
-        "🚀 ~ file: dashboardController.js:322 ~ deleteuser: ~ deldata:",
-        deldata,
-      );
+      // Récupérer l'intérêt à supprimer
+      const interestData = await interest.findById(req.body.id);
+      if (!interestData) {
+        return res.status(404).send("Interest not found");
+      }
 
-      res.json(1);
+      // Suppression de l'image de S3
+      const imageUrl = interestData.image; // L'URL complète de l'image stockée
+      const key = imageUrl.split(
+        `${process.env.S3_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/`,
+      )[1]; // Extraire le chemin du fichier
+      if (key) {
+        await deleteFileFromS3(key);
+      }
+
+      // Suppression de l'intérêt de la base de données
+      const delData = await interest.findByIdAndDelete(req.body.id);
+      console.log("Interest deleted:", delData);
+
+      res.json({
+        success: true,
+        message: "Interest and image deleted successfully",
+      });
     } catch (error) {
-      console.log(error);
+      console.error("Error deleting interest:", error);
+      res.status(500).send("Failed to delete interest");
     }
   },
+
   // ********************  Event *****************************/
 
   viewEvent: async (req, res) => {

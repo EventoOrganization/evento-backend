@@ -1,5 +1,9 @@
 var apn = require("apn");
-const { S3Client, PutObjectCommand } = require("@aws-sdk/client-s3");
+const {
+  S3Client,
+  PutObjectCommand,
+  DeleteObjectCommand,
+} = require("@aws-sdk/client-s3");
 const { Upload } = require("@aws-sdk/lib-storage");
 // var ffmpeg = require("fluent-ffmpeg");
 // const schedule = require("node-schedule");
@@ -372,14 +376,28 @@ module.exports = {
     });
 
     try {
-      const uploadResult = await upload.done();
+      await upload.done();
       return `https://${process.env.S3_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${folder}/${resultExt}`;
     } catch (error) {
       console.error("Error uploading large file to S3:", error);
       throw new Error("S3 upload failed");
     }
   },
-
+  async deleteFileFromS3(key) {
+    const params = {
+      Bucket: process.env.S3_BUCKET_NAME,
+      Key: key,
+    };
+    console.log(params);
+    try {
+      const command = new DeleteObjectCommand(params);
+      await s3.send(command);
+      console.log("File successfully deleted from S3");
+    } catch (error) {
+      console.error("Error deleting file from S3:", error);
+      throw new Error("Failed to delete file from S3");
+    }
+  },
   // Exemple de fonction pour deviner le type MIME
   guessMimeType(extension) {
     const mimeTypes = {
