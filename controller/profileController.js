@@ -16,7 +16,7 @@ exports.getLoggedUserProfile = async (req, res) => {
 
     const userInfo = await User.findOne({ _id: req.user._id })
       .select(
-        "permissions firstName lastName username email email_verified countryCode phoneNumber phone_verified address bio URL DOB profileImage interests socialLinks role devices",
+        "firstName lastName username email email_verified countryCode phoneNumber phone_verified address bio URL DOB profileImage interests socialLinks role devices",
       )
       .populate({ path: "interests", select: "_id name" });
 
@@ -286,7 +286,6 @@ exports.updateProfile = async (req, res) => {
     if (bio && bio !== user.bio) updateData.bio = bio;
     if (URL && URL !== user.URL) updateData.URL = URL;
     if (DOB && DOB !== user.DOB) updateData.DOB = DOB;
-
     // Gestion de l'email
     if (email && email !== user.email) {
       const isEmailExist = await Models.userModel.findOne({
@@ -313,7 +312,6 @@ exports.updateProfile = async (req, res) => {
       const hashedPassword = await bcrypt.hash(password, salt);
       updateData.password = hashedPassword;
     }
-
     // Gestion de l'image de profil
     if (req.files && req.files.profileImage) {
       const file = req.files.profileImage;
