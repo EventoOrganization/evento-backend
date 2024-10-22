@@ -16,7 +16,7 @@ exports.getLoggedUserProfile = async (req, res) => {
 
     const userInfo = await User.findOne({ _id: req.user._id })
       .select(
-        "firstName lastName username email email_verified countryCode phoneNumber phone_verified address bio URL DOB profileImage interests socialLinks role devices",
+        "permissions firstName lastName username email email_verified countryCode phoneNumber phone_verified address bio URL DOB profileImage interests socialLinks role devices",
       )
       .populate({ path: "interests", select: "_id name" });
 

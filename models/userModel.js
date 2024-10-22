@@ -32,6 +32,18 @@ const userSchema = new mongoose.Schema(
     is_block: { type: Number, default: 0 },
 
     // specials userInfo
+    permissions: {
+      notifications: {
+        type: String,
+        enum: ["default", "prompt", "denied"],
+        default: "default",
+      },
+      geolocation: {
+        type: String,
+        enum: ["default", "prompt", "denied"],
+        default: "default",
+      },
+    },
     interests: [
       {
         type: mongoose.Schema.Types.ObjectId,
