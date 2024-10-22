@@ -268,34 +268,6 @@ module.exports = {
       console.log("errr+++++++++++++++++", error);
     }
   },
-  // adddInterest: async (req, res) => {
-  //   try {
-  //     if (!req.session.user) return res.redirect("/login");
-  //     const { name } = req.body; // Get the name and image from req.body
-
-  //     if (req.files && req.files.image) {
-  //       // Access the file using the correct name attribute
-  //       var extension = path.extname(req.files.image.name);
-  //       var fileImage = uuid() + extension;
-  //       req.files.image.mv(
-  //         process.cwd() + "/public/images/" + fileImage,
-  //         function (err) {
-  //           if (err) console.log(err);
-  //         },
-  //       );
-  //     }
-
-  //     const result = await interest.create({
-  //       name: name,
-  //       image: fileImage, // Use the correct variable containing the image file name
-  //     });
-
-  //     req.flash("msg", "Interst Add Successfully");
-  //     res.redirect("/interests");
-  //   } catch (error) {
-  //     console.log("errr+++++++++++++++++", error);
-  //   }
-  // },
   editInterest: async (req, res) => {
     try {
       if (!req.session.user) return res.redirect("/login");
@@ -309,8 +281,11 @@ module.exports = {
   viewInterest: async (req, res) => {
     try {
       if (!req.session.user) return res.redirect("/login");
-      const data = await interest.findById({ _id: req.params.id });
+      const data = await interest
+        .findById({ _id: req.params.id })
+        .populate("subInterests");
       var title = "interests";
+      console.log("DATA", data);
       res.render("interest/view", { msg: req.flash("msg"), data, title });
     } catch (error) {
       console.log("errr+++++++++++++++++", error);
@@ -332,37 +307,50 @@ module.exports = {
   },
   EditInterest: async (req, res) => {
     try {
-      const { name, image } = req.body;
+      const { name } = req.body;
 
-      console.log("..............", req.body.id);
+      // Récupérer l'intérêt à mettre à jour
+      const interestData = await interest.findById(req.body.id);
+      if (!interestData) {
+        return res.status(404).send("Interest not found");
+      }
+
+      // Vérifier si une nouvelle image est téléchargée
+      let fileImageUrl = interestData.image; // Garde l'ancienne image par défaut
       if (req.files && req.files.image) {
-        var extension = path.extname(req.files.image.name);
-        var fileImage = uuid() + extension;
-        req.files.image.mv(
-          process.cwd() + "/public/images/" + fileImage,
-          function (err) {
-            if (err) console.log(err);
-          },
+        // Supprimer l'ancienne image de S3
+        const oldImageKey = interestData.image.split(
+          `${process.env.S3_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/`,
+        )[1];
+        if (oldImageKey) {
+          await deleteFileFromS3(oldImageKey);
+        }
+
+        // Téléverser la nouvelle image sur S3
+        fileImageUrl = await fileUploadLarge(
+          req.files.image,
+          `interests/${req.body.id}`,
         );
       }
 
+      // Préparer les champs à mettre à jour
       const updateFields = {
         name: name,
-        image: fileImage,
+        image: fileImageUrl, // Utilise l'image actuelle ou la nouvelle image téléchargée
       };
 
+      // Mise à jour de l'intérêt dans la base de données
       await interest.findOneAndUpdate(
         { _id: req.body.id },
         { $set: updateFields },
         { new: true },
       );
-      const result = await interest.findOne({ _id: req.body.id });
-      // console.log("++++++++++++++++", result);
 
-      req.flash("msg", "Interst Update Successfully");
+      req.flash("msg", "Interest updated successfully");
       res.redirect("/interests");
     } catch (err) {
-      console.log(err);
+      console.log("Error updating interest:", err);
+      res.status(500).send("Failed to update interest");
     }
   },
   deleteInterest: async (req, res) => {
@@ -441,6 +429,111 @@ module.exports = {
       console.error("Error adding sub-interest:", error);
       req.flash("msg", "Error adding sub-interest");
       res.redirect(`/addsubInterest/${req.params.interestId}`);
+    }
+  },
+  viewEditSubInterest: async (req, res) => {
+    try {
+      if (!req.session.user) return res.redirect("/login");
+
+      // Récupérer le sous-intérêt à éditer
+      const data = await SubInterest.findById(req.params.id);
+      if (!data) {
+        req.flash("msg", "Sub-Interest not found");
+        return res.redirect("/interests");
+      }
+
+      // Afficher la vue d'édition avec les données du sous-intérêt
+      res.render("interest/editSubInterest", { msg: req.flash("msg"), data });
+    } catch (error) {
+      console.error("Error fetching sub-interest:", error);
+      req.flash("msg", "Error fetching sub-interest");
+      res.redirect("/interests");
+    }
+  },
+  EditSubInterest: async (req, res) => {
+    try {
+      const { name } = req.body;
+
+      // Récupérer le sous-intérêt à mettre à jour
+      const subInterestData = await SubInterest.findById(req.body.id);
+      if (!subInterestData) {
+        return res.status(404).send("Sub-interest not found");
+      }
+
+      // Vérifier si une nouvelle image est téléchargée
+      let fileImageUrl = subInterestData.image; // Garde l'ancienne image par défaut
+      if (req.files && req.files.image) {
+        // Supprimer l'ancienne image de S3
+        const oldImageKey = subInterestData.image.split(
+          `${process.env.S3_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/`,
+        )[1];
+        if (oldImageKey) {
+          await deleteFileFromS3(oldImageKey);
+        }
+
+        // Téléverser la nouvelle image sur S3
+        fileImageUrl = await fileUploadLarge(
+          req.files.image,
+          `interests/${subInterestData.interest}/subInterests/${req.body.id}`,
+        );
+      }
+
+      // Préparer les champs à mettre à jour
+      const updateFields = {
+        name: name,
+        image: fileImageUrl, // Utilise l'image actuelle ou la nouvelle image téléchargée
+      };
+
+      // Mise à jour du sous-intérêt dans la base de données
+      await SubInterest.findOneAndUpdate(
+        { _id: req.body.id },
+        { $set: updateFields },
+        { new: true },
+      );
+
+      req.flash("msg", "Sub-interest updated successfully");
+      res.redirect(`/viewInterest/${subInterestData.interest}`);
+    } catch (err) {
+      console.log("Error updating sub-interest:", err);
+      res.status(500).send("Failed to update sub-interest");
+    }
+  },
+  deleteSubInterest: async (req, res) => {
+    try {
+      const subInterestId = req.body.id;
+
+      // Récupérer le sous-intérêt à supprimer
+      const subInterestData = await SubInterest.findById(subInterestId);
+      if (!subInterestData) {
+        return res.status(404).send("Sub-interest not found");
+      }
+
+      // Suppression de l'image de S3
+      const imageUrl = subInterestData.image;
+      if (imageUrl) {
+        const key = imageUrl.split(
+          `${process.env.S3_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/`,
+        )[1];
+        if (key) {
+          await deleteFileFromS3(key);
+        }
+      }
+
+      // Suppression du sous-intérêt de la base de données
+      await SubInterest.findByIdAndDelete(subInterestId);
+
+      // Mise à jour du document Interest principal pour retirer le sous-intérêt
+      await interest.findByIdAndUpdate(subInterestData.interest, {
+        $pull: { subInterests: subInterestId },
+      });
+
+      res.json({
+        success: true,
+        message: "Sub-interest and image deleted successfully",
+      });
+    } catch (error) {
+      console.error("Error deleting sub-interest:", error);
+      res.status(500).send("Failed to delete sub-interest");
     }
   },
 

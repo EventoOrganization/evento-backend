@@ -10,16 +10,16 @@
     top: 10px;
   "
 >
-  <span style="font-size: 16px"> <%= msg %> </span>
+  <span style="font-size: 16px"><%= msg %></span>
 </div>
 <% } %>
 <section class="section">
   <div class="section-header">
-    <h1>Interest Edit</h1>
+    <h1>Edit Sub-Interest</h1>
   </div>
   <div class="section-body">
     <form
-      action="/EditInterest"
+      action="/editSubInterest"
       method="post"
       enctype="multipart/form-data"
       id="editForm"
@@ -27,13 +27,13 @@
       <div class="card-body">
         <div class="form-group row mb-4">
           <label class="col-form-label text-md-right col-12 col-md-3 col-lg-3"
-            >Name</label
+            >Sub-Interest Name</label
           >
           <div class="col-sm-12 col-md-7">
             <input
               type="text"
               name="name"
-              value="<%= data?.name%>"
+              value="<%= data?.name %>"
               class="form-control"
             />
           </div>
@@ -47,20 +47,26 @@
           >
           <div class="col-sm-12 col-md-7">
             <input type="file" name="image" class="form-control" id="image" />
-            <img id="blah" src="<%= data?.image%>"" alt="Preview Image"
-            width="100" height="100" style="margin-top: 10px;"
-            class="rounded-circle"/>
+            <img
+              id="blah"
+              src="<%= data?.image %>"
+              alt="Preview Image"
+              width="100"
+              height="100"
+              style="margin-top: 10px"
+              class="rounded-circle"
+            />
           </div>
-          <!-- <input id="image" type="file" name="image" class="form-control" /> -->
         </div>
-        <input type="hidden" name="id" value="<%= data?._id%>" />
+
+        <input type="hidden" name="id" value="<%= data?._id %>" />
+
         <div class="form-group row mb-4">
           <label
             class="col-form-label text-md-right col-12 col-md-3 col-lg-3"
           ></label>
           <div class="col-sm-12 col-md-7">
-            <button type="/interests" class="btn btn-primary">Update</button>
-            <!-- <a href="/interests" class="btn btn-primary">Back</a> -->
+            <button type="submit" class="btn btn-primary">Update</button>
           </div>
         </div>
       </div>
@@ -78,44 +84,22 @@
         return value == "" || value.trim().length != 0;
       },
 
-      jQuery.validator.addMethod(
-        "emailExt",
-        function (value, element, param) {
-          return value.match(
-            /^[a-zA-Z0-9_\.%\+\-]+@[a-zA-Z0-9\.\-]+\.[a-zA-Z]{2,}$/,
-          );
-        },
-        "Your e-mail is wrong",
-      ),
-
       $('form[id="editForm"]').validate({
-        keypress: function (element) {
-          var element_id = $(element).attr("id");
-          if (this.settings.rules[element_id].keypress !== false) {
-            $(element).valid();
-          }
-        },
-
         rules: {
           name: {
             required: true,
             noSpace: true,
             maxlength: 30,
           },
-
           image: {
-            required: true,
+            required: false,
           },
         },
         messages: {
           name: {
             required: "This field is required.",
             noSpace: "Space not allowed",
-            maxlength: "Name should be 30 charcater",
-          },
-
-          image: {
-            required: "This filed is required",
+            maxlength: "Name should be 30 characters",
           },
         },
         submitHandler: function (form) {
@@ -124,13 +108,11 @@
       }),
     );
   });
-</script>
-<script>
-  profileImage.onchange = (evt) => {
-    const [file] = profileImage.files;
+
+  document.getElementById("image").onchange = (evt) => {
+    const [file] = evt.target.files;
     if (file) {
-      blah.src = URL.createObjectURL(file);
-      console.log(blah);
+      document.getElementById("blah").src = URL.createObjectURL(file);
     }
   };
 </script>

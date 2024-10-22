@@ -1,11 +1,11 @@
 <section class="section">
   <div class="section-header">
-    <h1>Interest View</h1>
+    <h1>Interest View: <%= data.name %></h1>
   </div>
   <div class="section-body">
-    <form action="/addInterest" method="post" enctype="multipart/form-data">
+    <div class="card">
       <div class="card-body">
-        <div class="form-group row mb-4">
+        <div class="form-group row">
           <label class="col-form-label text-md-right col-12 col-md-3 col-lg-3"
             >Name</label
           >
@@ -13,47 +13,114 @@
             <input
               type="text"
               name="name"
-              value="<%= data?.name%>"
+              value="<%= data.name %>"
               class="form-control"
               readonly
             />
           </div>
         </div>
 
-        <div class="form-group row mb-4">
-          <label
-            for="images"
-            class="col-form-label text-md-right col-12 col-md-3 col-lg-3"
+        <div class="form-group row">
+          <label class="col-form-label text-md-right col-12 col-md-3 col-lg-3"
             >Image</label
           >
           <div class="col-sm-12 col-md-7">
-            <input type="file" name="image" class="form-control" id="imgInp" />
-            <img id="blah" src="<%= data?.image%>"" alt="Preview Image"
-            width="100" height="100" style="margin-top: 10px;"
-            class="rounded-circle"/>
+            <img
+              src="<%= data.image %>"
+              alt="Interest Image"
+              width="100"
+              height="100"
+              class="rounded-circle"
+            />
           </div>
         </div>
 
-        <div class="form-group row mb-4">
+        <div class="form-group row">
           <label
             class="col-form-label text-md-right col-12 col-md-3 col-lg-3"
           ></label>
           <div class="col-sm-12 col-md-7">
-            <!-- <button type="submit" class="btn btn-primary">Back</button> -->
-            <a href="/interests" class="btn btn-primary">Back</a>
+            <a href="/interests" class="btn btn-primary">Back to Interests</a>
           </div>
         </div>
+
+        <!-- Sub-Interests List -->
+        <h3>Sub-Interests:</h3>
+        <table class="table table-bordered">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Image</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% data.subInterests.forEach(sub => { %>
+            <tr>
+              <td><%= sub.name %></td>
+              <td>
+                <img
+                  src="<%= sub.image %>"
+                  alt="Sub-Interest Image"
+                  width="50"
+                  height="50"
+                />
+              </td>
+              <td>
+                <a
+                  href="/editSubInterest/<%= sub._id %>"
+                  class="btn btn-warning"
+                  >Edit</a
+                >
+                <button
+                  onclick="deleteSubInterest('<%= sub._id %>');"
+                  class="btn btn-danger"
+                >
+                  Delete
+                </button>
+              </td>
+            </tr>
+            <% }) %>
+          </tbody>
+        </table>
       </div>
-    </form>
+    </div>
   </div>
 </section>
 
 <script>
-  profileImage.onchange = (evt) => {
-    const [file] = profileImage.files;
-    if (file) {
-      blah.src = URL.createObjectURL(file);
-      console.log(blah);
-    }
-  };
+  function deleteSubInterest(id) {
+    swal({
+      title: "Are you sure?",
+      text: "You won't be able to revert this!",
+      icon: "warning",
+      buttons: true,
+      dangerMode: true,
+    }).then((willDelete) => {
+      if (willDelete) {
+        $.ajax({
+          url: "/deleteSubInterest",
+          type: "POST",
+          data: { id: id },
+          success: function (response) {
+            if (response.success) {
+              swal(
+                "Deleted!",
+                "Your sub-interest has been deleted.",
+                "success",
+              ).then((value) => {
+                location.reload();
+              });
+            } else {
+              swal(
+                "Error!",
+                "There was a problem deleting your sub-interest.",
+                "error",
+              );
+            }
+          },
+        });
+      }
+    });
+  }
 </script>
