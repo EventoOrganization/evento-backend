@@ -32,6 +32,18 @@ const userSchema = new mongoose.Schema(
     is_block: { type: Number, default: 0 },
 
     // specials userInfo
+    pwaNotification: { type: Boolean, default: false },
+    pwaSubscriptions: [
+      {
+        browser: { type: String, enum: ["chrome", "firefox", "safari"] },
+        endpoint: { type: String }, // Contrôle par l'utilisateur
+        keys: {
+          p256dh: { type: String },
+          auth: { type: String },
+        },
+        createdAt: { type: Date, default: Date.now },
+      },
+    ],
 
     interests: [
       {

@@ -5,6 +5,7 @@ const Models = require("../models/index");
 const mongoose = require("mongoose");
 const User = require("../models/userModel");
 const Event = require("../models/eventModel");
+const { sendNotification } = require("../helper/pwaNotificationPush");
 exports.getLoggedUserProfile = async (req, res) => {
   try {
     if (!req.user || !req.user._id) {
@@ -16,7 +17,7 @@ exports.getLoggedUserProfile = async (req, res) => {
 
     const userInfo = await User.findOne({ _id: req.user._id })
       .select(
-        "firstName lastName username email email_verified countryCode phoneNumber phone_verified address bio URL DOB profileImage interests socialLinks role devices",
+        "pwaNotification pwaSubscriptions firstName lastName username email email_verified countryCode phoneNumber phone_verified address bio URL DOB profileImage interests socialLinks role devices",
       )
       .populate({ path: "interests", select: "_id name" });
 
@@ -125,7 +126,6 @@ exports.getLoggedUserProfile = async (req, res) => {
       });
 
     userInfo._doc.totalEventAttended = countTotalEventIAttended;
-
     return res.status(200).json({
       status: true,
       message: "Profile retrieved successfully",
@@ -237,9 +237,14 @@ exports.getUserProfileById = async (req, res) => {
 };
 
 exports.updateProfile = async (req, res) => {
+  console.log("**************************************************************");
+  console.log("Received pwaNotification:", req.body.pwaNotification);
+  console.log("Received pwaSubscription:", req.body.pwaSubscription);
+  console.log("Received browser:", req.body.browser);
+
   try {
     const userId = req.user._id;
-
+    const { pwaSubscription, browser, pwaNotification } = req.body;
     const user = await Models.userModel.findById(userId);
     if (!user) {
       return res.status(404).json({
@@ -261,6 +266,7 @@ exports.updateProfile = async (req, res) => {
       countryCode,
       phoneNumber,
       password,
+      pwaNotificationPushPayload: pwaNotificationPush,
     } = req.body;
 
     if (username && username !== user.username) {
@@ -393,6 +399,46 @@ exports.updateProfile = async (req, res) => {
     } else {
       updateData.interests = null;
     }
+
+    // Gestion des notifications PWA
+    if (pwaSubscription === null) {
+      // Removing the subscription for the given browser
+      const subscriptionIndex = user.pwaSubscriptions?.findIndex(
+        (sub) => sub.browser === browser,
+      );
+
+      if (subscriptionIndex > -1) {
+        // Remove the subscription at the found index
+        user.pwaSubscriptions.splice(subscriptionIndex, 1);
+        console.log(`Removed subscription for browser: ${browser}`);
+      } else {
+        console.log(`No subscription found for browser: ${browser}`);
+      }
+    } else if (pwaSubscription) {
+      const existingSubscription = user.pwaSubscriptions?.find(
+        (sub) => sub.browser === browser,
+      );
+
+      if (existingSubscription) {
+        // Update the existing subscription
+        existingSubscription.endpoint = pwaSubscription.endpoint;
+        existingSubscription.keys = pwaSubscription.keys;
+      } else {
+        // Add a new subscription
+        user.pwaSubscriptions?.push({
+          browser,
+          endpoint: pwaSubscription.endpoint,
+          keys: pwaSubscription.keys,
+        });
+      }
+    }
+
+    // Gestion du statut de réception des notifications PWA
+    if (pwaNotification !== undefined) {
+      user.pwaNotification = pwaNotification;
+    }
+
+    await user.save();
 
     const updatedUser = await Models.userModel
       .findByIdAndUpdate(userId, { $set: updateData }, { new: true })

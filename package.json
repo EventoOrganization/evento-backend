@@ -43,7 +43,8 @@
     "nodemailer": "^6.9.14",
     "react-select": "^5.8.0",
     "socket.io": "^4.7.5",
-    "uuid": "^10.0.0"
+    "uuid": "^10.0.0",
+    "web-push": "^3.6.7"
   },
   "config": {
     "commitizen": {
