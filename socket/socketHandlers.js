@@ -12,7 +12,6 @@ module.exports = (io) => {
     socket.on("send_message", async (data) => {
       const { message, senderId, conversationId, messageType } = data;
 
-      // Validate required fields
       if (!message || !senderId || !conversationId || !messageType) {
         socket.emit(
           "error",
@@ -22,16 +21,21 @@ module.exports = (io) => {
       }
 
       try {
-        // Look up the conversation in the database
-        const conversation = await Models.chatconstant.findById(conversationId);
+        // Récupérer la conversation
+        const conversation = await Models.chatconstant
+          .findById(conversationId)
+          .populate("reciverId", "pwaSubscriptions")
+          .populate("senderId", "pwaSubscriptions");
+
         if (!conversation) {
           socket.emit("error", "Conversation not found.");
           return;
         }
 
+        // Créer un nouveau message
         const newMessage = new Models.message({
           senderId,
-          reciverId: conversation.targetId,
+          reciverId: conversation.reciverId?._id || null,
           constantId: conversationId,
           message,
           message_type: messageType,
@@ -43,43 +47,53 @@ module.exports = (io) => {
           .findById(newMessage._id)
           .populate("senderId", "username profileImage");
 
-        // Emit the message to the conversation room
+        // Envoyer le message à la room de la conversation
         io.to(conversationId).emit("send_message_emit", populatedMessage);
 
-        // Log which socket emitted the message
-        console.log(
-          `Message emitted from socket ${socket.id} to conversationId: ${conversationId}`,
-        );
+        // Récupérer les souscriptions des utilisateurs concernés
+        let usersToNotify = [];
 
-        // Test sending a web push notification to yourself
-        const mySubscription = {
-          endpoint:
-            "https://fcm.googleapis.com/fcm/send/f1YRhPyD8BA:APA91bE9wyy9mtA2JmVbMcPJKpVmk3GNN1YLhdSFb6ek86JEHuBR0t3qOl65AETlOdgAN3L28wkGzTbie3AabxJUO_08SUIe0-hokEvMwBAma03-M9meJciyAGm3PAqpU7O8hUtb0l2z",
-          keys: {
-            p256dh:
-              "BLheZrpwPa-A5iDmfN4-1lM6IQ6hqHN1WUt8BpnEq5PWduDP_qCXaYQ59QTZVtV800zib_eQ-KByv5rqlRCNL5w",
-            auth: "jD9A74QFMiHZ71d8fyNurA",
-          },
-        };
+        // Si c'est une conversation privée, ajouter le destinataire
+        if (conversation.reciverId) {
+          usersToNotify.push(conversation.reciverId);
+        }
 
-        const payload = JSON.stringify({
-          title: `Message from ${populatedMessage.senderId.username}`,
-          body: `${message}`,
-        });
+        // Si c'est un groupe, récupérer les utilisateurs du groupe
+        if (conversation.groupId) {
+          const groupChat = await Models.groupChat
+            .findById(conversation.groupId)
+            .populate("users", "pwaSubscriptions");
+          usersToNotify = groupChat.users;
+        }
 
-        webPush
-          .sendNotification(mySubscription, payload)
-          .then((response) => {
-            console.log("Notification sent successfully:", response);
-          })
-          .catch((error) => {
-            console.error("Error sending notification:", error);
+        // Ajouter l'expéditeur (optionnel si vous souhaitez qu'il reçoive aussi les notifications)
+        const sender = await Models.userModel.findById(senderId);
+        if (sender) usersToNotify.push(sender);
+
+        // Envoi des notifications
+        usersToNotify.forEach((user) => {
+          user.pwaSubscriptions?.forEach((subscription) => {
+            const payload = JSON.stringify({
+              title: `Message from ${populatedMessage.senderId.username}`,
+              body: message,
+            });
+
+            webPush
+              .sendNotification(subscription, payload)
+              .then((response) => {
+                console.log("Notification sent successfully:", response);
+              })
+              .catch((error) => {
+                console.error("Error sending notification:", error);
+              });
           });
+        });
       } catch (error) {
         console.error("Error sending message:", error);
         socket.emit("error", "Failed to send message.");
       }
     });
+
     socket.on("disconnect", () => {
       console.log(`Client disconnected: ${socket.id}`);
     });
