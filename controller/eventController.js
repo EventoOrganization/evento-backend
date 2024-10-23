@@ -810,7 +810,6 @@ exports.getUpcomingEvents = async (req, res) => {
     });
   }
 };
-
 exports.deleteEvent = async (req, res) => {
   try {
     //Fistly check created event is by logged in user or not

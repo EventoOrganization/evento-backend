@@ -5,7 +5,6 @@ const Models = require("../models/index");
 const mongoose = require("mongoose");
 const User = require("../models/userModel");
 const Event = require("../models/eventModel");
-const { sendNotification } = require("../helper/pwaNotificationPush");
 exports.getLoggedUserProfile = async (req, res) => {
   try {
     if (!req.user || !req.user._id) {

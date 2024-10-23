@@ -1,4 +1,5 @@
 const Models = require("../models");
+const webPush = require("web-push");
 module.exports = (io) => {
   io.on("connection", (socket) => {
     console.log("New client connected", socket.id);
@@ -49,6 +50,31 @@ module.exports = (io) => {
         console.log(
           `Message emitted from socket ${socket.id} to conversationId: ${conversationId}`,
         );
+
+        // Test sending a web push notification to yourself
+        const mySubscription = {
+          endpoint:
+            "https://fcm.googleapis.com/fcm/send/f1YRhPyD8BA:APA91bE9wyy9mtA2JmVbMcPJKpVmk3GNN1YLhdSFb6ek86JEHuBR0t3qOl65AETlOdgAN3L28wkGzTbie3AabxJUO_08SUIe0-hokEvMwBAma03-M9meJciyAGm3PAqpU7O8hUtb0l2z",
+          keys: {
+            p256dh:
+              "BLheZrpwPa-A5iDmfN4-1lM6IQ6hqHN1WUt8BpnEq5PWduDP_qCXaYQ59QTZVtV800zib_eQ-KByv5rqlRCNL5w",
+            auth: "jD9A74QFMiHZ71d8fyNurA",
+          },
+        };
+
+        const payload = JSON.stringify({
+          title: `Message from ${populatedMessage.senderId.username}`,
+          body: `${message}`,
+        });
+
+        webPush
+          .sendNotification(mySubscription, payload)
+          .then((response) => {
+            console.log("Notification sent successfully:", response);
+          })
+          .catch((error) => {
+            console.error("Error sending notification:", error);
+          });
       } catch (error) {
         console.error("Error sending message:", error);
         socket.emit("error", "Failed to send message.");

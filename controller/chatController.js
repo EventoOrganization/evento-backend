@@ -1,5 +1,7 @@
 const Models = require("../models");
 const socket = require("socket.io");
+const { sendNotification } = require("../helper/pwaNotificationPush");
+
 exports.sendMessage = async (req, res) => {
   const { message, senderId, conversationId, messageType } = req.body;
 
@@ -12,7 +14,9 @@ exports.sendMessage = async (req, res) => {
   }
 
   try {
-    const conversation = await Models.chatconstant.findById(conversationId);
+    const conversation = await Models.chatconstant
+      .findById(conversationId)
+      .populate("members");
 
     if (!conversation) {
       return res.status(404).json({
@@ -35,11 +39,62 @@ exports.sendMessage = async (req, res) => {
       .findById(newMessage._id)
       .populate("senderId", "username profileImage");
 
-    // Emit the message via socket
+    // Emit the message via socket to the entire group
     if (req.io) {
       req.io.to(conversationId).emit("send_message_emit", populatedMessage);
     } else {
       console.error("❌ ~ Socket.io instance not found on req object.");
+    }
+
+    // Notification Push
+    const members = conversation.members;
+
+    if (members && members.length > 0) {
+      const payload = JSON.stringify({
+        title: "New Message",
+        body: `${populatedMessage.senderId.username}: ${message}`,
+      });
+
+      // Notify all members in the group
+      members.forEach(async (member) => {
+        const user = await Models.userModel.findById(member._id);
+
+        if (user && user.pwaSubscriptions && user.pwaSubscriptions.length > 0) {
+          // Send a notification to each subscription of the user
+          user.pwaSubscriptions.forEach(async (subscription) => {
+            try {
+              await sendNotification(subscription, payload);
+              console.log(`Notification envoyée à ${user.username}`);
+            } catch (error) {
+              console.error(
+                `Erreur lors de l'envoi de la notification à ${user.username} :`,
+                error,
+              );
+            }
+          });
+        }
+      });
+
+      // Send notification to the sender (developer) as well
+      const sender = await Models.userModel.findById(senderId);
+
+      if (
+        sender &&
+        sender.pwaSubscriptions &&
+        sender.pwaSubscriptions.length > 0
+      ) {
+        sender.pwaSubscriptions.forEach(async (subscription) => {
+          try {
+            await sendNotification(subscription, payload);
+            console.log("Notification envoyée à l'auteur du message (sender)");
+          } catch (error) {
+            console.error(
+              "Erreur lors de l'envoi de la notification à l'auteur :",
+              error,
+            );
+          }
+        });
+      }
     }
 
     res.status(200).json({
