@@ -243,7 +243,6 @@ exports.updateProfile = async (req, res) => {
 
   try {
     const userId = req.user._id;
-    const { pwaSubscription, browser, pwaNotification } = req.body;
     const user = await Models.userModel.findById(userId);
     if (!user) {
       return res.status(404).json({
@@ -265,7 +264,9 @@ exports.updateProfile = async (req, res) => {
       countryCode,
       phoneNumber,
       password,
-      pwaNotificationPushPayload: pwaNotificationPush,
+      pwaSubscription,
+      browser,
+      pwaNotification,
     } = req.body;
 
     if (username && username !== user.username) {
