@@ -240,11 +240,15 @@ exports.updateProfile = async (req, res) => {
   console.log("Received pwaNotification:", req.body.pwaNotification);
   console.log("Received pwaSubscription:", req.body.pwaSubscription);
   console.log("Received browser:", req.body.browser);
+  console.log("Received req.body:", req.body);
 
   try {
     const userId = req.user._id;
+    console.log("User ID:", userId);
+
     const user = await Models.userModel.findById(userId);
     if (!user) {
+      console.log("User not found:", userId);
       return res.status(404).json({
         status: false,
         message: "User not found",
@@ -269,13 +273,32 @@ exports.updateProfile = async (req, res) => {
       pwaNotification,
     } = req.body;
 
+    console.log("Update fields received:", {
+      username,
+      firstName,
+      lastName,
+      address,
+      bio,
+      URL,
+      DOB,
+      email,
+      countryCode,
+      phoneNumber,
+      password,
+      pwaSubscription,
+      browser,
+      pwaNotification,
+    });
+
     if (username && username !== user.username) {
       const normalizedUsername = username.trim().toLowerCase();
+      console.log("Checking if username exists:", normalizedUsername);
       const isUsernameExist = await Models.userModel.findOne({
         username: normalizedUsername,
         _id: { $ne: userId },
       });
       if (isUsernameExist) {
+        console.log("Username already exists:", normalizedUsername);
         return res.status(409).json({
           status: false,
           message: "Username already exists. Please choose another one.",
@@ -285,20 +308,40 @@ exports.updateProfile = async (req, res) => {
     }
 
     // Vérification des autres champs
-    if (firstName && firstName !== user.firstName)
+    if (firstName && firstName !== user.firstName) {
+      console.log("Updating firstName:", firstName);
       updateData.firstName = firstName;
-    if (lastName && lastName !== user.lastName) updateData.lastName = lastName;
-    if (address && address !== user.address) updateData.address = address;
-    if (bio && bio !== user.bio) updateData.bio = bio;
-    if (URL && URL !== user.URL) updateData.URL = URL;
-    if (DOB && DOB !== user.DOB) updateData.DOB = DOB;
+    }
+    if (lastName && lastName !== user.lastName) {
+      console.log("Updating lastName:", lastName);
+      updateData.lastName = lastName;
+    }
+    if (address && address !== user.address) {
+      console.log("Updating address:", address);
+      updateData.address = address;
+    }
+    if (bio && bio !== user.bio) {
+      console.log("Updating bio:", bio);
+      updateData.bio = bio;
+    }
+    if (URL && URL !== user.URL) {
+      console.log("Updating URL:", URL);
+      updateData.URL = URL;
+    }
+    if (DOB && DOB !== user.DOB) {
+      console.log("Updating DOB:", DOB);
+      updateData.DOB = DOB;
+    }
+
     // Gestion de l'email
     if (email && email !== user.email) {
+      console.log("Checking if email exists:", email);
       const isEmailExist = await Models.userModel.findOne({
         email,
         _id: { $ne: userId },
       });
       if (isEmailExist) {
+        console.log("Email already exists:", email);
         return res.status(409).json({
           status: false,
           message: "Email already exists. Please choose another one.",
@@ -309,20 +352,25 @@ exports.updateProfile = async (req, res) => {
 
     // Gestion du numéro de téléphone
     if (phoneNumber && phoneNumber !== user.phoneNumber) {
+      console.log("Updating phoneNumber:", phoneNumber);
       updateData.phoneNumber = phoneNumber;
     }
 
     // Gestion du mot de passe
     if (password) {
+      console.log("Updating password");
       const salt = await bcrypt.genSalt(10);
       const hashedPassword = await bcrypt.hash(password, salt);
       updateData.password = hashedPassword;
     }
+
     // Gestion de l'image de profil
     if (req.files && req.files.profileImage) {
       const file = req.files.profileImage;
+      console.log("Processing profile image:", file);
 
       if (!file.mimetype.startsWith("image/")) {
+        console.log("Invalid image type:", file.mimetype);
         return res.status(400).json({
           status: false,
           message: "Only image files are allowed for the profile image",
@@ -330,9 +378,11 @@ exports.updateProfile = async (req, res) => {
       }
 
       try {
-        const imageUrl = await helper.fileUpload(file, "profile");
+        const imageUrl = await helper.fileUpload(file, `profile/${userId}`);
+        console.log("Profile image uploaded:", imageUrl);
         updateData.profileImage = imageUrl;
       } catch (error) {
+        console.log("Error uploading profile image:", error);
         return res.status(500).json({
           status: false,
           message: "Error uploading profile image",
@@ -346,7 +396,9 @@ exports.updateProfile = async (req, res) => {
       let socialLinks = [];
       try {
         socialLinks = JSON.parse(req.body.socialLinks);
+        console.log("Parsed socialLinks:", socialLinks);
       } catch (error) {
+        console.log("Error parsing social links:", error);
         return res.status(400).json({
           status: false,
           message: "Failed to parse social links",
@@ -365,7 +417,7 @@ exports.updateProfile = async (req, res) => {
         ).map((platform) =>
           validSocialLinks.find((link) => link.platform === platform),
         );
-
+        console.log("Valid and unique socialLinks:", uniqueLinks);
         updateData.socialLinks = uniqueLinks;
       }
     } else {
@@ -377,7 +429,9 @@ exports.updateProfile = async (req, res) => {
       let interestsArray = [];
       try {
         interestsArray = JSON.parse(req.body.interest);
+        console.log("Parsed interestsArray:", interestsArray);
       } catch (error) {
+        console.log("Error parsing interests:", error);
         return res.status(400).json({
           status: false,
           message: "Failed to parse interests",
@@ -395,6 +449,7 @@ exports.updateProfile = async (req, res) => {
         })
         .filter(Boolean);
 
+      console.log("Valid interests:", validInterests);
       updateData.interests = validInterests;
     } else {
       updateData.interests = null;
@@ -402,29 +457,27 @@ exports.updateProfile = async (req, res) => {
 
     // Gestion des notifications PWA
     if (pwaSubscription === null) {
-      // Removing the subscription for the given browser
+      console.log("Removing PWA subscription for browser:", browser);
       const subscriptionIndex = user.pwaSubscriptions?.findIndex(
         (sub) => sub.browser === browser,
       );
 
       if (subscriptionIndex > -1) {
-        // Remove the subscription at the found index
         user.pwaSubscriptions.splice(subscriptionIndex, 1);
         console.log(`Removed subscription for browser: ${browser}`);
       } else {
         console.log(`No subscription found for browser: ${browser}`);
       }
     } else if (pwaSubscription) {
+      console.log("Updating/Adding PWA subscription:", pwaSubscription);
       const existingSubscription = user.pwaSubscriptions?.find(
         (sub) => sub.browser === browser,
       );
 
       if (existingSubscription) {
-        // Update the existing subscription
         existingSubscription.endpoint = pwaSubscription.endpoint;
         existingSubscription.keys = pwaSubscription.keys;
       } else {
-        // Add a new subscription
         user.pwaSubscriptions?.push({
           browser,
           endpoint: pwaSubscription.endpoint,
@@ -435,22 +488,26 @@ exports.updateProfile = async (req, res) => {
 
     // Gestion du statut de réception des notifications PWA
     if (pwaNotification !== undefined) {
+      console.log("Updating pwaNotification status:", pwaNotification);
       user.pwaNotification = pwaNotification;
     }
 
     await user.save();
+    console.log("User data saved successfully.");
 
     const updatedUser = await Models.userModel
       .findByIdAndUpdate(userId, { $set: updateData }, { new: true })
       .populate("interests");
 
     if (!updatedUser) {
+      console.log("Failed to update user profile");
       return res.status(500).json({
         status: false,
         message: "Failed to update user profile",
       });
     }
 
+    console.log("Profile updated successfully:", updatedUser);
     return res.status(200).json({
       status: true,
       message: "Profile updated successfully",
