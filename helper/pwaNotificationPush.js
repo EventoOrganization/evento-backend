@@ -2,7 +2,7 @@ const webPush = require("web-push");
 
 // Configure les détails VAPID avec les clés d'environnement
 webPush.setVapidDetails(
-  "mailto:your-email@example.com",
+  "mailto:evento_app@outlook.com",
   process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
   process.env.VAPID_PRIVATE_KEY,
 );
