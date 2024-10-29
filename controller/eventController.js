@@ -717,7 +717,6 @@ exports.getUpcomingEvents = async (req, res) => {
       .populate("interests", "name image")
       .exec();
 
-    // Préparer un tableau pour contenir les événements enrichis
     let enrichedEvents = events.map((event) => ({
       ...event.toObject(),
       isGoing: false,
@@ -728,10 +727,7 @@ exports.getUpcomingEvents = async (req, res) => {
       refused: [],
     }));
 
-    // Récupérer les IDs des événements pour chercher les statuts d'événements
     const eventIds = events.map((event) => event._id);
-
-    // Récupérer les statuts d'événements associés à ces événements
     const eventStatuses = await Models.eventStatusSchema
       .find({
         eventId: { $in: eventIds },
@@ -739,7 +735,6 @@ exports.getUpcomingEvents = async (req, res) => {
       .populate("userId", "username profileImage") // Peupler les infos de l'utilisateur
       .exec();
 
-    // Construire une map des statuts par événement
     const statusMap = {};
     eventStatuses.forEach((status) => {
       if (!statusMap[status.eventId]) {
@@ -750,7 +745,6 @@ exports.getUpcomingEvents = async (req, res) => {
         };
       }
 
-      // Ajouter les utilisateurs dans les tableaux appropriés selon leur statut
       if (status.status === "isGoing") {
         statusMap[status.eventId].attendees.push(status.userId);
       } else if (status.status === "isFavourite") {
@@ -760,7 +754,6 @@ exports.getUpcomingEvents = async (req, res) => {
       }
     });
 
-    // Enrichir les événements avec les statuts d'utilisateurs pour l'utilisateur connecté
     if (userId) {
       enrichedEvents = enrichedEvents.map((event) => {
         const userStatus = statusMap[event._id] || {
@@ -769,33 +762,31 @@ exports.getUpcomingEvents = async (req, res) => {
           refused: [],
         };
 
-        // Vérifier si l'utilisateur connecté est dans les tableaux
         const isGoing = userStatus.attendees.some(
-          (user) => user._id.toString() === userId,
+          (user) => user?._id?.toString() === userId,
         );
         const isFavourite = userStatus.favouritees.some(
-          (user) => user._id.toString() === userId,
+          (user) => user?._id?.toString() === userId,
         );
         const isRefused = userStatus.refused.some(
-          (user) => user._id.toString() === userId,
+          (user) => user?._id?.toString() === userId,
         );
 
-        const isHosted = event.user._id.toString() === userId;
+        const isHosted = event?.user?._id?.toString() === userId;
 
         return {
           ...event,
           isGoing,
           isFavourite,
           isRefused,
-          attendees: userStatus.attendees || [], // Liste des utilisateurs qui sont "isGoing"
-          favouritees: userStatus.favouritees || [], // Liste des utilisateurs qui sont "isFavourite"
-          refused: userStatus.refused || [], // Liste des utilisateurs qui ont "refusé"
+          attendees: userStatus.attendees || [],
+          favouritees: userStatus.favouritees || [],
+          refused: userStatus.refused || [],
           isHosted,
         };
       });
     }
 
-    // Répondre avec les événements enrichis
     res.status(200).json({
       success: true,
       message: "Upcoming events retrieved successfully",
@@ -810,6 +801,7 @@ exports.getUpcomingEvents = async (req, res) => {
     });
   }
 };
+
 exports.deleteEvent = async (req, res) => {
   try {
     //Fistly check created event is by logged in user or not
@@ -841,9 +833,7 @@ exports.updateEventStatus = async (req, res) => {
   const { eventId, userId, status, rsvpAnswers, reason } = req.body;
 
   try {
-    // Vérifier si l'utilisateur essaie de retirer un statut en envoyant null
     if (!status) {
-      // Supprimer l'entrée du statut si le statut est null
       await Models.eventStatusSchema.deleteOne({ eventId, userId });
       return res.status(200).json({
         success: true,
@@ -851,11 +841,10 @@ exports.updateEventStatus = async (req, res) => {
       });
     }
 
-    // Mettre à jour ou créer un nouveau statut
     const eventStatus = await Models.eventStatusSchema.findOneAndUpdate(
       { eventId, userId },
       { status, rsvpAnswers, reason },
-      { new: true, upsert: true, runValidators: true }, // Crée un nouveau statut si aucun n'existe
+      { new: true, upsert: true, runValidators: true },
     );
 
     res.status(200).json({
