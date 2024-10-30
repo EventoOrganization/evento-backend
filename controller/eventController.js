@@ -130,6 +130,49 @@ exports.addGuests = async (req, res) => {
     res.status(500).json({ message: "Server error." });
   }
 };
+exports.requestToJoin = async (req, res) => {
+  const { eventId } = req.params;
+  const userId = req.user._id;
+
+  try {
+    console.log("Step 1: Starting requestToJoin"); // Log initial
+
+    // Étape 1: Vérifier l'existence de l'événement
+    const event = await Event.findById(eventId);
+    if (!event) {
+      console.log("Event not found");
+      return res.status(404).json({ message: "Event not found" });
+    }
+    console.log("Step 2: Event found", event);
+
+    // Étape 2: Vérifier si l'utilisateur est déjà dans la liste requested
+    console.log(
+      "Liste des utilisateurs ayant demandé à rejoindre:",
+      event.requested,
+    );
+    if (event.requested.some((id) => id.equals(userId))) {
+      // Utilise `.equals()` pour comparer les ObjectId
+      console.log("User has already requested to join");
+      return res
+        .status(400)
+        .json({ message: "User has already requested to join" });
+    }
+
+    // Étape 3: Ajouter l'utilisateur à la liste requested
+    event.requested.push(userId);
+    await event.save();
+
+    console.log("User added to requested list");
+    res
+      .status(200)
+      .json({ message: "Request to join has been successfully added" });
+  } catch (error) {
+    console.error("Error processing request to join:", error);
+    res
+      .status(500)
+      .json({ message: "An error occurred while processing the request" });
+  }
+};
 exports.storePostEventMedia = async (req, res) => {
   const { eventId, media } = req.body;
 
@@ -517,15 +560,16 @@ exports.createEvent = async (req, res) => {
   }
 };
 exports.getEventById = async (req, res) => {
+  console.log("GETEVENTBYID");
   try {
     const eventId = req.params.id;
 
-    // Récupère l'événement avec les populations nécessaires
     const event = await Event.findById(eventId)
       .populate("user", "username email profileImage")
       .populate("interests", "_id name")
       .populate("guests", "username email profileImage")
       .populate("tempGuests", "username email")
+      .populate("requested", "username email profileImage")
       .populate({
         path: "coHosts",
         populate: {
@@ -534,7 +578,7 @@ exports.getEventById = async (req, res) => {
         },
       })
       .exec();
-
+    console.log("event*************************", event);
     if (!event) {
       return res.status(404).json({
         status: false,
@@ -697,6 +741,7 @@ exports.getUpcomingEvents = async (req, res) => {
           "details.endDate": { $gt: currentDate },
           $or: [
             { user: userId }, // host
+            { requested: userId }, // requested
             { guests: userId }, // guest
             { tempGuests: userId }, // temp guest
             { coHosts: { $elemMatch: { user_id: userId } } }, // cohost
@@ -715,6 +760,7 @@ exports.getUpcomingEvents = async (req, res) => {
       })
       .populate("guests", "username firstName lastName profileImage")
       .populate("interests", "name image")
+      .populate("requested", "username firstName lastName profileImage")
       .exec();
 
     let enrichedEvents = events.map((event) => ({
@@ -801,7 +847,6 @@ exports.getUpcomingEvents = async (req, res) => {
     });
   }
 };
-
 exports.deleteEvent = async (req, res) => {
   try {
     //Fistly check created event is by logged in user or not

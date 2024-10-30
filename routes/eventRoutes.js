@@ -35,6 +35,11 @@ router.patch(
 );
 
 // handle Guests
+router.post(
+  "/:eventId/requestToJoin",
+  authenticateJWT,
+  eventController.requestToJoin,
+);
 router.patch("/addGuests/:id", authenticateJWT, eventController.addGuests);
 router.post("/unGuestUser", authenticateJWT, eventController.unGuestUser);
 router.put(
