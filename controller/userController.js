@@ -114,7 +114,7 @@ schedule.scheduleJob(cronSchedule1, async function () {
           const dataSave = {
             senderId: event.user.toString(),
             reciverId: recipient._id.toString(),
-            message: `Reminder: You have ${event.details.name} in 2 days at ${event.details.startTime}`,
+            message: `Reminder: You have ${event.title} in 2 days at ${event.details.startTime}`,
             is_read: 0,
             eventId: event._id,
             eventName: event.details.name,
