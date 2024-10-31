@@ -40,6 +40,11 @@ router.post(
   authenticateJWT,
   eventController.requestToJoin,
 );
+router.post(
+  "/:eventId/acceptRequest",
+  authenticateJWT,
+  eventController.acceptRequest,
+);
 router.patch("/addGuests/:id", authenticateJWT, eventController.addGuests);
 router.post("/unGuestUser", authenticateJWT, eventController.unGuestUser);
 router.put(

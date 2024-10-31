@@ -173,6 +173,51 @@ exports.requestToJoin = async (req, res) => {
       .json({ message: "An error occurred while processing the request" });
   }
 };
+
+exports.acceptRequest = async (req, res) => {
+  const { eventId } = req.params;
+  const userId = req.body.userId; // L'ID de l'utilisateur à passer en guest
+  const requesterId = req.user._id; // L'ID de l'utilisateur qui fait la requête
+
+  try {
+    // Récupère l'événement et vérifie qu'il existe
+    const event = await Event.findById(eventId);
+    if (!event) {
+      return res.status(404).json({ message: "Event not found" });
+    }
+
+    // Vérifie si le demandeur est l'hôte ou un co-hôte de l'événement
+    const isAuthorized =
+      event.user.equals(requesterId) ||
+      event.coHosts.some((coHostId) => coHostId.equals(requesterId));
+    if (!isAuthorized) {
+      return res
+        .status(403)
+        .json({ message: "Unauthorized to accept requests for this event" });
+    }
+
+    // Vérifie si l'utilisateur est dans la liste des `requested`
+    const isRequestedUser = event.requested.some((id) => id.equals(userId));
+    if (!isRequestedUser) {
+      return res
+        .status(400)
+        .json({ message: "User is not in the requested list" });
+    }
+
+    // Déplace l'utilisateur de `requested` à `guests`
+    event.requested = event.requested.filter((id) => !id.equals(userId)); // Retire de `requested`
+    event.guests.push(userId); // Ajoute à `guests`
+
+    // Sauvegarde les modifications
+    await event.save();
+
+    return res.status(200).json({ message: "User has been added as a guest." });
+  } catch (error) {
+    console.error("Error in acceptRequest:", error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};
+
 exports.storePostEventMedia = async (req, res) => {
   const { eventId, media } = req.body;
 
@@ -438,10 +483,13 @@ exports.createEvent = async (req, res) => {
         username,
         loc: {
           type: "Point",
-          coordinates: [longitude, latitude],
+          coordinates: [
+            mode === "virtual" ? 0 : longitude || 0,
+            mode === "virtual" ? 0 : latitude || 0,
+          ],
         },
         mode,
-        location,
+        location: mode === "virtual" ? "Virtual Event" : location,
         date,
         endDate,
         startTime,
