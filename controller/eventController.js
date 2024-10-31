@@ -173,7 +173,6 @@ exports.requestToJoin = async (req, res) => {
       .json({ message: "An error occurred while processing the request" });
   }
 };
-
 exports.acceptRequest = async (req, res) => {
   const { eventId } = req.params;
   const userId = req.body.userId; // L'ID de l'utilisateur à passer en guest
@@ -217,7 +216,6 @@ exports.acceptRequest = async (req, res) => {
     return res.status(500).json({ message: "Internal server error" });
   }
 };
-
 exports.storePostEventMedia = async (req, res) => {
   const { eventId, media } = req.body;
 

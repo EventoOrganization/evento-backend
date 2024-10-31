@@ -165,6 +165,7 @@ exports.getUserProfileById = async (req, res) => {
     // Fetch all events related to the user
     const allEvents = await Event.find({
       $or: [{ guests: userId }, { coHosts: userId }, { user: userId }],
+      eventType: "public",
     })
       .populate("interests", "_id name")
       .populate("user", "firstName lastName username profileImage")
