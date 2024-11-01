@@ -54,6 +54,7 @@ exports.deletePostEventMedia = async (req, res) => {
 exports.addGuests = async (req, res) => {
   const eventId = req.params.id;
   const { guests, tempGuests, user } = req.body;
+  console.log("req.body", req.body);
 
   try {
     const event = await Event.findById(eventId);
@@ -62,21 +63,25 @@ exports.addGuests = async (req, res) => {
     }
     const eventLink = `${process.env.CLIENT_URL}/event/${eventId}`;
     const invitedBy = user._id;
+
     // Ajout des utilisateurs existants
     if (guests && guests.length > 0) {
       for (const guest of guests) {
-        const guestId = typeof guest === "string" ? guest : guest.id;
+        // Accepte les deux formats pour l'ID d'invité (`guest._id` ou `guest.id`)
+        const guestId = guest._id || guest.id;
+
         if (!event.guests.includes(guestId)) {
           event.guests.push(guestId);
+
           const guestUser = await Models.userModel.findById(guestId);
           if (guestUser) {
-            const guest = {
+            const guestInfo = {
               _id: guestId,
               username: guestUser.username,
               email: guestUser.email,
             };
-            console.log("email send to", guest);
-            await sendEventInviteEmail(user, guest, event, eventLink);
+            console.log("email send to", guestInfo);
+            await sendEventInviteEmail(user, guestInfo, event, eventLink);
           }
         }
       }
@@ -87,23 +92,22 @@ exports.addGuests = async (req, res) => {
       for (const tempGuestData of tempGuests) {
         const { email, username } = tempGuestData;
         const existingUser = await Models.userModel.findOne({ email });
-        if (existingUser) {
-          continue;
-        }
-        let tempGuest = await TempGuest.findOne({ email });
 
+        if (existingUser) {
+          continue; // Passer cet utilisateur s'il existe déjà
+        }
+
+        let tempGuest = await TempGuest.findOne({ email });
         if (!tempGuest) {
           // Créer un nouvel utilisateur temporaire si aucun n'existe
           tempGuest = new TempGuest({
             email,
             username,
-            invitations: [
-              { eventId, invitedBy }, // Ajout de l'invitation
-            ],
+            invitations: [{ eventId, invitedBy }],
           });
           await tempGuest.save();
         } else {
-          // Si l'invité temporaire existe déjà, ajouter l'invitation à la liste
+          // Si l'invité temporaire existe déjà, ajouter l'invitation
           tempGuest.invitations.push({ eventId, invitedBy });
           await tempGuest.save();
         }
@@ -112,13 +116,14 @@ exports.addGuests = async (req, res) => {
         if (!event.tempGuests.includes(tempGuest._id)) {
           event.tempGuests.push(tempGuest._id);
         }
-        const guest = {
+
+        const guestInfo = {
           _id: tempGuest._id,
           username: tempGuest.username,
           email: tempGuest.email,
         };
-        console.log("email send to", guest);
-        await sendEventInviteEmail(user, guest, event, eventLink);
+        console.log("email send to", guestInfo);
+        await sendEventInviteEmail(user, guestInfo, event, eventLink);
       }
     }
 
@@ -130,6 +135,7 @@ exports.addGuests = async (req, res) => {
     res.status(500).json({ message: "Server error." });
   }
 };
+
 exports.requestToJoin = async (req, res) => {
   const { eventId } = req.params;
   const userId = req.user._id;
