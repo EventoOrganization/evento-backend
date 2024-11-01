@@ -162,10 +162,31 @@ exports.getUserProfileById = async (req, res) => {
         .json({ status: false, message: "User not found." });
     }
 
+    // Fetch event statuses for the user (isGoing, isFavourite)
+    const eventStatuses = await Models.eventStatusSchema.find({ userId });
+    const attendEventsIds = eventStatuses
+      .filter((es) => es.status === "isGoing")
+      .map((es) => es.eventId.toString());
+
+    console.log(`Total isGoing events found: ${attendEventsIds.length}`);
+
+    const favouriteEventsIds = eventStatuses
+      .filter((es) => es.status === "isFavourite")
+      .map((es) => es.eventId.toString());
+
     // Fetch all events related to the user
     const allEvents = await Event.find({
-      $or: [{ guests: userId }, { coHosts: userId }, { user: userId }],
-      eventType: "public",
+      $and: [
+        { eventType: "public" }, // Inclure uniquement les événements publics
+        {
+          $or: [
+            { guests: userId },
+            { coHosts: userId },
+            { user: userId },
+            { _id: { $in: attendEventsIds } }, // Inclure les événements où l'utilisateur a le statut 'isGoing'
+          ],
+        },
+      ],
     })
       .populate("interests", "_id name")
       .populate("user", "firstName lastName username profileImage")
@@ -173,14 +194,7 @@ exports.getUserProfileById = async (req, res) => {
       .populate("coHosts.user", "firstName lastName username profileImage")
       .exec();
 
-    // Fetch event statuses for the user (isGoing, isFavourite)
-    const eventStatuses = await Models.eventStatusSchema.find({ userId });
-    const attendEventsIds = eventStatuses
-      .filter((es) => es.status === "isGoing")
-      .map((es) => es.eventId.toString());
-    const favouriteEventsIds = eventStatuses
-      .filter((es) => es.status === "isFavourite")
-      .map((es) => es.eventId.toString());
+    console.log(`Total related events found: ${allEvents.length}`);
 
     // Enrich the events with user-specific status (isGoing, isFavourite, isHosted)
     const enrichedEvents = allEvents.map((event) => {
@@ -197,12 +211,25 @@ exports.getUserProfileById = async (req, res) => {
     });
 
     // Separate the events into upcoming and past based on their end date
-    const upcomingEvents = enrichedEvents.filter(
-      (event) => new Date(event.details.endDate) >= new Date() && event.isGoing,
+    const upcomingEvents = enrichedEvents.filter((event) => {
+      const isUpcoming = new Date(event.details.endDate) >= new Date();
+      const isGoing = event.isGoing;
+      console.log(
+        `Event ID: ${event._id} | End Date: ${event.details.endDate} | Is Upcoming: ${isUpcoming} | Is Going: ${isGoing}`,
+      );
+      return isUpcoming && isGoing;
+    });
+
+    console.log(
+      `Total upcoming events with isGoing status: ${upcomingEvents.length}`,
     );
+
     const pastEvents = enrichedEvents.filter(
       (event) => new Date(event.details.endDate) < new Date() && event.isGoing,
     );
+
+    console.log(`Total past events with isGoing status: ${pastEvents.length}`);
+
     const followingUsers = await Models.userFollowModel
       .find({ follower: userId })
       .select("following")
