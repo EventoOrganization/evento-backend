@@ -15,7 +15,9 @@ const sendEventInviteEmail = async (
   if (!user || !guest || !event || !eventLink) {
     return;
   }
-
+  const eventLinkWithQuery = `${eventLink}?email=${encodeURIComponent(
+    guest.email,
+  )}`;
   try {
     const request = mailjetClient.post("send", { version: "v3.1" }).request({
       Messages: [
@@ -42,7 +44,7 @@ const sendEventInviteEmail = async (
               } the event by <strong>${
             user.username || "on Evento"
           }</strong>.</p>
-              <p>Click <a href="${eventLink}" target="_blank" style="text-decoration: none; color: #5f6fed;">here</a> to view the event details.</p>
+              <p>Click <a href="${eventLinkWithQuery}" target="_blank" style="text-decoration: none; color: #5f6fed;">here</a> to view the event details.</p>
             </div>
           `,
           // HTMLPart: `

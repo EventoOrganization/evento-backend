@@ -18,6 +18,10 @@ const eventSchema = new Schema(
       enum: ["public", "private"],
       default: "public",
     },
+    visibility: {
+      type: Boolean,
+      default: true,
+    },
     details: {
       thumbnailVideo: String,
       images: [String],
