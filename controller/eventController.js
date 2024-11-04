@@ -630,7 +630,7 @@ exports.getEventById = async (req, res) => {
         },
       })
       .exec();
-    console.log("event*************************", event);
+    // console.log("event*************************", event);
     if (!event) {
       return res.status(404).json({
         status: false,

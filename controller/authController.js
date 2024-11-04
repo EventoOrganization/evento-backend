@@ -33,6 +33,13 @@ exports.signup = async (req, res) => {
       tempGuest.registeredAt = Date.now();
       tempGuest.convertedBy = tempGuest.invitations[0]?.invitedBy || null;
       await tempGuest.save();
+      await Event.updateMany(
+        { "tempGuests._id": tempGuest._id },
+        {
+          $pull: { tempGuests: { _id: tempGuest._id } },
+          $push: { guests: newUser._id },
+        },
+      );
     }
     // Sends OTP via email
     await sendOTPEmail(email, otpCode);
@@ -82,7 +89,7 @@ exports.login = async (req, res) => {
     // Recherche de l'utilisateur par email
     const user = await User.findOne({ email });
     if (!user) {
-      return res.status(400).json({ message: "Invalid credentials" });
+      return res.status(400).json({ message: "User not found" });
     }
 
     // Vérification du mot de passe
