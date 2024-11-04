@@ -33,7 +33,7 @@ const sendEventInviteEmail = async (
         Html: {
           Data: `
             <div style="color: #333; font-family: Arial, sans-serif; font-size: 16px; line-height: 1.4; padding: 20px; background-color: #f9f9f9; display: flex; flex-direction: column; align-items: center; gap: 10px;">
-              <img src="https://evento-media-bucket.s3.ap-southeast-2.amazonaws.com/logo.png" alt="Logo" style="width: 100px; height: auto; margin-bottom: 20px;">
+              <img src="https://evento-media-bucket.s3.ap-southeast-2.amazonaws.com/icons/icon-512x512.png" alt="Logo" style="width: 100px; height: auto; margin-bottom: 20px;">
               <h3 style="margin: 0;">Hi ${guest.username || "Guest"}</h3>
               <p style="margin: 0;">You are invited to ${
                 isCoHost ? "co-host" : "join"
