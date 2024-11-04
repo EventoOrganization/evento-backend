@@ -33,7 +33,7 @@ exports.signup = async (req, res) => {
       tempGuest.registeredAt = Date.now();
       tempGuest.convertedBy = tempGuest.invitations[0]?.invitedBy || null;
       await tempGuest.save();
-      await Event.updateMany(
+      await Models.eventModel.updateMany(
         { "tempGuests._id": tempGuest._id },
         {
           $pull: { tempGuests: { _id: tempGuest._id } },
