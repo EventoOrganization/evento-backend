@@ -699,14 +699,19 @@ exports.getEventById = async (req, res) => {
     };
 
     const enrichedGuests = event.guests
-      ? event.guests.map((guest) => addFollowStatus(guest))
+      ? event.guests
+          .filter((guest) => guest && guest._id)
+          .map((guest) => addFollowStatus(guest))
       : [];
+
     const enrichedTempGuests = event.tempGuests
-      ? event.tempGuests.map((tempGuest) => ({
-          ...tempGuest.toObject(),
-          isIFollowingHim: false,
-          isFollowingMe: false,
-        }))
+      ? event.tempGuests
+          .filter((tempGuest) => tempGuest && tempGuest._id)
+          .map((tempGuest) => ({
+            ...tempGuest.toObject(),
+            isIFollowingHim: false,
+            isFollowingMe: false,
+          }))
       : [];
 
     const hostStatus = event.user._id.toString() === userId.toString();
@@ -928,9 +933,18 @@ exports.deleteEvent = async (req, res) => {
 };
 exports.updateEventStatus = async (req, res) => {
   const { eventId, userId, status, rsvpAnswers, reason } = req.body;
+  console.log("req.body", req.body);
+  // Vérification des IDs requis
+  if (!eventId || !userId) {
+    return res.status(400).json({
+      success: false,
+      message: "Event ID and User ID are required",
+    });
+  }
 
   try {
     if (!status) {
+      // Suppression du statut si aucun statut n'est fourni
       await Models.eventStatusSchema.deleteOne({ eventId, userId });
       return res.status(200).json({
         success: true,
@@ -938,6 +952,7 @@ exports.updateEventStatus = async (req, res) => {
       });
     }
 
+    // Mise à jour ou création du statut de l'événement
     const eventStatus = await Models.eventStatusSchema.findOneAndUpdate(
       { eventId, userId },
       { status, rsvpAnswers, reason },
