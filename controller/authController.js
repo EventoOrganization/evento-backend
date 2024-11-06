@@ -11,12 +11,17 @@ exports.signup = async (req, res) => {
   const { email, password } = req.body;
 
   try {
+    // console.log("Received signup request for email:", email);
+
     const existingUser = await User.findOne({ email });
     if (existingUser) {
+      // console.log("Email already in use:", email);
       return res.status(400).json({ message: "Email is already in use." });
     }
+
     const tempGuest = await Models.tempGuestModel.findOne({ email });
-    // Generates a random 6-digit OTP
+    // console.log("Temp guest found:", tempGuest);
+
     const otpCode = Math.floor(100000 + Math.random() * 900000);
     const otpExpires = Date.now() + 10 * 60 * 1000;
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -28,21 +33,30 @@ exports.signup = async (req, res) => {
       otpExpires: otpExpires,
     });
     await newUser.save();
+    // console.log("New user created with ID:", newUser._id);
+
     if (tempGuest) {
+      // console.log("Updating tempGuest status to 'registered'");
       tempGuest.status = "registered";
       tempGuest.registeredAt = Date.now();
       tempGuest.convertedBy = tempGuest.invitations[0]?.invitedBy || null;
       await tempGuest.save();
-      await Models.eventModel.updateMany(
-        { "tempGuests._id": tempGuest._id },
+      // console.log("Temp guest status updated:", tempGuest);
+
+      const updateResult = await Models.eventModel.updateMany(
+        { tempGuests: tempGuest._id },
         {
-          $pull: { tempGuests: { _id: tempGuest._id } },
           $push: { guests: newUser._id },
         },
       );
+      // console.log("Event update result:", updateResult);
+    } else {
+      // console.log("No temp guest found for email:", email);
     }
-    // Sends OTP via email
+
+    // console.log("Sending OTP email to:", email);
     await sendOTPEmail(email, otpCode);
+    // console.log("OTP email sent successfully to:", email);
 
     res.status(201).json({
       message: "User created successfully",
