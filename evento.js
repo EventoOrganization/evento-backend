@@ -19,6 +19,7 @@ const chatRoutes = require("./routes/chatRoutes");
 var authRoutes = require("./routes/authRoutes");
 const eventRoutes = require("./routes/eventRoutes");
 var profileRoutes = require("./routes/profileRoutes");
+const sesRoutes = require("./routes/sesRoutes");
 const cors = require("cors");
 // Create an instance of the Express application
 var app = express();
@@ -39,6 +40,7 @@ app.set("view engine", "ejs");
 // Configure middleware
 app.use(logger("dev"));
 app.use(express.json());
+app.use(express.text({ type: "text/plain" })); // Pour capturer les requêtes text/plain et les traiter comme texte brut
 app.use(express.urlencoded({ extended: false })); // Set extended to false
 app.use(cookieParser());
 app.use(bodyParser.urlencoded({ extended: true })); // Use body-parser for url-encoded bodies
@@ -109,6 +111,7 @@ app.use("/auth", authRoutes);
 app.use("/events", eventRoutes);
 app.use("/profile", profileRoutes);
 app.use("/chats", chatRoutes);
+app.use("/ses", sesRoutes);
 
 // Catch 404 and forward to error handler
 app.use(function (req, res, next) {

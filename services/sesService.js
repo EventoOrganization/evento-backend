@@ -19,7 +19,7 @@ const sendEventInviteEmail = async (
   if (!user || !guest || !event || !eventLink) return;
   console.log("sendEventInviteEmail", user, guest, event, eventLink);
   const params = {
-    Source: process.env.SES_NO_REPLY_INVITATIONS, // Using invitation@evento-app.io
+    Source: process.env.SES_NO_REPLY_INVITATIONS, // Using no-reply-invitations@evento-app.io
     Destination: {
       ToAddresses: [guest.email],
     },
@@ -59,7 +59,7 @@ const sendEventInviteEmail = async (
 // Send OTP Email
 const sendOTPEmail = async (email, otpCode) => {
   const params = {
-    Source: process.env.SES_NO_REPLY_OTP, // Use otp@evento-app.io
+    Source: process.env.SES_NO_REPLY_OTP, // Use no-reply-otp@evento-app.io
     Destination: {
       ToAddresses: [email],
     },
@@ -89,7 +89,7 @@ const sendOTPEmail = async (email, otpCode) => {
 // Send Birthday Email
 const sendBirthdayEmail = async (follower, birthdayPerson) => {
   const params = {
-    Source: process.env.SES_BIRTHDAY, // Use birthday@evento-app.io
+    Source: process.env.SES_BIRTHDAY, // Use no-reply-reminder@evento-app.io
     Destination: {
       ToAddresses: [follower.email],
     },
@@ -125,7 +125,7 @@ const sendBirthdayEmail = async (follower, birthdayPerson) => {
 // Send Event Reminder Email
 const sendEventReminderEmail = async (recipient, event) => {
   const params = {
-    Source: process.env.SES_REMINDER, // Use reminder@evento-app.io
+    Source: process.env.SES_REMINDER, // Use no-reply-reminder@evento-app.io
     Destination: {
       ToAddresses: [recipient.email],
     },
