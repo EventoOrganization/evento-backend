@@ -5,7 +5,7 @@ const User = require("../models/userModel");
 const Models = require("../models");
 const crypto = require("crypto");
 const { JWT_SECRET_KEY } = process.env;
-const { sendOTPEmail } = require("../helper/emailService");
+const { sendOTPEmail } = require("../helper/mailjetEmailService");
 const { token } = require("morgan");
 exports.signup = async (req, res) => {
   const { email, password } = req.body;

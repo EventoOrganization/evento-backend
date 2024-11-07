@@ -1,10 +1,12 @@
 const Event = require("../models/eventModel");
 const Models = require("../models");
 const helper = require("../helper/helper");
+// const { sendEventInviteEmail } = require("../services/sesEmailService");
 const {
   sendEventInviteEmail,
   sendUpdateNotification,
-} = require("../helper/emailService");
+} = require("../helper/mailjetEmailService");
+
 const TempGuest = require("../models/tempGuestModel");
 const moment = require("moment");
 

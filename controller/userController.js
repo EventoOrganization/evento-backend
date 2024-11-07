@@ -5,7 +5,7 @@ const helper = require("../helper/helper");
 const {
   sendBirthdayEmail,
   sendEventReminderEmail,
-} = require("../helper/emailService");
+} = require("../helper/mailjetEmailService");
 const Models = require("../models/index");
 const moment = require("moment");
 const SendOtp = require("../helper/sendOTP");
