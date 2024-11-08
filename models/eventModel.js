@@ -67,7 +67,8 @@ const eventSchema = new Schema(
       includeChat: Boolean,
       createRSVP: Boolean,
       tages: String,
-      URLlink: { type: String },
+      URLlink: { type: String, default: "" },
+      URLtitle: { type: String, default: "" },
     },
     initialMedia: [
       {
