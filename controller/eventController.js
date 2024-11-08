@@ -322,7 +322,7 @@ exports.unGuestUser = async (req, res) => {
 exports.updateEventField = async (req, res) => {
   const { eventId } = req.params;
   const { field, value } = req.body;
-
+  console.log("field", field, "value", value);
   if (!field || value === undefined) {
     return res.status(400).json({ message: "Missing field or value" });
   }
@@ -360,7 +360,8 @@ exports.updateEventField = async (req, res) => {
         event.interests = value.map((interest) => interest._id);
         break;
       case "url":
-        event.details.URLlink = value;
+        event.details.URLlink = value.url;
+        event.details.URLtitle = value.urlTitle;
         break;
       case "date":
         oldData = {
