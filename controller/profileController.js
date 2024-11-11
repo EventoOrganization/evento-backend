@@ -5,6 +5,7 @@ const Models = require("../models/index");
 const mongoose = require("mongoose");
 const User = require("../models/userModel");
 const Event = require("../models/eventModel");
+const { isAfter, startOfDay } = require("date-fns");
 exports.getLoggedUserProfile = async (req, res) => {
   try {
     if (!req.user || !req.user._id) {
@@ -57,7 +58,7 @@ exports.getLoggedUserProfile = async (req, res) => {
       .map((es) => es.eventId.toString());
 
     const enrichedEvents = allEvents
-      .filter((event) => event.user && event.user._id) // Filtrer les événements sans utilisateur valide
+      .filter((event) => event.user && event.user._id)
       .map((event) => {
         const isHosted =
           event.user && event.user._id
@@ -74,8 +75,13 @@ exports.getLoggedUserProfile = async (req, res) => {
 
     // Filter past events
     const pastEvents = enrichedEvents.filter((event) => {
+      if (!event.details?.endDate) return false;
+
       const eventEndDate = new Date(event.details.endDate);
-      return eventEndDate < new Date() && event.isGoing;
+      const today = startOfDay(new Date());
+
+      // Vérifier si l'événement est terminé (la journée complète)
+      return isAfter(today, eventEndDate) && event.isGoing;
     });
 
     // retrieve followingUserIds and followerUserIds
