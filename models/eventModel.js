@@ -56,6 +56,7 @@ const eventSchema = new Schema(
       },
       startTime: { type: String },
       endTime: { type: String },
+      timeZone: { type: String },
       timeSlots: [
         {
           date: { type: String },

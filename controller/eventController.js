@@ -69,9 +69,7 @@ exports.addGuests = async (req, res) => {
     // Ajout des utilisateurs existants
     if (guests && guests.length > 0) {
       for (const guest of guests) {
-        // Accepte les deux formats pour l'ID d'invité (`guest._id` ou `guest.id`)
         const guestId = guest._id || guest.id;
-
         if (!event.guests.includes(guestId)) {
           event.guests.push(guestId);
 
@@ -82,7 +80,6 @@ exports.addGuests = async (req, res) => {
               username: guestUser.username,
               email: guestUser.email,
             };
-            console.log("email send to", guestInfo);
             await sendEventInviteEmail(user, guestInfo, event, eventLink);
           }
         }
@@ -95,13 +92,10 @@ exports.addGuests = async (req, res) => {
         const { email, username } = tempGuestData;
         const existingUser = await Models.userModel.findOne({ email });
 
-        if (existingUser) {
-          continue; // Passer cet utilisateur s'il existe déjà
-        }
+        if (existingUser) continue;
 
         let tempGuest = await TempGuest.findOne({ email });
         if (!tempGuest) {
-          // Créer un nouvel utilisateur temporaire si aucun n'existe
           tempGuest = new TempGuest({
             email,
             username,
@@ -109,12 +103,10 @@ exports.addGuests = async (req, res) => {
           });
           await tempGuest.save();
         } else {
-          // Si l'invité temporaire existe déjà, ajouter l'invitation
           tempGuest.invitations.push({ eventId, invitedBy });
           await tempGuest.save();
         }
 
-        // Ajouter la référence du tempGuest à l'événement
         if (!event.tempGuests.includes(tempGuest._id)) {
           event.tempGuests.push(tempGuest._id);
         }
@@ -124,19 +116,28 @@ exports.addGuests = async (req, res) => {
           username: tempGuest.username,
           email: tempGuest.email,
         };
-        console.log("email send to", guestInfo);
         await sendEventInviteEmail(user, guestInfo, event, eventLink);
       }
     }
 
     // Sauvegarder les modifications de l'événement
     await event.save();
-    res.status(200).json({ message: "Guests added successfully.", event });
+
+    // Récupérer l'événement avec les informations complètes des `tempGuests`
+    const updatedEvent = await Event.findById(eventId)
+      .populate("guests")
+      .populate("tempGuests")
+      .exec();
+
+    res
+      .status(200)
+      .json({ message: "Guests added successfully.", event: updatedEvent });
   } catch (error) {
     console.error("Error adding guests:", error);
     res.status(500).json({ message: "Server error." });
   }
 };
+
 exports.requestToJoin = async (req, res) => {
   const { eventId } = req.params;
   const userId = req.user._id;
@@ -370,12 +371,14 @@ exports.updateEventField = async (req, res) => {
           startTime: event.details.startTime,
           endTime: event.details.endTime,
           timeSlots: event.details.timeSlots,
+          timeZone: event.details.timeZone,
         };
         event.details.date = value.startDate;
         event.details.endDate = value.endDate;
         event.details.startTime = value.startTime;
         event.details.endTime = value.endTime;
         event.details.timeSlots = value.timeSlots;
+        event.details.timeZone = value.timeZone;
         changeType = "date/time";
         break;
       default:
@@ -462,6 +465,7 @@ exports.createEvent = async (req, res) => {
       interests,
       uploadedMedia,
       questions,
+      timeZone,
       additionalField,
       UrlLink,
       UrlTitle,
@@ -501,6 +505,7 @@ exports.createEvent = async (req, res) => {
         endDate,
         startTime,
         endTime,
+        timeZone,
         description,
         URLlink: UrlLink || "",
         URLtitle: UrlTitle || "",
