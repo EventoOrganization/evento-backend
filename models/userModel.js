@@ -35,7 +35,10 @@ const userSchema = new mongoose.Schema(
     pwaNotification: { type: Boolean, default: false },
     pwaSubscriptions: [
       {
-        browser: { type: String, enum: ["chrome", "firefox", "safari"] },
+        browser: {
+          type: String,
+          enum: ["chrome", "firefox", "safari", "unknown"],
+        },
         endpoint: { type: String }, // Contrôle par l'utilisateur
         keys: {
           p256dh: { type: String },
