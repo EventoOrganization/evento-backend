@@ -165,6 +165,11 @@ const sendBirthdayEmail = async (follower, birthdayPerson) => {
 };
 const sendEventReminderEmail = async (recipient, event) => {
   try {
+    // Construire dynamiquement la partie HTML
+    const locationPart = event.details.location
+      ? `<li><strong>Location:</strong> ${event.details.location}</li>`
+      : "";
+
     const request = mailjetClient.post("send", { version: "v3.1" }).request({
       Messages: [
         {
@@ -178,14 +183,15 @@ const sendEventReminderEmail = async (recipient, event) => {
               Name: recipient.username || "User",
             },
           ],
-          Subject: `Reminder: ${event.details.name} is happening tomorrow!`,
+          Subject: `Reminder: ${event.title} is happening tomorrow!`,
           HTMLPart: `
             <h3>Event Reminder</h3>
-            <p>This is a reminder for the event: <strong>${event.details.name}</strong>, happening tomorrow at ${event.details.startTime}.</p>
+            <p>This is a reminder for the event: <strong>${event.title}</strong>, happening tomorrow at ${event.details.startTime}.</p>
             <p>Make sure to be there! Here are the details:</p>
             <ul>
-              <li><strong>Location:</strong> ${event.details.location}</li>
+              ${locationPart}
               <li><strong>Start Time:</strong> ${event.details.startTime}</li>
+              <li><strong>Find the event at:</strong> <a href="https://www.evento-app.io/event/${event._id}" target="_blank">Event Link</a></li>
             </ul>
           `,
           CustomID: "EventReminder",

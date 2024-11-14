@@ -61,63 +61,77 @@ schedule.scheduleJob(cronSchedule, async function () {
 
 schedule.scheduleJob(cronSchedule1, async function () {
   try {
-    const twoDaysFromNow = moment.utc().add(2, "days").startOf("day");
+    console.log("Running scheduled job to send event reminders...");
+
+    // Calculer la plage de dates pour capturer les événements dans 2 jours
+    const twoDaysFromNowStart = moment.utc().add(2, "days").startOf("day");
+    const twoDaysFromNowEnd = moment.utc().add(2, "days").endOf("day");
+
+    console.log(
+      `Fetching events scheduled between: ${twoDaysFromNowStart.format()} and ${twoDaysFromNowEnd.format()}`,
+    );
 
     const upcomingEvents = await Models.eventModel.find({
-      "details.date": { $eq: twoDaysFromNow },
+      "details.date": {
+        $gte: twoDaysFromNowStart.toDate(),
+        $lte: twoDaysFromNowEnd.toDate(),
+      },
     });
 
+    console.log(`Found ${upcomingEvents.length} upcoming events`);
+
     for (const event of upcomingEvents) {
-      // Use a Set to store unique participant IDs and avoid duplicates
       let uniqueParticipants = new Set();
 
-      // Collect attendees
+      // Récupérer les participants (attendees)
       const attendees = await Models.eventAttendesUserModel.find({
         eventId: event._id.toString(),
       });
-      if (attendees) {
-        attendees.forEach((attendee) =>
-          uniqueParticipants.add(attendee.userId.toString()),
-        );
-      }
+      attendees.forEach((attendee) =>
+        uniqueParticipants.add(attendee.userId.toString()),
+      );
 
-      // Collect favorites
+      // Récupérer les favoris (favorites)
       const favorites = await Models.eventFavouriteUserModel.find({
         eventId: event._id.toString(),
       });
-      if (favorites) {
-        favorites.forEach((favorite) =>
-          uniqueParticipants.add(favorite.userId.toString()),
-        );
-      }
+      favorites.forEach((favorite) =>
+        uniqueParticipants.add(favorite.userId.toString()),
+      );
 
-      // Collect co-hosts
-      const coHosts = event.coHosts.map((coHost) => coHost.toString());
-      coHosts.forEach((coHostId) => uniqueParticipants.add(coHostId));
+      // Ajouter les co-hôtes
+      event.coHosts.forEach((coHostId) =>
+        uniqueParticipants.add(coHostId.toString()),
+      );
 
-      // Collect guests
-      const guests = event.guests.map((guest) => guest.toString());
-      guests.forEach((guestId) => uniqueParticipants.add(guestId));
+      // Ajouter les invités
+      event.guests.forEach((guestId) =>
+        uniqueParticipants.add(guestId.toString()),
+      );
 
-      // Also add the event host (owner)
+      // Ajouter l'hôte de l'événement
       uniqueParticipants.add(event.user.toString());
 
-      // Iterate over unique participants and send emails
+      console.log(
+        `Sending reminders to ${uniqueParticipants.size} participants for event: ${event.title}`,
+      );
+
+      // Envoyer des emails de rappel et enregistrer des notifications
       for (const userId of uniqueParticipants) {
         const recipient = await Models.userModel.findOne({ _id: userId });
 
         if (recipient) {
-          // Send event reminder email
+          console.log(`Sending event reminder email to ${recipient.email}`);
           await sendEventReminderEmail(recipient, event);
 
-          // Save the notification in the database (optional)
+          // Enregistrer la notification dans la base de données
           const dataSave = {
             senderId: event.user.toString(),
             reciverId: recipient._id.toString(),
             message: `Reminder: You have ${event.title} in 2 days at ${event.details.startTime}`,
             is_read: 0,
             eventId: event._id,
-            eventName: event.details.name,
+            eventName: event.title,
             data: event.details.date,
             startTime: event.details.startTime,
             endTime: event.details.endTime,
@@ -130,6 +144,8 @@ schedule.scheduleJob(cronSchedule1, async function () {
         }
       }
     }
+
+    console.log("Event reminder job completed.");
   } catch (error) {
     console.error("Error in event reminder job:", error);
   }
