@@ -6,6 +6,8 @@ const mongoose = require("mongoose");
 const User = require("../models/userModel");
 const Event = require("../models/eventModel");
 const { isAfter, startOfDay } = require("date-fns");
+const { ObjectId } = require("mongoose").Types;
+
 exports.getLoggedUserProfile = async (req, res) => {
   try {
     if (!req.user || !req.user._id) {
@@ -150,8 +152,9 @@ exports.getLoggedUserProfile = async (req, res) => {
 };
 
 exports.getUserProfileById = async (req, res) => {
+  console.log("Inside getUserProfileById", req.params.userId);
   try {
-    const userId = req.params.userId;
+    const userId = new ObjectId(req.params.userId);
 
     const userInfo = await User.findById(userId)
       .select(
