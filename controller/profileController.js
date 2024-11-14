@@ -40,11 +40,8 @@ exports.getLoggedUserProfile = async (req, res) => {
       .populate("requested", "firstName lastName username profileImage")
       .populate("tempGuests")
       .populate({
-        path: "coHosts",
-        populate: {
-          path: "user_id",
-          select: "username email profileImage",
-        },
+        path: "coHosts.userId",
+        select: "username email profileImage",
       })
       .exec();
 
@@ -198,7 +195,10 @@ exports.getUserProfileById = async (req, res) => {
       .populate("interests", "_id name")
       .populate("user", "firstName lastName username profileImage")
       .populate("guests.user", "firstName lastName username profileImage")
-      .populate("coHosts.user", "firstName lastName username profileImage")
+      .populate({
+        path: "coHosts.userId",
+        select: "username email profileImage",
+      })
       .exec();
 
     console.log(`Total related events found: ${allEvents.length}`);

@@ -1,6 +1,8 @@
 const Event = require("../models/eventModel");
 const Models = require("../models");
 const helper = require("../helper/helper");
+const mongoose = require("mongoose");
+
 // const { sendEventInviteEmail } = require("../services/sesEmailService");
 const {
   sendEventInviteEmail,
@@ -196,7 +198,7 @@ exports.acceptRequest = async (req, res) => {
     // Vérifie si le demandeur est l'hôte ou un co-hôte de l'événement
     const isAuthorized =
       event.user.equals(requesterId) ||
-      event.coHosts.some((coHostId) => coHostId.equals(requesterId));
+      event.coHosts.some((coHost) => coHost.userId.equals(requesterId));
     if (!isAuthorized) {
       return res
         .status(403)
@@ -381,6 +383,9 @@ exports.updateEventField = async (req, res) => {
         event.details.timeZone = value.timeZone;
         changeType = "date/time";
         break;
+      case "coHosts":
+        event.coHosts = value;
+        break;
       default:
         console.log("Invalid field specified");
         return res.status(400).json({ message: "Invalid field" });
@@ -447,6 +452,7 @@ exports.updateGuestsAllowFriend = async (req, res) => {
   }
 };
 exports.createEvent = async (req, res) => {
+  console.log("req.body", req.body);
   try {
     const {
       title,
@@ -471,6 +477,7 @@ exports.createEvent = async (req, res) => {
       UrlTitle,
       includeChat,
       createRSVP,
+      coHosts,
     } = req.body;
 
     // Handle media for event
@@ -483,7 +490,7 @@ exports.createEvent = async (req, res) => {
       .map((media) => ({ url: media.url, type: "video" }));
     initialMedia = [...imageUrls, ...videoUrls];
 
-    console.log("Initial Media (Images and Videos):", initialMedia);
+    // console.log("Initial Media (Images and Videos):", initialMedia);
 
     // Step 1: Save the event first (without co-hosts)
     const objToSave = {
@@ -518,6 +525,12 @@ exports.createEvent = async (req, res) => {
       interests,
       questions,
       additionalField,
+      coHosts: Array.isArray(coHosts)
+        ? coHosts.map((coHost) => ({
+            userId: coHost.userId,
+            status: coHost.status || "read-only",
+          }))
+        : [],
     };
 
     const createdEvent = await Models.eventModel.create(objToSave);
@@ -528,47 +541,17 @@ exports.createEvent = async (req, res) => {
       createdEvent.user = fullUser; // Assign the full user object instead of just the user ID
     }
     const eventLink = `${process.env.CLIENT_URL}/event/${createdEvent._id}`;
-    const usernameFrom = req.user.username;
 
-    // Step 2: Create the coHosts and associate them with the created event
-    let coHosts = [];
-    if (Array.isArray(req.body.coHosts) && req.body.coHosts.length > 0) {
-      coHosts = await Promise.all(
-        req.body.coHosts.map(async (coHost) => {
-          const newCohost = await Models.coHostModel.create({
-            user_id: coHost.userId,
-            event_id: createdEvent._id, // Use the ID of the created event here
-            status: coHost.status || "read-only",
-          });
-          return newCohost._id; // Return the ObjectId of the co-host
-        }),
-      );
-
-      // Update event with the co-hosts' references
-      createdEvent.coHosts = coHosts;
-      await createdEvent.save();
-    }
-
-    // Step 3: Send email to each co-host
-    for (const coHostId of coHosts) {
-      // First, retrieve the co-host document using its ObjectId
-      const coHostDoc = await Models.coHostModel.findById(coHostId);
-      if (coHostDoc) {
-        // Then retrieve the user details using the user_id from the co-host document
-        const coHostUser = await Models.userModel.findById(coHostDoc.user_id);
-
-        if (coHostUser) {
-          const emailTo = coHostUser.email;
-          const usernameTo = coHostUser.username;
-
-          await sendEventInviteEmail(
-            req.user,
-            coHostUser,
-            createdEvent,
-            eventLink,
-            true,
-          );
-        }
+    for (const coHost of createdEvent.coHosts) {
+      const coHostUser = await Models.userModel.findById(coHost.userId);
+      if (coHostUser) {
+        await sendEventInviteEmail(
+          req.user,
+          coHostUser,
+          createdEvent,
+          eventLink,
+          true,
+        );
       }
     }
 
@@ -636,14 +619,11 @@ exports.getEventById = async (req, res) => {
         match: { status: { $ne: "registered" } },
         select: "username email",
       })
-      .populate("requested", "username email profileImage")
       .populate({
-        path: "coHosts",
-        populate: {
-          path: "user_id",
-          select: "username email profileImage",
-        },
+        path: "coHosts.userId",
+        select: "username email profileImage",
       })
+      .populate("requested", "username email profileImage")
       .exec();
 
     if (!event) {
@@ -856,7 +836,7 @@ exports.getUpcomingEvents = async (req, res) => {
             { requested: userId }, // requested
             { guests: userId }, // guest
             { tempGuests: userId }, // temp guest
-            { coHosts: { $elemMatch: { user_id: userId } } }, // cohost
+            { coHosts: { $elemMatch: { userId: userId } } },
           ],
         },
       ],
@@ -864,11 +844,8 @@ exports.getUpcomingEvents = async (req, res) => {
       .sort({ createdAt: -1 })
       .populate("user", "username firstName lastName profileImage")
       .populate({
-        path: "coHosts",
-        populate: {
-          path: "user_id",
-          select: "username email profileImage",
-        },
+        path: "coHosts.userId",
+        select: "username email profileImage",
       })
       .populate("guests", "username firstName lastName profileImage")
       .populate("interests", "name image")
@@ -972,7 +949,7 @@ exports.deleteEvent = async (req, res) => {
           eventId: req.params.id,
         });
         await Models.RSVPSubmission.deleteMany({ eventId: req.params.id });
-        await Models.coHostModel.deleteOne({ eventId: req.params.id });
+        // await Models.coHostModel.deleteOne({ eventId: req.params.id });
         await Models.eventNotificationModel.deleteMany({
           eventId: req.params.id,
         });

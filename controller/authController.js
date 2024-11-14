@@ -284,9 +284,9 @@ exports.deleteAccount = async (req, res) => {
         ? Models.eventRefuseModel.deleteMany({ userId })
         : console.error("eventRefuseModel is undefined"),
 
-      Models.coHostModel
-        ? Models.coHostModel.deleteMany({ userId })
-        : console.error("coHostModel is undefined"),
+      // Models.coHostModel
+      //   ? Models.coHostModel.deleteMany({ userId })
+      //   : console.error("coHostModel is undefined"),
 
       Models.userSocialLinkModel
         ? Models.userSocialLinkModel.deleteMany({ userId })
