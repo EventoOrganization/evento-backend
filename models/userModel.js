@@ -3,8 +3,13 @@ const crypto = require("crypto");
 const userSchema = new mongoose.Schema(
   {
     // standards userInfo
-    username: { type: String, default: "anonymous", unique: true, trim: true },
-    usernameNormalized: { type: String, default: "Anomymous", trim: true },
+    username: { type: String, default: "Anonymous", unique: true, trim: true },
+    usernameNormalized: {
+      type: String,
+      default: "anomymous",
+      trim: true,
+      unique: true,
+    },
     firstName: { type: String, default: "", trim: true },
     lastName: { type: String, default: "", trim: true },
     password: { type: String, required: true },

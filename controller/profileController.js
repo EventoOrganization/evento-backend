@@ -330,20 +330,30 @@ exports.updateProfile = async (req, res) => {
     });
 
     if (username && username !== user.username) {
-      const normalizedUsername = username.trim().toLowerCase();
-      console.log("Checking if username exists:", normalizedUsername);
-      const isUsernameExist = await Models.userModel.findOne({
-        username: normalizedUsername,
+      const normalizedUsername = username
+        .toLowerCase()
+        .normalize("NFD") // Décompose les caractères accentués (ex: é -> e)
+        .replace(/[\u0300-\u036f]/g, "") // Supprimer les diacritiques (accents)
+        .replace(/\s+/g, "") // Supprimer tous les espaces
+        .replace(/[^a-z]/g, ""); // Supprimer tous les caractères non alphabétiques
+      if (normalizedUsername.length < 3 || normalizedUsername.length > 20) {
+        return res.status(400).json({
+          status: false,
+          message: "Username must be between 3 and 20 characters long.",
+        });
+      }
+      const existingUser = await Models.userModel.findOne({
+        usernameNormalized: normalizedUsername,
         _id: { $ne: userId },
       });
-      if (isUsernameExist) {
-        console.log("Username already exists:", normalizedUsername);
+      if (existingUser) {
         return res.status(409).json({
           status: false,
           message: "Username already exists. Please choose another one.",
         });
       }
-      updateData.username = normalizedUsername;
+      updateData.username = username;
+      updateData.usernameNormalized = normalizedUsername;
     }
 
     // Vérification des autres champs
@@ -531,9 +541,6 @@ exports.updateProfile = async (req, res) => {
       user.pwaNotification = pwaNotification;
     }
 
-    await user.save();
-    console.log("User data saved successfully.");
-
     const updatedUser = await Models.userModel
       .findByIdAndUpdate(userId, { $set: updateData }, { new: true })
       .populate("interests");
@@ -546,7 +553,7 @@ exports.updateProfile = async (req, res) => {
       });
     }
 
-    console.log("Profile updated successfully:", updatedUser);
+    // console.log("Profile updated successfully:", updatedUser);
     return res.status(200).json({
       status: true,
       message: "Profile updated successfully",
