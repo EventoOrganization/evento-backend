@@ -8,6 +8,7 @@ module.exports = {
   eventModel: require("./eventModel"),
   interestModel: require("./interestModel"),
   SubInterest: require("./subInterestModel"),
+  feedbackModel: require("./feedbackModel"),
   // rsvpModel:require("./rsvpForm"),
   eventStatusSchema: require("./eventStatusSchema"),
   contactUsModel: require("./contactUs"),

@@ -259,7 +259,6 @@ const sendUpdateNotification = async (
     console.error("Error sending notification emails:", error);
   }
 };
-
 function buildChangeDetails(changeType, oldData, event) {
   let changeDetails = "";
   switch (changeType) {
@@ -272,7 +271,50 @@ function buildChangeDetails(changeType, oldData, event) {
   }
   return changeDetails;
 }
+const sendFeedbackEmail = async (user, feedback) => {
+  try {
+    // Vérifiez que les informations nécessaires sont présentes
+    if (!user || !feedback) {
+      console.error("feedback content is missing.");
+      return;
+    }
 
+    // Configuration de l'email à envoyer
+    const request = mailjetClient.post("send", { version: "v3.1" }).request({
+      Messages: [
+        {
+          From: {
+            Email: "franckdufournetpro@gmail.com",
+            Name: "Evento Feedback Service",
+          },
+          To: [
+            {
+              Email: "evento_app@outlook.com",
+              Name: "Evento Team",
+            },
+          ],
+          Subject: "New User Feedback Received",
+          HTMLPart: `
+            <h3>New Feedback from ${user.username}</h3>
+            <h4>User Email: ${user.email}</h4>
+            <h4>Feedback:</h4>
+            <p>${feedback}</p>
+            <p><strong>Date:</strong> ${new Date()}</p>
+          `,
+          CustomID: "UserFeedback",
+        },
+      ],
+    });
+
+    const result = await request;
+    console.log(
+      `Feedback email sent successfully to evento_app@outlook.com:`,
+      result.body,
+    );
+  } catch (error) {
+    console.error("Error sending feedback email:", error);
+  }
+};
 module.exports = {
   sendOTPEmail,
   sendResetPasswordEmail,
@@ -280,4 +322,5 @@ module.exports = {
   sendBirthdayEmail,
   sendEventReminderEmail,
   sendUpdateNotification,
+  sendFeedbackEmail,
 };

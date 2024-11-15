@@ -160,10 +160,54 @@ const sendEventReminderEmail = async (recipient, event) => {
   }
 };
 
+// Send Feedback Email using AWS SES
+const sendFeedbackEmail = async (user, feedback) => {
+  if (!user || !feedback) {
+    console.error("Feedback content is missing.");
+    return;
+  }
+  console.log("Sending feedback email via AWS SES...");
+  const params = {
+    Source: process.env.SES_NO_REPLY_MESSAGES,
+    Destination: {
+      ToAddresses: ["evento_app@outlook.com"],
+    },
+    Message: {
+      Subject: {
+        Data: "New User Feedback Received",
+      },
+      Body: {
+        Html: {
+          Data: `
+            <div style="color: #333; font-family: Arial, sans-serif; font-size: 16px;">
+              <h3>New Feedback from ${user.username || "Anonymous"}</h3>
+              <h4>User Email: ${user.email || "No email provided"}</h4>
+              <h4>Feedback:</h4>
+              <p>${feedback}</p>
+              <p><strong>Date:</strong> ${new Date().toLocaleString()}</p>
+            </div>
+          `,
+        },
+      },
+    },
+  };
+
+  try {
+    const result = await ses.sendEmail(params).promise();
+    console.log(
+      `Feedback email sent successfully to evento_app@outlook.com`,
+      result,
+    );
+  } catch (error) {
+    console.error("Error sending feedback email via AWS SES:", error);
+  }
+};
+
 // Export all email functions
 module.exports = {
   sendEventInviteEmail,
   sendOTPEmail,
   sendBirthdayEmail,
   sendEventReminderEmail,
+  sendFeedbackEmail,
 };
