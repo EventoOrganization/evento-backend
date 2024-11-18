@@ -73,14 +73,21 @@ exports.getLoggedUserProfile = async (req, res) => {
       });
 
     // Filter past events
-    const pastEvents = enrichedEvents.filter((event) => {
+    const pastEventsGoing = enrichedEvents.filter((event) => {
       if (!event.details?.endDate) return false;
 
       const eventEndDate = new Date(event.details.endDate);
       const today = startOfDay(new Date());
-
       // Vérifier si l'événement est terminé (la journée complète)
       return isAfter(today, eventEndDate) && event.isGoing;
+    });
+    const pastEventsHosted = enrichedEvents.filter((event) => {
+      if (!event.details?.endDate) return false;
+
+      const eventEndDate = new Date(event.details.endDate);
+      const today = startOfDay(new Date());
+      // Vérifier si l'événement est terminé (la journée complète)
+      return isAfter(today, eventEndDate) && event.isHosted;
     });
 
     // retrieve followingUserIds and followerUserIds
@@ -130,15 +137,22 @@ exports.getLoggedUserProfile = async (req, res) => {
         userId: req.user._id,
         status: "isGoing",
       });
-
+    const hostedEvents = enrichedEvents.filter(
+      (event) =>
+        event.isHosted &&
+        !pastEventsHosted.some(
+          (pastEvent) => pastEvent._id.toString() === event._id.toString(),
+        ),
+    );
     userInfo._doc.totalEventAttended = countTotalEventIAttended;
     return res.status(200).json({
       status: true,
       message: "Profile retrieved successfully",
       data: {
         ...userInfo._doc,
-        pastEvents,
-        hostedEvents: enrichedEvents.filter((event) => event.isHosted),
+        pastEventsGoing: pastEventsGoing,
+        pastEventsHosted: pastEventsHosted,
+        hostedEvents,
         followingUserIds: existingFollowingUsers,
         followerUserIds,
       },
@@ -175,8 +189,6 @@ exports.getUserProfileById = async (req, res) => {
       .filter((es) => es.status === "isGoing")
       .map((es) => es.eventId.toString());
 
-    console.log(`Total isGoing events found: ${attendEventsIds.length}`);
-
     const favouriteEventsIds = eventStatuses
       .filter((es) => es.status === "isFavourite")
       .map((es) => es.eventId.toString());
@@ -184,13 +196,13 @@ exports.getUserProfileById = async (req, res) => {
     // Fetch all events related to the user
     const allEvents = await Event.find({
       $and: [
-        { eventType: "public" }, // Inclure uniquement les événements publics
+        { eventType: "public" },
         {
           $or: [
             { guests: userId },
             { coHosts: userId },
             { user: userId },
-            { _id: { $in: attendEventsIds } }, // Inclure les événements où l'utilisateur a le statut 'isGoing'
+            { _id: { $in: attendEventsIds } },
           ],
         },
       ],
@@ -203,8 +215,6 @@ exports.getUserProfileById = async (req, res) => {
         select: "username email profileImage",
       })
       .exec();
-
-    console.log(`Total related events found: ${allEvents.length}`);
 
     // Enrich the events with user-specific status (isGoing, isFavourite, isHosted)
     const enrichedEvents = allEvents.map((event) => {
@@ -224,21 +234,26 @@ exports.getUserProfileById = async (req, res) => {
     const upcomingEvents = enrichedEvents.filter((event) => {
       const isUpcoming = new Date(event.details.endDate) >= new Date();
       const isGoing = event.isGoing;
-      console.log(
-        `Event ID: ${event._id} | End Date: ${event.details.endDate} | Is Upcoming: ${isUpcoming} | Is Going: ${isGoing}`,
-      );
+
       return isUpcoming && isGoing;
     });
 
-    console.log(
-      `Total upcoming events with isGoing status: ${upcomingEvents.length}`,
-    );
+    const pastEventsGoing = enrichedEvents.filter((event) => {
+      if (!event.details?.endDate) return false;
 
-    const pastEvents = enrichedEvents.filter(
-      (event) => new Date(event.details.endDate) < new Date() && event.isGoing,
-    );
+      const eventEndDate = new Date(event.details.endDate);
+      const today = startOfDay(new Date());
+      // Vérifier si l'événement est terminé (la journée complète)
+      return isAfter(today, eventEndDate) && event.isGoing;
+    });
+    const pastEventsHosted = enrichedEvents.filter((event) => {
+      if (!event.details?.endDate) return false;
 
-    console.log(`Total past events with isGoing status: ${pastEvents.length}`);
+      const eventEndDate = new Date(event.details.endDate);
+      const today = startOfDay(new Date());
+      // Vérifier si l'événement est terminé (la journée complète)
+      return isAfter(today, eventEndDate) && event.isHosted;
+    });
 
     const followingUsers = await Models.userFollowModel
       .find({ follower: userId })
@@ -253,7 +268,13 @@ exports.getUserProfileById = async (req, res) => {
       });
 
     userInfo._doc.totalEventAttended = countTotalEventIAttended;
-
+    const hostedEvents = enrichedEvents.filter(
+      (event) =>
+        event.isHosted &&
+        !pastEventsHosted.some(
+          (pastEvent) => pastEvent._id.toString() === event._id.toString(),
+        ),
+    );
     // Structure the response
     return res.status(200).json({
       status: true,
@@ -261,8 +282,9 @@ exports.getUserProfileById = async (req, res) => {
       data: {
         ...userInfo._doc,
         upcomingEvents,
-        pastEvents,
-        hostedEvents: enrichedEvents.filter((event) => event.isHosted),
+        pastEventsGoing,
+        pastEventsHosted,
+        hostedEvents,
         followingUserIds,
       },
     });
@@ -275,10 +297,6 @@ exports.getUserProfileById = async (req, res) => {
 };
 
 exports.updateProfile = async (req, res) => {
-  console.log("**************************************************************");
-  console.log("Received pwaNotification:", req.body.pwaNotification);
-  console.log("Received pwaSubscription:", req.body.pwaSubscription);
-  console.log("Received browser:", req.body.browser);
   console.log("Received req.body:", req.body);
 
   try {
