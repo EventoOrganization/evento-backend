@@ -21,13 +21,12 @@ exports.getLoggedUserProfile = async (req, res) => {
       .select(
         "pwaNotification pwaSubscriptions firstName lastName username email email_verified countryCode phoneNumber phone_verified address bio URL DOB profileImage interests socialLinks role devices",
       )
-      .populate({ path: "interests", select: "_id name" });
+      .populate("interests", "_id name");
 
     if (!userInfo) {
       console.error("User not found in the database for ID:", req.user._id);
       return res.status(404).json({ status: false, message: "User not found" });
     }
-
     // Fetch all events
     const allEvents = await Event.find({})
       .populate({
