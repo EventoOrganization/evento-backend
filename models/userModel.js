@@ -71,6 +71,7 @@ const userSchema = new mongoose.Schema(
             "linkedin",
             "tiktok",
             "youtube",
+            "",
           ],
         },
         url: { type: String, default: "" },
