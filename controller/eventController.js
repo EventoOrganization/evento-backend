@@ -831,16 +831,15 @@ exports.getUpcomingEvents = async (req, res) => {
           "details.endDate": { $gt: currentDate },
           $or: [
             { user: userId }, // host
-            { requested: userId }, // requested
-            { guests: userId }, // guest
-            { tempGuests: userId }, // temp guest
+            { requested: userId },
+            { guests: userId },
+            { tempGuests: userId },
             { coHosts: { $elemMatch: { userId: userId } } },
           ],
         },
       ],
     })
-      .sort({ createdAt: -1 }) // Trier par date de création
-      .limit(10) // Limiter aux 10 derniers événements
+      .sort({ createdAt: -1 })
       .populate("user", "username firstName lastName profileImage")
       .populate({
         path: "coHosts.userId",
@@ -935,124 +934,6 @@ exports.getUpcomingEvents = async (req, res) => {
     });
   }
 };
-
-// exports.getUpcomingEvents = async (req, res) => {
-//   try {
-//     const userId = req.query.userId;
-//     const currentDate = new Date();
-
-//     // Récupérer les événements publics et privés à venir
-//     const events = await Event.find({
-//       $or: [
-//         { eventType: "public", "details.endDate": { $gt: currentDate } },
-//         {
-//           eventType: "private",
-//           "details.endDate": { $gt: currentDate },
-//           $or: [
-//             { user: userId }, // host
-//             { requested: userId }, // requested
-//             { guests: userId }, // guest
-//             { tempGuests: userId }, // temp guest
-//             { coHosts: { $elemMatch: { userId: userId } } },
-//           ],
-//         },
-//       ],
-//     })
-//       .sort({ createdAt: -1 })
-//       .populate("user", "username firstName lastName profileImage")
-//       .populate({
-//         path: "coHosts.userId",
-//         select: "username email profileImage",
-//       })
-//       .populate("guests", "username firstName lastName profileImage")
-//       .populate("interests", "name image")
-//       .populate("requested", "username firstName lastName profileImage")
-//       .exec();
-
-//     let enrichedEvents = events.map((event) => ({
-//       ...event.toObject(),
-//       isGoing: false,
-//       isFavourite: false,
-//       isRefused: false,
-//       attendees: [],
-//       favouritees: [],
-//       refused: [],
-//     }));
-
-//     const eventIds = events.map((event) => event._id);
-//     const eventStatuses = await Models.eventStatusSchema
-//       .find({
-//         eventId: { $in: eventIds },
-//       })
-//       .populate("userId", "username profileImage") // Peupler les infos de l'utilisateur
-//       .exec();
-
-//     const statusMap = {};
-//     eventStatuses.forEach((status) => {
-//       if (!statusMap[status.eventId]) {
-//         statusMap[status.eventId] = {
-//           attendees: [],
-//           favouritees: [],
-//           refused: [],
-//         };
-//       }
-
-//       if (status.status === "isGoing") {
-//         statusMap[status.eventId].attendees.push(status.userId);
-//       } else if (status.status === "isFavourite") {
-//         statusMap[status.eventId].favouritees.push(status.userId);
-//       } else if (status.status === "isRefused") {
-//         statusMap[status.eventId].refused.push(status.userId);
-//       }
-//     });
-
-//     if (userId) {
-//       enrichedEvents = enrichedEvents.map((event) => {
-//         const userStatus = statusMap[event._id] || {
-//           attendees: [],
-//           favouritees: [],
-//           refused: [],
-//         };
-
-//         const isGoing = userStatus.attendees.some(
-//           (user) => user?._id?.toString() === userId,
-//         );
-//         const isFavourite = userStatus.favouritees.some(
-//           (user) => user?._id?.toString() === userId,
-//         );
-//         const isRefused = userStatus.refused.some(
-//           (user) => user?._id?.toString() === userId,
-//         );
-
-//         const isHosted = event?.user?._id?.toString() === userId;
-
-//         return {
-//           ...event,
-//           isGoing,
-//           isFavourite,
-//           isRefused,
-//           attendees: userStatus.attendees || [],
-//           favouritees: userStatus.favouritees || [],
-//           refused: userStatus.refused || [],
-//           isHosted,
-//         };
-//       });
-//     }
-
-//     res.status(200).json({
-//       success: true,
-//       message: "Upcoming events retrieved successfully",
-//       data: enrichedEvents,
-//     });
-//   } catch (error) {
-//     console.error("Error in getUpcomingEvents controller:", error);
-//     res.status(500).json({
-//       success: false,
-//       message: "Failed to retrieve upcoming events",
-//       error: error.message,
-//     });
-//   }
-// };
 exports.deleteEvent = async (req, res) => {
   try {
     //Fistly check created event is by logged in user or not
