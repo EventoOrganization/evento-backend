@@ -217,15 +217,20 @@ exports.getUserProfileById = async (req, res) => {
 
     // Enrich the events with user-specific status (isGoing, isFavourite, isHosted)
     const enrichedEvents = allEvents.map((event) => {
-      const isHosted = event.user
-        ? event.user._id.toString() === userId.toString()
-        : false;
+      const isHosted =
+        event.user && event.user._id.toString() === userId.toString(); // Host case
+
+      const isCoHost = event.coHosts.some((coHost) => {
+        const coHostId = coHost.userId?._id || coHost.userId;
+        return coHostId?.toString() === userId.toString();
+      });
 
       return {
         ...event._doc,
         isGoing: attendEventsIds.includes(event._id.toString()),
         isFavourite: favouriteEventsIds.includes(event._id.toString()),
         isHosted,
+        isCoHost,
       };
     });
 
@@ -269,7 +274,7 @@ exports.getUserProfileById = async (req, res) => {
     userInfo._doc.totalEventAttended = countTotalEventIAttended;
     const hostedEvents = enrichedEvents.filter(
       (event) =>
-        event.isHosted &&
+        (event.isHosted || event.isCoHost) &&
         !pastEventsHosted.some(
           (pastEvent) => pastEvent._id.toString() === event._id.toString(),
         ),

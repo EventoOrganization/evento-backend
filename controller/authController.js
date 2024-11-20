@@ -127,9 +127,9 @@ exports.login = async (req, res) => {
     res.cookie("token", token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production", // secure en production
-      sameSite: "none",
+      sameSite: "lax",
       maxAge: 1000 * 60 * 60 * 24 * 7, // 7 jours
-      domain: ".evento-app.io",
+      // domain: ".evento-app.io",
     });
     console.log("Login successful", user);
     res.status(200).json({
