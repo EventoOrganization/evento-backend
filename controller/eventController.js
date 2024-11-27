@@ -839,7 +839,10 @@ exports.getUpcomingEvents = async (req, res) => {
         },
       ],
     })
-      .sort({ createdAt: -1 })
+      .sort({
+        "details.date": { $exists: true, $ne: null },
+        "details.date": 1,
+      })
       .populate("user", "username firstName lastName profileImage")
       .populate({
         path: "coHosts.userId",
@@ -849,7 +852,9 @@ exports.getUpcomingEvents = async (req, res) => {
       .populate("interests", "name image")
       .populate("requested", "username firstName lastName profileImage")
       .exec();
-
+    events.forEach((event) => {
+      console.log("eventstart:", event.details.date);
+    });
     let enrichedEvents = events.map((event) => ({
       ...event.toObject(),
       isGoing: false,
@@ -886,7 +891,6 @@ exports.getUpcomingEvents = async (req, res) => {
         statusMap[status.eventId].refused.push(status.userId);
       }
     });
-
     if (userId) {
       enrichedEvents = enrichedEvents.map((event) => {
         const userStatus = statusMap[event._id] || {

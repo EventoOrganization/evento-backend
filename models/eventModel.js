@@ -22,6 +22,16 @@ const eventSchema = new Schema(
       type: Boolean,
       default: true,
     },
+
+    restricted: {
+      type: Boolean,
+      default: false,
+    },
+
+    showUsersLists: {
+      type: Boolean,
+      default: true,
+    },
     details: {
       thumbnailVideo: String,
       images: [String],
