@@ -385,6 +385,16 @@ exports.updateEventField = async (req, res) => {
       case "coHosts":
         event.coHosts = value;
         break;
+      case "restricted":
+        event.restricted = value;
+        break;
+      case "showUsersLists":
+        event.showUsersLists = value;
+        break;
+      case "visibility":
+        event.visibility = value;
+        break;
+
       default:
         console.log("Invalid field specified");
         return res.status(400).json({ message: "Invalid field" });
