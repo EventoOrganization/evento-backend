@@ -12,7 +12,7 @@ router.get("/getRSVPAndReasons/:eventId", eventController.getRSVPAndReasons);
 router.get("/getUpcomingEvents", eventController.getUpcomingEvents);
 
 // Update events
-router.patch(
+router.put(
   "/updateEvent/:eventId",
   authenticateJWT,
   eventController.updateEventField,
