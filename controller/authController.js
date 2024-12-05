@@ -12,7 +12,7 @@ exports.signup = async (req, res) => {
 
   try {
     // console.log("Received signup request for email:", email);
-    email = email.trim().toLowerCase();
+
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       // console.log("Email already in use:", email);
