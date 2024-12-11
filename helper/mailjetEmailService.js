@@ -62,8 +62,19 @@ const sendEventInviteEmail = async (
     console.error(`Error sending invitation email to ${guest.email}:`, error);
   }
 };
-const sendOTPEmail = async (email, otpCode) => {
+const sendOTPEmail = async (email, otpCode, password = null) => {
   try {
+    const emailContent = password
+      ? `
+      <h3>Your OTP Code</h3>
+      <p>Use this code to verify your account: <strong>${otpCode}</strong></p>
+      <p>Your generated password is: <strong>${password}</strong></p>
+      <p>Please keep this password secure or change it.</p>
+    `
+      : `
+      <h3>Your OTP Code</h3>
+      <p>Use this code to verify your account: <strong>${otpCode}</strong></p>
+    `;
     const request = mailjetClient.post("send", { version: "v3.1" }).request({
       Messages: [
         {
@@ -78,10 +89,7 @@ const sendOTPEmail = async (email, otpCode) => {
             },
           ],
           Subject: "Your OTP Code",
-          HTMLPart: `
-            <h3>Your OTP Code</h3>
-            <p>Use this code to verify your account: <strong>${otpCode}</strong></p>
-          `,
+          HTMLPart: emailContent,
           CustomID: "OTPVerification",
         },
       ],

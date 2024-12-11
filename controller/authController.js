@@ -2,11 +2,117 @@
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const User = require("../models/userModel");
+const helper = require("../helper/helper");
 const Models = require("../models");
 const crypto = require("crypto");
 const { JWT_SECRET_KEY } = process.env;
 const { sendOTPEmail } = require("../helper/mailjetEmailService");
 const { token } = require("morgan");
+exports.quickSignup = async (req, res) => {
+  const { username, email } = req.body;
+  try {
+    // Vérifier si l'email ou le username existe déjà
+    const existingUserEmail = await User.findOne({ email });
+    if (existingUserEmail) {
+      return res.status(409).json({
+        status: false,
+        message: "Email already exists. Please choose another one.",
+      });
+    }
+
+    const normalizedUsername = username
+      .toLowerCase()
+      .normalize("NFD") // Décompose les caractères accentués (ex: é -> e)
+      .replace(/[\u0300-\u036f]/g, "") // Supprimer les diacritiques (accents)
+      .replace(/\s+/g, "") // Supprimer tous les espaces
+      .replace(/[^a-z]/g, ""); // Supprimer tous les caractères non alphabétiques
+
+    const existingUserUsername = await User.findOne({
+      usernameNormalized: normalizedUsername,
+    });
+    if (existingUserUsername) {
+      return res.status(409).json({
+        status: false,
+        message: "Username already exists. Please choose another one.",
+      });
+    }
+
+    // Génération du mot de passe et des informations d'utilisateur
+    const generateRandomPassword = () => {
+      const chars =
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()";
+      const passwordLength = 12;
+      let password = "";
+      for (let i = 0; i < passwordLength; i++) {
+        const randomIndex = Math.floor(Math.random() * chars.length);
+        password += chars[randomIndex];
+      }
+      return password;
+    };
+    const password = generateRandomPassword();
+    const otpCode = Math.floor(100000 + Math.random() * 900000);
+    const otpExpires = Date.now() + 10 * 60 * 1000;
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Étape 1 : Créer l'utilisateur sans image
+    const newUser = new User({
+      username,
+      usernameNormalized: normalizedUsername,
+      email,
+      password: hashedPassword,
+      email_otp: otpCode,
+      otpExpires: otpExpires,
+    });
+    await newUser.save();
+
+    let profileImage = "";
+    // Étape 2 : Upload de l'image si elle existe
+    if (req.files && req.files.profileImage) {
+      const file = req.files.profileImage;
+      if (!file.mimetype.startsWith("image/")) {
+        return res.status(400).json({
+          status: false,
+          message: "Only image files are allowed for the profile image",
+        });
+      }
+
+      try {
+        // Utiliser l'ID de l'utilisateur comme chemin
+        const userId = newUser._id.toString();
+        profileImage = await helper.fileUpload(file, `profile/${userId}`);
+        // Étape 3 : Mettre à jour l'utilisateur avec l'URL de l'image
+        newUser.profileImage = profileImage;
+        await newUser.save();
+      } catch (error) {
+        console.error("Error uploading profile image:", error);
+        return res.status(500).json({
+          status: false,
+          message: "Error uploading profile image",
+          error: error.message,
+        });
+      }
+    }
+
+    // Envoi de l'OTP
+    await sendOTPEmail(email, otpCode, password);
+
+    // Réponse finale
+    res.status(201).json({
+      message: "User created successfully",
+      body: {
+        _id: newUser._id,
+        email: newUser.email,
+        username: newUser.username,
+        profileImage: newUser.profileImage,
+        password: password,
+      },
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Failed to create account." });
+  }
+};
+
 exports.signup = async (req, res) => {
   const { email, password } = req.body;
 
@@ -147,7 +253,6 @@ exports.login = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
-
 exports.logout = async (req, res) => {
   try {
     res.clearCookie("token");

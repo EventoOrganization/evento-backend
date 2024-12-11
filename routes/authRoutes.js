@@ -5,6 +5,7 @@ var authController = require("../controller/authController");
 const authenticateJWT = require("../middleware/authentication").authenticateJWT;
 
 // all routes start with /auth
+router.post("/quick-signup", authController.quickSignup);
 router.post("/signup", authController.signup);
 router.post("/login", authController.login);
 router.post("/logout", authenticateJWT, authController.logout);
