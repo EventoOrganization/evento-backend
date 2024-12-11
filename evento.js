@@ -21,6 +21,7 @@ const eventRoutes = require("./routes/eventRoutes");
 var profileRoutes = require("./routes/profileRoutes");
 const sesRoutes = require("./routes/sesRoutes");
 const iaRoutes = require("./routes/iaRoutes");
+const sitemapRoutes = require("./routes/sitemapRoutes");
 const cors = require("cors");
 // Create an instance of the Express application
 var app = express();
@@ -114,6 +115,7 @@ app.use("/profile", profileRoutes);
 app.use("/chats", chatRoutes);
 app.use("/ses", sesRoutes);
 app.use("/ia", iaRoutes);
+app.use("/sitemap", sitemapRoutes);
 
 // Catch 404 and forward to error handler
 app.use(function (req, res, next) {
