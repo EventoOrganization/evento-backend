@@ -91,6 +91,7 @@ const eventSchema = new Schema(
       {
         url: { type: String, required: true },
         type: { type: String, enum: ["image", "video"], required: true },
+        userId: { type: Schema.Types.ObjectId, ref: "user" },
         isThumbnail: { type: Boolean, default: false },
       },
     ],

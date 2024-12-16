@@ -227,15 +227,21 @@ exports.acceptRequest = async (req, res) => {
 };
 exports.storePostEventMedia = async (req, res) => {
   const { eventId, media } = req.body;
+  const userId = req.user._id; // Supposons que l'ID de l'utilisateur soit disponible via req.user
 
   try {
+    // Ajouter userId à chaque média
+    const mediaWithUser = media.map((item) => ({
+      ...item,
+      userId: userId, // Ajoute l'ID de l'utilisateur à chaque média
+    }));
+
+    // Mettre à jour l'événement avec les nouveaux médias
     const updatedEvent = await Event.findByIdAndUpdate(
       eventId,
-      {
-        $push: { postEventMedia: media },
-      },
+      { $push: { postEventMedia: { $each: mediaWithUser } } },
       { new: true },
-    );
+    ).populate("postEventMedia.userId", "username profileImage"); // Récupère les infos du userId
 
     res.status(200).json({
       success: true,
@@ -250,6 +256,7 @@ exports.storePostEventMedia = async (req, res) => {
     });
   }
 };
+
 exports.toggleUploadMedia = async (req, res) => {
   const { eventId, allow } = req.body;
   if (!eventId || typeof allow !== "boolean") {
@@ -633,6 +640,10 @@ exports.getEventById = async (req, res) => {
         select: "username email profileImage",
       })
       .populate("requested", "username email profileImage")
+      .populate({
+        path: "postEventMedia.userId",
+        select: "username profileImage",
+      })
       .exec();
 
     if (!event) {
