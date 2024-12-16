@@ -171,7 +171,7 @@ exports.getUserProfileById = async (req, res) => {
 
     const userInfo = await User.findById(userId)
       .select(
-        "firstName lastName username email profileImage bio URL socialLinks interests",
+        "firstName lastName username email profileImage bio URL socialLinks interests address",
       )
       .populate("interests", "_id name")
       .exec();

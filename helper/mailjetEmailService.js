@@ -173,7 +173,12 @@ const sendBirthdayEmail = async (follower, birthdayPerson) => {
 };
 const sendEventReminderEmail = async (recipient, event) => {
   try {
-    // Construire dynamiquement la partie HTML
+    /* eslint-disable no-unused-vars */
+    const coHostsPart =
+      event.coHosts.length > 0
+        ? `& ${event.coHosts.map((host) => host.username).join(", ")}`
+        : "";
+    /* eslint-enable no-unused-vars */
     const locationPart = event.details.location
       ? `<li><strong>Location:</strong> ${event.details.location}</li>`
       : "";
@@ -193,15 +198,21 @@ const sendEventReminderEmail = async (recipient, event) => {
           ],
           Subject: `Reminder: ${event.title} is happening tomorrow!`,
           HTMLPart: `
-            <h3>Event Reminder</h3>
-            <p>This is a reminder for the event: <strong>${event.title}</strong>, happening tomorrow at ${event.details.startTime}.</p>
-            <p>Make sure to be there! Here are the details:</p>
-            <ul>
-              ${locationPart}
-              <li><strong>Start Time:</strong> ${event.details.startTime}</li>
-              <li><strong>Find the event at:</strong> <a href="https://www.evento-app.io/event/${event._id}" target="_blank">Event Link</a></li>
-            </ul>
-          `,
+          <h3>Event Reminder</h3>
+          <p>This is a reminder for the event: <strong>${event.title}</strong>, 
+          hosted by ${event.user.username} ${coHostsPart} happening tomorrow at 
+          ${event.details.startTime}.</p>
+          <p>Make sure to be there! Here are the details:</p>
+          <ul>
+            ${locationPart}
+            <li><strong>Start Time:</strong> ${event.details.startTime}</li>
+            <li><strong>Find the event at:</strong> 
+              <a href="https://www.evento-app.io/event/${event._id}" target="_blank">
+                Event Link
+              </a>
+            </li>
+          </ul>
+        `,
           CustomID: "EventReminder",
         },
       ],

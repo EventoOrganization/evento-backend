@@ -15,8 +15,8 @@ const { sendEventReminderEmail } = require("./helper/mailjetEmailService");
     console.log("Connected to MongoDB...");
 
     // Calculer la date dans 2 jours
-    const twoDaysFromNow = moment.utc().add(1, "days").startOf("day");
-    const endOfDay = moment.utc().add(1, "days").endOf("day");
+    const oneDayBefore = moment.utc().add(1, "days").startOf("day");
+    const endOfDayOneDayBefore = moment.utc().add(1, "days").endOf("day");
 
     console.log(
       `Checking events scheduled between: ${twoDaysFromNow.format()} and ${endOfDay.format()}`,
@@ -24,8 +24,8 @@ const { sendEventReminderEmail } = require("./helper/mailjetEmailService");
 
     const upcomingEvents = await Models.eventModel.find({
       "details.date": {
-        $gte: new Date(twoDaysFromNow),
-        $lt: new Date(endOfDay),
+        $gte: new Date(oneDayBefore),
+        $lt: new Date(endOfDayOneDayBefore),
       },
     });
 
