@@ -27,7 +27,7 @@ const cors = require("cors");
 var app = express();
 
 const corsOptions = {
-  origin: true,
+  origin: "https://www.evento-app.io",
   methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
   credentials: true,
   allowedHeaders: "Content-Type,Authorization",
