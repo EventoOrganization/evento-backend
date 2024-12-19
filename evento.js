@@ -61,7 +61,7 @@ const http = require("http").createServer(app);
 // Set up Socket.IO with the HTTP server
 const io = require("socket.io")(http, {
   cors: {
-    origin: true,
+    origin: "https://www.evento-app.io",
     methods: ["GET", "POST"],
     credentials: true,
   },
