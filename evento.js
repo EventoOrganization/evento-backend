@@ -25,9 +25,19 @@ const sitemapRoutes = require("./routes/sitemapRoutes");
 const cors = require("cors");
 // Create an instance of the Express application
 var app = express();
-
+const allowedOrigins = [
+  "https://www.evento-app.io", // Production
+  "https://evento-web-git-dev-eventos-projects.vercel.app", // Développement
+];
+const checkOrigin = (origin, callback) => {
+  if (!origin || allowedOrigins.includes(origin)) {
+    callback(null, true);
+  } else {
+    callback(new Error("Not allowed by CORS"));
+  }
+};
 const corsOptions = {
-  origin: "https://www.evento-app.io",
+  origin: checkOrigin,
   methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
   credentials: true,
   allowedHeaders: "Content-Type,Authorization",
@@ -61,7 +71,7 @@ const http = require("http").createServer(app);
 // Set up Socket.IO with the HTTP server
 const io = require("socket.io")(http, {
   cors: {
-    origin: "https://www.evento-app.io",
+    origin: checkOrigin,
     methods: ["GET", "POST"],
     credentials: true,
   },

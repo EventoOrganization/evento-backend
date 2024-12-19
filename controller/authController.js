@@ -112,110 +112,110 @@ exports.quickSignup = async (req, res) => {
     res.status(500).json({ error: "Failed to create account." });
   }
 };
-// exports.newSignup = async (req, res) => {
-//   const { email, password, username } = req.body;
+exports.newSignup = async (req, res) => {
+  const { email, password, username } = req.body;
 
-//   try {
-//     // Vérifier si l'email existe déjà
-//     const existingUser = await User.findOne({ email });
-//     if (existingUser) {
-//       return res.status(400).json({ message: "Email is already in use." });
-//     }
+  try {
+    // Vérifier si l'email existe déjà
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({ message: "Email is already in use." });
+    }
 
-//     // Vérifier si le username existe déjà
-//     const normalizedUsername = username
-//       .toLowerCase()
-//       .normalize("NFD") // Décompose les caractères accentués (ex: é -> e)
-//       .replace(/[\u0300-\u036f]/g, "") // Supprimer les diacritiques (accents)
-//       .replace(/\s+/g, "") // Supprimer tous les espaces
-//       .replace(/[^a-z]/g, ""); // Supprimer tous les caractères non alphabétiques
+    // Vérifier si le username existe déjà
+    const normalizedUsername = username
+      .toLowerCase()
+      .normalize("NFD") // Décompose les caractères accentués (ex: é -> e)
+      .replace(/[\u0300-\u036f]/g, "") // Supprimer les diacritiques (accents)
+      .replace(/\s+/g, "") // Supprimer tous les espaces
+      .replace(/[^a-z]/g, ""); // Supprimer tous les caractères non alphabétiques
 
-//     const existingUserUsername = await User.findOne({
-//       usernameNormalized: normalizedUsername,
-//     });
-//     if (existingUserUsername) {
-//       return res.status(409).json({
-//         message: "Username already exists. Please choose another one.",
-//       });
-//     }
+    const existingUserUsername = await User.findOne({
+      usernameNormalized: normalizedUsername,
+    });
+    if (existingUserUsername) {
+      return res.status(409).json({
+        message: "Username already exists. Please choose another one.",
+      });
+    }
 
-//     // Génération de l'OTP et hashage du mot de passe
-//     const otpCode = Math.floor(100000 + Math.random() * 900000);
-//     const otpExpires = Date.now() + 10 * 60 * 1000;
-//     const hashedPassword = await bcrypt.hash(password, 10);
+    // Génération de l'OTP et hashage du mot de passe
+    const otpCode = Math.floor(100000 + Math.random() * 900000);
+    const otpExpires = Date.now() + 10 * 60 * 1000;
+    const hashedPassword = await bcrypt.hash(password, 10);
 
-//     // Étape 1 : Créer l'utilisateur sans image
-//     const newUser = new User({
-//       email,
-//       password: hashedPassword,
-//       username,
-//       usernameNormalized: normalizedUsername,
-//       email_otp: otpCode,
-//       otpExpires: otpExpires,
-//     });
-//     await newUser.save();
+    // Étape 1 : Créer l'utilisateur sans image
+    const newUser = new User({
+      email,
+      password: hashedPassword,
+      username,
+      usernameNormalized: normalizedUsername,
+      email_otp: otpCode,
+      otpExpires: otpExpires,
+    });
+    await newUser.save();
 
-//     let profileImage = "";
-//     // Étape 2 : Upload de l'image si elle existe
-//     if (req.files && req.files.profileImage) {
-//       const file = req.files.profileImage;
-//       if (!file.mimetype.startsWith("image/")) {
-//         return res.status(400).json({
-//           message: "Only image files are allowed for the profile image",
-//         });
-//       }
+    let profileImage = "";
+    // Étape 2 : Upload de l'image si elle existe
+    if (req.files && req.files.profileImage) {
+      const file = req.files.profileImage;
+      if (!file.mimetype.startsWith("image/")) {
+        return res.status(400).json({
+          message: "Only image files are allowed for the profile image",
+        });
+      }
 
-//       try {
-//         // Utiliser l'ID de l'utilisateur comme chemin
-//         const userId = newUser._id.toString();
-//         profileImage = await helper.fileUpload(file, `profile/${userId}`);
-//         // Étape 3 : Mettre à jour l'utilisateur avec l'URL de l'image
-//         newUser.profileImage = profileImage;
-//         await newUser.save();
-//       } catch (error) {
-//         console.error("Error uploading profile image:", error);
-//         return res.status(500).json({
-//           message: "Error uploading profile image",
-//           error: error.message,
-//         });
-//       }
-//     }
+      try {
+        // Utiliser l'ID de l'utilisateur comme chemin
+        const userId = newUser._id.toString();
+        profileImage = await helper.fileUpload(file, `profile/${userId}`);
+        // Étape 3 : Mettre à jour l'utilisateur avec l'URL de l'image
+        newUser.profileImage = profileImage;
+        await newUser.save();
+      } catch (error) {
+        console.error("Error uploading profile image:", error);
+        return res.status(500).json({
+          message: "Error uploading profile image",
+          error: error.message,
+        });
+      }
+    }
 
-//     // Étape 4 : Si l'utilisateur existait comme tempGuest, le mettre à jour
-//     const tempGuest = await Models.tempGuestModel.findOne({ email });
-//     if (tempGuest) {
-//       tempGuest.status = "registered";
-//       tempGuest.registeredAt = Date.now();
-//       tempGuest.convertedBy = tempGuest.invitations[0]?.invitedBy || null;
-//       await tempGuest.save();
+    // Étape 4 : Si l'utilisateur existait comme tempGuest, le mettre à jour
+    const tempGuest = await Models.tempGuestModel.findOne({ email });
+    if (tempGuest) {
+      tempGuest.status = "registered";
+      tempGuest.registeredAt = Date.now();
+      tempGuest.convertedBy = tempGuest.invitations[0]?.invitedBy || null;
+      await tempGuest.save();
 
-//       // Mettre à jour les événements où ce tempGuest était invité
-//       await Models.eventModel.updateMany(
-//         { tempGuests: tempGuest._id },
-//         {
-//           $push: { guests: newUser._id },
-//         },
-//       );
-//     }
+      // Mettre à jour les événements où ce tempGuest était invité
+      await Models.eventModel.updateMany(
+        { tempGuests: tempGuest._id },
+        {
+          $push: { guests: newUser._id },
+        },
+      );
+    }
 
-//     // Étape 5 : Envoi de l'OTP
-//     await sendOTPEmail(email, otpCode);
+    // Étape 5 : Envoi de l'OTP
+    await sendOTPEmail(email, otpCode);
 
-//     // Étape 6 : Répondre avec les données utilisateur
-//     res.status(201).json({
-//       message: "User created successfully",
-//       body: {
-//         _id: newUser._id,
-//         email: newUser.email,
-//         username: newUser.username,
-//         profileImage: newUser.profileImage || "",
-//       },
-//     });
-//   } catch (error) {
-//     console.error("Signup error:", error);
-//     res.status(500).json({ message: "Server error" });
-//   }
-// };
+    // Étape 6 : Répondre avec les données utilisateur
+    res.status(201).json({
+      message: "User created successfully",
+      body: {
+        _id: newUser._id,
+        email: newUser.email,
+        username: newUser.username,
+        profileImage: newUser.profileImage || "",
+      },
+    });
+  } catch (error) {
+    console.error("Signup error:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
 exports.signup = async (req, res) => {
   const { email, password } = req.body;
 
