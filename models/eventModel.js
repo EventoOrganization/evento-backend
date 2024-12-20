@@ -138,7 +138,7 @@ const eventSchema = new Schema(
     ],
     allUploadPhotoVideo: {
       type: Boolean,
-      default: false,
+      default: true,
     },
     questions: [
       {
