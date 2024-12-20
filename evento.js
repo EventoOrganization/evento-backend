@@ -29,7 +29,8 @@ const allowedOrigins = [
   "https://www.evento-app.io", // Production
   "https://evento-web-git-dev-eventos-projects.vercel.app", // Développement
   "http://localhost:3000",
-  "https://backend.evento-app.io/",
+  "https://backend.evento-app.io",
+  "http://localhost:8747",
 ];
 const checkOrigin = (origin, callback) => {
   if (!origin || allowedOrigins.includes(origin)) {
