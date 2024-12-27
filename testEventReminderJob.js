@@ -12,71 +12,44 @@ const { sendEventReminderEmail } = require("./helper/mailjetEmailService");
       useUnifiedTopology: true,
     });
 
-    console.log("Connected to MongoDB...");
-
-    // Calculer la date dans 2 jours
     const oneDayBefore = moment.utc().add(1, "days").startOf("day");
-    const endOfDayOneDayBefore = moment.utc().add(1, "days").endOf("day");
+    const endOfDay = moment.utc().add(1, "days").endOf("day");
 
-    console.log(
-      `Checking events scheduled between: ${twoDaysFromNow.format()} and ${endOfDay.format()}`,
-    );
-
-    const upcomingEvents = await Models.eventModel.find({
-      "details.date": {
-        $gte: new Date(oneDayBefore),
-        $lt: new Date(endOfDayOneDayBefore),
-      },
-    });
-
-    console.log(`Found ${upcomingEvents.length} upcoming events`);
-
-    console.log(`Found ${upcomingEvents.length} upcoming events`);
+    const upcomingEvents = await Models.eventModel
+      .find({
+        "details.date": {
+          $gte: new Date(oneDayBefore),
+          $lt: new Date(endOfDay),
+        },
+      })
+      .populate("user", "username")
+      .populate("coHosts", "username");
 
     if (upcomingEvents.length === 0) {
-      console.log("No events found for the specified date.");
+      await mongoose.disconnect();
       return;
     }
 
     for (const event of upcomingEvents) {
-      let uniqueParticipants = new Set();
+      const goingStatuses = await Models.eventStatusSchema
+        .find({
+          eventId: event._id,
+          status: "isGoing",
+        })
+        .populate("userId");
 
-      // Récupérer les participants
-      const attendees = await Models.eventAttendesUserModel.find({
-        eventId: event._id,
-      });
-      attendees.forEach((attendee) =>
-        uniqueParticipants.add(attendee.userId.toString()),
-      );
+      const goingUsers = goingStatuses.map((status) => status.userId);
 
-      event.coHosts.forEach((coHostId) =>
-        uniqueParticipants.add(coHostId.toString()),
-      );
-      event.guests.forEach((guestId) =>
-        uniqueParticipants.add(guestId.toString()),
-      );
-      uniqueParticipants.add(event.user.toString());
-
-      console.log(
-        `Sending event reminder to ${uniqueParticipants.size} participants for event: ${event.title}`,
-      );
-
-      // Envoi des emails
-      for (const userId of uniqueParticipants) {
-        const recipient = await Models.userModel.findOne({ _id: userId });
+      for (const recipient of goingUsers) {
         if (recipient) {
-          console.log(`Ready to send email to: ${recipient.email}`);
           await sendEventReminderEmail(recipient, event);
         }
       }
     }
 
-    // Déconnexion de MongoDB
     await mongoose.disconnect();
-    console.log("Disconnected from MongoDB.");
   } catch (error) {
     console.error("Error in event reminder job:", error);
     await mongoose.disconnect();
-    console.log("Disconnected from MongoDB due to error.");
   }
 })();

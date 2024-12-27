@@ -2,7 +2,10 @@ const Event = require("../models/eventModel");
 const Models = require("../models");
 const helper = require("../helper/helper");
 const mongoose = require("mongoose");
-
+const cronSchedule1 = "01 0 * * *";
+const schedule = require("node-schedule");
+const moment = require("moment");
+const { sendEventReminderEmail } = require("../helper/mailjetEmailService");
 // const { sendEventInviteEmail } = require("../services/sesEmailService");
 const {
   sendEventInviteEmail,
@@ -10,7 +13,6 @@ const {
 } = require("../helper/mailjetEmailService");
 
 const TempGuest = require("../models/tempGuestModel");
-const moment = require("moment");
 
 exports.deletePostEventMedia = async (req, res) => {
   const { eventId } = req.params;
@@ -256,7 +258,6 @@ exports.storePostEventMedia = async (req, res) => {
     });
   }
 };
-
 exports.toggleUploadMedia = async (req, res) => {
   const { eventId, allow } = req.body;
   if (!eventId || typeof allow !== "boolean") {
@@ -1028,3 +1029,52 @@ exports.updateEventStatus = async (req, res) => {
     });
   }
 };
+
+schedule.scheduleJob(cronSchedule1, async function () {
+  try {
+    await mongoose.connect(process.env.MONGO_URI, {
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+    });
+
+    const oneDayBefore = moment.utc().add(1, "days").startOf("day");
+    const endOfDay = moment.utc().add(1, "days").endOf("day");
+
+    const upcomingEvents = await Models.eventModel
+      .find({
+        "details.date": {
+          $gte: new Date(oneDayBefore),
+          $lt: new Date(endOfDay),
+        },
+      })
+      .populate("user", "username")
+      .populate("coHosts", "username");
+
+    if (upcomingEvents.length === 0) {
+      await mongoose.disconnect();
+      return;
+    }
+
+    for (const event of upcomingEvents) {
+      const goingStatuses = await Models.eventStatusSchema
+        .find({
+          eventId: event._id,
+          status: "isGoing",
+        })
+        .populate("userId");
+
+      const goingUsers = goingStatuses.map((status) => status.userId);
+
+      for (const recipient of goingUsers) {
+        if (recipient) {
+          await sendEventReminderEmail(recipient, event);
+        }
+      }
+    }
+
+    await mongoose.disconnect();
+  } catch (error) {
+    console.error("Error in event reminder job:", error);
+    await mongoose.disconnect();
+  }
+});

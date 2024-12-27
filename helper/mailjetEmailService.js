@@ -171,33 +171,19 @@ const sendBirthdayEmail = async (follower, birthdayPerson) => {
     console.error(`Error sending birthday email to ${follower.email}:`, error);
   }
 };
-const sendEventReminderEmail = async (recipient, event) => {
+const sendEventReminderEmailTest = async (recipient, event) => {
   try {
-    /* eslint-disable no-unused-vars */
     const coHostsPart =
-      event.coHosts.length > 0
-        ? `& ${event.coHosts.map((host) => host.username).join(", ")}`
+      event.coHosts && event.coHosts.length > 0
+        ? `& Co-hosted by ${event.coHosts
+            .map((host) => host.username)
+            .join(", ")}`
         : "";
-    /* eslint-enable no-unused-vars */
     const locationPart = event.details.location
       ? `<li><strong>Location:</strong> ${event.details.location}</li>`
       : "";
 
-    const request = mailjetClient.post("send", { version: "v3.1" }).request({
-      Messages: [
-        {
-          From: {
-            Email: process.env.MJ_FROM_EMAIL,
-            Name: "Evento - Your Event Platform",
-          },
-          To: [
-            {
-              Email: recipient.email,
-              Name: recipient.username || "User",
-            },
-          ],
-          Subject: `Reminder: ${event.title} is happening tomorrow!`,
-          HTMLPart: `
+    const emailContent = `
           <h3>Event Reminder</h3>
           <p>This is a reminder for the event: <strong>${event.title}</strong>, 
           hosted by ${event.user.username} ${coHostsPart} happening tomorrow at 
@@ -212,7 +198,61 @@ const sendEventReminderEmail = async (recipient, event) => {
               </a>
             </li>
           </ul>
-        `,
+        `;
+
+    console.log(`EMAIL_REMINDER_TEST:`, emailContent);
+    console.log(`Event reminder email sent to ${recipient.email}:`);
+  } catch (error) {
+    console.error(
+      `Error sending event reminder email to ${recipient.email}:`,
+      error,
+    );
+  }
+};
+
+const sendEventReminderEmail = async (recipient, event) => {
+  try {
+    const coHostsPart =
+      event.coHosts && event.coHosts.length > 0
+        ? `& Co-hosted by ${event.coHosts
+            .map((host) => host.username)
+            .join(", ")}`
+        : "";
+    const locationPart = event.details.location
+      ? `<li><strong>Location:</strong> ${event.details.location}</li>`
+      : "";
+
+    const emailContent = `
+        <h3>Event Reminder</h3>
+        <p>This is a reminder for the event: <strong>${event.title}</strong>, 
+        hosted by ${event.user.username} ${coHostsPart} happening tomorrow at 
+        ${event.details.startTime}.</p>
+        <p>Make sure to be there! Here are the details:</p>
+        <ul>
+          ${locationPart}
+          <li><strong>Start Time:</strong> ${event.details.startTime}</li>
+          <li><strong>Find the event at:</strong> 
+            <a href="https://www.evento-app.io/event/${event._id}" target="_blank">
+              Event Link
+            </a>
+          </li>
+        </ul>
+      `;
+    const request = mailjetClient.post("send", { version: "v3.1" }).request({
+      Messages: [
+        {
+          From: {
+            Email: process.env.MJ_FROM_EMAIL,
+            Name: "Evento - Your Event Platform",
+          },
+          To: [
+            {
+              Email: recipient.email,
+              Name: recipient.username || "User",
+            },
+          ],
+          Subject: `Reminder: ${event.title} is happening tomorrow!`,
+          HTMLPart: emailContent,
           CustomID: "EventReminder",
         },
       ],
@@ -339,6 +379,7 @@ module.exports = {
   sendResetPasswordEmail,
   sendEventInviteEmail,
   sendBirthdayEmail,
+  sendEventReminderEmailTest,
   sendEventReminderEmail,
   sendUpdateNotification,
   sendFeedbackEmail,

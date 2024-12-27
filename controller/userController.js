@@ -59,97 +59,97 @@ schedule.scheduleJob(cronSchedule, async function () {
   }
 });
 
-schedule.scheduleJob(cronSchedule1, async function () {
-  try {
-    console.log("Running scheduled job to send event reminders...");
+// schedule.scheduleJob(cronSchedule1, async function () {
+//   try {
+//     console.log("Running scheduled job to send event reminders...");
 
-    // Calculer la plage de dates pour capturer les événements dans 2 jours
-    const twoDaysFromNowStart = moment.utc().add(2, "days").startOf("day");
-    const twoDaysFromNowEnd = moment.utc().add(2, "days").endOf("day");
+//     // Calculer la plage de dates pour capturer les événements dans 2 jours
+//     const twoDaysFromNowStart = moment.utc().add(2, "days").startOf("day");
+//     const twoDaysFromNowEnd = moment.utc().add(2, "days").endOf("day");
 
-    console.log(
-      `Fetching events scheduled between: ${twoDaysFromNowStart.format()} and ${twoDaysFromNowEnd.format()}`,
-    );
+//     console.log(
+//       `Fetching events scheduled between: ${twoDaysFromNowStart.format()} and ${twoDaysFromNowEnd.format()}`,
+//     );
 
-    const upcomingEvents = await Models.eventModel.find({
-      "details.date": {
-        $gte: twoDaysFromNowStart.toDate(),
-        $lte: twoDaysFromNowEnd.toDate(),
-      },
-    });
+//     const upcomingEvents = await Models.eventModel.find({
+//       "details.date": {
+//         $gte: twoDaysFromNowStart.toDate(),
+//         $lte: twoDaysFromNowEnd.toDate(),
+//       },
+//     });
 
-    console.log(`Found ${upcomingEvents.length} upcoming events`);
+//     console.log(`Found ${upcomingEvents.length} upcoming events`);
 
-    for (const event of upcomingEvents) {
-      let uniqueParticipants = new Set();
+//     for (const event of upcomingEvents) {
+//       let uniqueParticipants = new Set();
 
-      // Récupérer les participants (attendees)
-      const attendees = await Models.eventAttendesUserModel.find({
-        eventId: event._id.toString(),
-      });
-      attendees.forEach((attendee) =>
-        uniqueParticipants.add(attendee.userId.toString()),
-      );
+//       // Récupérer les participants (attendees)
+//       const attendees = await Models.eventAttendesUserModel.find({
+//         eventId: event._id.toString(),
+//       });
+//       attendees.forEach((attendee) =>
+//         uniqueParticipants.add(attendee.userId.toString()),
+//       );
 
-      // Récupérer les favoris (favorites)
-      const favorites = await Models.eventFavouriteUserModel.find({
-        eventId: event._id.toString(),
-      });
-      favorites.forEach((favorite) =>
-        uniqueParticipants.add(favorite.userId.toString()),
-      );
+//       // Récupérer les favoris (favorites)
+//       const favorites = await Models.eventFavouriteUserModel.find({
+//         eventId: event._id.toString(),
+//       });
+//       favorites.forEach((favorite) =>
+//         uniqueParticipants.add(favorite.userId.toString()),
+//       );
 
-      // Ajouter les co-hôtes
-      event.coHosts.forEach((coHostId) =>
-        uniqueParticipants.add(coHostId.toString()),
-      );
+//       // Ajouter les co-hôtes
+//       event.coHosts.forEach((coHostId) =>
+//         uniqueParticipants.add(coHostId.toString()),
+//       );
 
-      // Ajouter les invités
-      event.guests.forEach((guestId) =>
-        uniqueParticipants.add(guestId.toString()),
-      );
+//       // Ajouter les invités
+//       event.guests.forEach((guestId) =>
+//         uniqueParticipants.add(guestId.toString()),
+//       );
 
-      // Ajouter l'hôte de l'événement
-      uniqueParticipants.add(event.user.toString());
+//       // Ajouter l'hôte de l'événement
+//       uniqueParticipants.add(event.user.toString());
 
-      console.log(
-        `Sending reminders to ${uniqueParticipants.size} participants for event: ${event.title}`,
-      );
+//       console.log(
+//         `Sending reminders to ${uniqueParticipants.size} participants for event: ${event.title}`,
+//       );
 
-      // Envoyer des emails de rappel et enregistrer des notifications
-      for (const userId of uniqueParticipants) {
-        const recipient = await Models.userModel.findOne({ _id: userId });
+//       // Envoyer des emails de rappel et enregistrer des notifications
+//       for (const userId of uniqueParticipants) {
+//         const recipient = await Models.userModel.findOne({ _id: userId });
 
-        if (recipient) {
-          console.log(`Sending event reminder email to ${recipient.email}`);
-          await sendEventReminderEmail(recipient, event);
+//         if (recipient) {
+//           console.log(`Sending event reminder email to ${recipient.email}`);
+//           await sendEventReminderEmail(recipient, event);
 
-          // Enregistrer la notification dans la base de données
-          const dataSave = {
-            senderId: event.user.toString(),
-            reciverId: recipient._id.toString(),
-            message: `Reminder: You have ${event.title} in 2 days at ${event.details.startTime}`,
-            is_read: 0,
-            eventId: event._id,
-            eventName: event.title,
-            data: event.details.date,
-            startTime: event.details.startTime,
-            endTime: event.details.endTime,
-            location: event.details.location,
-            longitude: event.details.longitude,
-            latitude: event.details.latitude,
-            createRSVP: event.details.createRSVP,
-          };
-          await Models.eventNotificationModel.create(dataSave);
-        }
-      }
-    }
+//           // Enregistrer la notification dans la base de données
+//           const dataSave = {
+//             senderId: event.user.toString(),
+//             reciverId: recipient._id.toString(),
+//             message: `Reminder: You have ${event.title} in 2 days at ${event.details.startTime}`,
+//             is_read: 0,
+//             eventId: event._id,
+//             eventName: event.title,
+//             data: event.details.date,
+//             startTime: event.details.startTime,
+//             endTime: event.details.endTime,
+//             location: event.details.location,
+//             longitude: event.details.longitude,
+//             latitude: event.details.latitude,
+//             createRSVP: event.details.createRSVP,
+//           };
+//           await Models.eventNotificationModel.create(dataSave);
+//         }
+//       }
+//     }
 
-    console.log("Event reminder job completed.");
-  } catch (error) {
-    console.error("Error in event reminder job:", error);
-  }
-});
+//     console.log("Event reminder job completed.");
+//   } catch (error) {
+//     console.error("Error in event reminder job:", error);
+//   }
+// });
 
 module.exports = {
   signup: async (req, res) => {
