@@ -27,6 +27,7 @@ const cors = require("cors");
 var app = express();
 const allowedOrigins = [
   "https://www.evento-app.io", // Production
+  "https://evento-app.io", // Production
   "https://evento-web-git-dev-eventos-projects.vercel.app", // Développement
   "http://localhost:3000",
   "https://backend.evento-app.io",

@@ -1048,7 +1048,7 @@ schedule.scheduleJob(cronSchedule1, async function () {
         },
       })
       .populate("user", "username")
-      .populate("coHosts", "username");
+      .populate("coHosts.userId", "username");
 
     if (upcomingEvents.length === 0) {
       await mongoose.disconnect();

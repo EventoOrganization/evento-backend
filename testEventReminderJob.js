@@ -22,8 +22,8 @@ const { sendEventReminderEmail } = require("./helper/mailjetEmailService");
           $lt: new Date(endOfDay),
         },
       })
-      .populate("user", "username")
-      .populate("coHosts", "username");
+      .populate("user", "username profileImage")
+      .populate("coHosts.userId", "username profileImage");
 
     if (upcomingEvents.length === 0) {
       await mongoose.disconnect();

@@ -214,30 +214,61 @@ const sendEventReminderEmail = async (recipient, event) => {
   try {
     const coHostsPart =
       event.coHosts && event.coHosts.length > 0
-        ? `& Co-hosted by ${event.coHosts
-            .map((host) => host.username)
-            .join(", ")}`
+        ? `& Co-hosted by ${
+            event.coHosts.length === 1
+              ? `<strong>${event.coHosts[0].userId.username}</strong>`
+              : event.coHosts.length === 2
+              ? `<strong>${event.coHosts[0].userId.username}</strong> and <strong>${event.coHosts[1].userId.username}</strong>`
+              : `${event.coHosts
+                  .slice(0, -1)
+                  .map((host) => `<strong>${host.userId.username}</strong>`)
+                  .join(", ")}, and <strong>${
+                  event.coHosts[event.coHosts.length - 1].userId.username
+                }</strong>`
+          }`
         : "";
+
     const locationPart = event.details.location
-      ? `<li><strong>Location:</strong> ${event.details.location}</li>`
+      ? `<li>📍<strong>Location:</strong> ${event.details.location}</li>`
       : "";
 
     const emailContent = `
-        <h3>Event Reminder</h3>
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #f9f9f9; border: 1px solid #ddd; border-radius: 10px;">
+      <div style="background-color: #5b34da; padding: 10px 14px; border-radius: 10px 10px 0 0; text-align: center; color: white;">
+      <h3 style="text-align: center;">Evento - Event Reminder</h3>
+    </div>  
+    <div style="padding: 20px;">
+        <h4>Dear ${recipient.username}</h4>
         <p>This is a reminder for the event: <strong>${event.title}</strong>, 
-        hosted by ${event.user.username} ${coHostsPart} happening tomorrow at 
+        hosted by 
+        <strong>${
+          event.user.username
+        }</strong> ${coHostsPart}, happening tomorrow at 
         ${event.details.startTime}.</p>
         <p>Make sure to be there! Here are the details:</p>
-        <ul>
+        <ul style="padding-left: 20px;">
           ${locationPart}
-          <li><strong>Start Time:</strong> ${event.details.startTime}</li>
-          <li><strong>Find the event at:</strong> 
-            <a href="https://www.evento-app.io/event/${event._id}" target="_blank">
-              Event Link
-            </a>
-          </li>
+          <li>⏰<strong>Start Time:</strong> ${event.details.startTime}</li>
         </ul>
-      `;
+        <div style="text-align: center; margin-top: 20px;">
+          <div style="max-width: 100%; height: 200px; overflow: hidden; border-radius: 10px;">
+            <img src="${
+              event.initialMedia?.[0]?.url || ""
+            }" alt="event-image" style="width: 100%; height: 100%; object-fit: cover;" />
+          </div>
+        </div>
+        <div style="text-align: center; margin-top: 20px;">
+          <a href="https://www.evento-app.io/event/${
+            event._id
+          }" target="_blank" 
+          style="display: inline-block; padding: 10px 20px; background-color: #5b34da; color: white; text-decoration: none; border-radius: 5px;">
+            View Event Details
+          </a>
+        </div>
+      </div>
+      </div>
+    `;
+
     const request = mailjetClient.post("send", { version: "v3.1" }).request({
       Messages: [
         {
