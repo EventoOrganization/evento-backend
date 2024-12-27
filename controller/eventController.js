@@ -1047,8 +1047,8 @@ schedule.scheduleJob(cronSchedule1, async function () {
           $lt: new Date(endOfDay),
         },
       })
-      .populate("user", "username")
-      .populate("coHosts.userId", "username");
+      .populate("user", "username profileImage")
+      .populate("coHosts.userId", "username profileImage");
 
     if (upcomingEvents.length === 0) {
       await mongoose.disconnect();
