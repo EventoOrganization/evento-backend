@@ -1078,11 +1078,6 @@ schedule.scheduleJob(cronSchedule1, async function () {
           .map((status) => status.userId)
           .filter((user) => user && user.email);
 
-          userSchema.pre("remove", async function (next) {
-            await Models.eventStatusSchema.deleteMany({ userId: this._id });
-            next();
-          });          
-
         for (const recipient of goingUsers) {
           if (recipient && recipient.email) {
             try {
