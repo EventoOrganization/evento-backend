@@ -1061,6 +1061,11 @@ schedule.scheduleJob(cronSchedule1, async function () {
       try {
         console.log(`Processing event: ${event.title} (ID: ${event._id})`);
 
+        if (!event.title || !event.details?.date) {
+          console.warn(`Event ${event._id} has missing details. Skipping...`);
+          continue;
+        }
+
         // Fetch users with "isGoing" status
         const goingStatuses = await Models.eventStatusSchema
           .find({
@@ -1069,7 +1074,14 @@ schedule.scheduleJob(cronSchedule1, async function () {
           })
           .populate("userId");
 
-        const goingUsers = goingStatuses.map((status) => status.userId);
+        const goingUsers = goingStatuses
+          .map((status) => status.userId)
+          .filter((user) => user && user.email);
+
+          userSchema.pre("remove", async function (next) {
+            await Models.eventStatusSchema.deleteMany({ userId: this._id });
+            next();
+          });          
 
         for (const recipient of goingUsers) {
           if (recipient && recipient.email) {
