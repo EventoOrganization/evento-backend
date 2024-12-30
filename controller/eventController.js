@@ -1032,6 +1032,7 @@ exports.updateEventStatus = async (req, res) => {
 
 schedule.scheduleJob(cronSchedule1, async function () {
   try {
+    console.log("Connecting to MongoDB...");
     await mongoose.connect(process.env.MONGO_URI, {
       useNewUrlParser: true,
       useUnifiedTopology: true,
@@ -1040,6 +1041,7 @@ schedule.scheduleJob(cronSchedule1, async function () {
     const oneDayBefore = moment.utc().add(1, "days").startOf("day");
     const endOfDay = moment.utc().add(1, "days").endOf("day");
 
+    console.log(`Fetching events between ${oneDayBefore} and ${endOfDay}...`);
     const upcomingEvents = await Models.eventModel
       .find({
         "details.date": {
@@ -1047,34 +1049,63 @@ schedule.scheduleJob(cronSchedule1, async function () {
           $lt: new Date(endOfDay),
         },
       })
-      .populate("user", "username profileImage")
-      .populate("coHosts.userId", "username profileImage");
+      .populate("user", "username")
+      .populate("coHosts.userId", "username");
 
     if (upcomingEvents.length === 0) {
-      await mongoose.disconnect();
+      console.log("No upcoming events found.");
       return;
     }
 
     for (const event of upcomingEvents) {
-      const goingStatuses = await Models.eventStatusSchema
-        .find({
-          eventId: event._id,
-          status: "isGoing",
-        })
-        .populate("userId");
+      try {
+        console.log(`Processing event: ${event.title} (ID: ${event._id})`);
 
-      const goingUsers = goingStatuses.map((status) => status.userId);
+        // Fetch users with "isGoing" status
+        const goingStatuses = await Models.eventStatusSchema
+          .find({
+            eventId: event._id,
+            status: "isGoing",
+          })
+          .populate("userId");
 
-      for (const recipient of goingUsers) {
-        if (recipient) {
-          await sendEventReminderEmail(recipient, event);
+        const goingUsers = goingStatuses.map((status) => status.userId);
+
+        for (const recipient of goingUsers) {
+          if (recipient && recipient.email) {
+            try {
+              console.log(
+                `Sending reminder to ${recipient.email} for event: ${event.title}`,
+              );
+              await sendEventReminderEmail(recipient, event);
+            } catch (emailError) {
+              console.error(
+                `Failed to send email to ${recipient.email}:`,
+                emailError,
+              );
+            }
+          } else {
+            console.warn(
+              `Recipient for event ${event.title} has no email address.`,
+            );
+          }
         }
+      } catch (eventError) {
+        console.error(
+          `Error processing event ${event.title} (ID: ${event._id}):`,
+          eventError,
+        );
       }
     }
-
-    await mongoose.disconnect();
   } catch (error) {
-    console.error("Error in event reminder job:", error);
-    await mongoose.disconnect();
+    console.error("Error in the scheduled job:", error);
+  } finally {
+    console.log("Disconnecting from MongoDB...");
+    try {
+      await mongoose.disconnect();
+    } catch (disconnectError) {
+      console.error("Error disconnecting from MongoDB:", disconnectError);
+    }
+    console.log("Job finished.");
   }
 });
