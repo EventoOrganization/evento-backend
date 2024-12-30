@@ -402,7 +402,11 @@ exports.updateEventField = async (req, res) => {
       case "visibility":
         event.visibility = value;
         break;
-
+      case "questions":
+        console.log("questions value", value);
+        event.questions = value;
+        event.details.createRSVP = value.length > 0 ? true : false;
+        break;
       default:
         console.log("Invalid field specified");
         return res.status(400).json({ message: "Invalid field" });
