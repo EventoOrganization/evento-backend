@@ -394,7 +394,11 @@ exports.forgotPassword = async (req, res) => {
 };
 exports.verifyOTP = async (req, res) => {
   const { otpCode, flowType } = req.body;
-
+  function generateUUID() {
+    return ([1e7] + -1e3 + -4e3 + -8e3 + -1e11).replace(/[018]/g, (c) =>
+      (c ^ (crypto.randomBytes(1)[0] & (15 >> (c / 4)))).toString(16),
+    );
+  }
   try {
     // Find user by OTP and check expiration
     const user = await User.findOne({
@@ -412,7 +416,7 @@ exports.verifyOTP = async (req, res) => {
         user.email_verified = true;
         break;
       case "forgot-password":
-        const resetPasswordToken = crypto.randomBytes(20).toString("hex");
+        const resetPasswordToken = generateUUID();
         user.resetPasswordToken = resetPasswordToken;
         user.resetPasswordExpires = Date.now() + 3600000;
         break;
