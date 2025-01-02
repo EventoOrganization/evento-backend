@@ -7,11 +7,11 @@ const TempGuest = require("../models/tempGuestModel");
 const schedule = require("node-schedule");
 
 const moment = require("moment");
-const { sendEventReminderEmail } = require("../helper/mailjetEmailService");
 // const { sendEventInviteEmail } = require("../services/sesEmailService");
 const {
   sendEventInviteEmail,
   sendUpdateNotification,
+  sendEventReminderEmail,
 } = require("../helper/mailjetEmailService");
 
 schedule.scheduleJob(cronSchedule1, async function () {
