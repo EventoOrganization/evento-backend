@@ -2,8 +2,10 @@ const Event = require("../models/eventModel");
 const Models = require("../models");
 const helper = require("../helper/helper");
 const mongoose = require("mongoose");
-const cronSchedule1 = "15 10 * * *";
+const cronSchedule1 = "*/5 * * *";
+const TempGuest = require("../models/tempGuestModel");
 const schedule = require("node-schedule");
+
 const moment = require("moment");
 const { sendEventReminderEmail } = require("../helper/mailjetEmailService");
 // const { sendEventInviteEmail } = require("../services/sesEmailService");
@@ -12,7 +14,6 @@ const {
   sendUpdateNotification,
 } = require("../helper/mailjetEmailService");
 
-const TempGuest = require("../models/tempGuestModel");
 schedule.scheduleJob(cronSchedule1, async function () {
   try {
     console.log("Connecting to MongoDB...");
