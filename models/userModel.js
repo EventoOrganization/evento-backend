@@ -26,6 +26,10 @@ const userSchema = new mongoose.Schema(
       receiveReminders: { type: Boolean, default: true },
       receiveInvites: { type: Boolean, default: true },
     },
+    unsubscribeToken: {
+      type: String,
+      default: () => crypto.randomBytes(32).toString("hex"),
+    },
     email_verified: { type: String, default: false },
     countryCode: { type: String, default: "+" },
     phoneNumber: { type: String, default: "" },

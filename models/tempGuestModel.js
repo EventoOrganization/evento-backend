@@ -3,6 +3,10 @@ const tempGuestSchema = new mongoose.Schema(
   {
     email: { type: String, required: true, unique: true },
     username: { type: String, required: true },
+    unsubscribeToken: {
+      type: String,
+      default: () => crypto.randomBytes(32).toString("hex"),
+    },
     invitations: [
       {
         eventId: {
