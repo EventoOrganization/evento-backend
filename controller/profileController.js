@@ -19,7 +19,7 @@ exports.getLoggedUserProfile = async (req, res) => {
 
     const userInfo = await User.findOne({ _id: req.user._id })
       .select(
-        "pwaNotification pwaSubscriptions firstName lastName username email email_verified countryCode phoneNumber phone_verified address bio URL DOB profileImage interests socialLinks role devices",
+        "pwaNotification pwaSubscriptions firstName lastName username email email_verified countryCode phoneNumber phone_verified address bio URL DOB profileImage interests socialLinks role devices preferences",
       )
       .populate("interests", "_id name");
 
@@ -591,5 +591,25 @@ exports.updateProfile = async (req, res) => {
         error: error.message,
       });
     }
+  }
+};
+exports.updateUserPreferences = async (req, res) => {
+  const { preferences } = req.body;
+  const userId = req.user.id;
+
+  try {
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found." });
+    }
+
+    user.preferences = { ...user.preferences, ...preferences };
+    await user.save();
+
+    res.status(200).json({ message: "Preferences updated successfully." });
+  } catch (error) {
+    console.error("Error updating preferences:", error);
+    res.status(500).json({ message: "Failed to update preferences." });
   }
 };
