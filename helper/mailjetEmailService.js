@@ -1,5 +1,5 @@
 const mailjet = require("node-mailjet");
-
+const { wrapWithTemplate, getEmailMeta } = require("../helper/emailTemplates");
 const mailjetClient = mailjet.apiConnect(
   process.env.MJ_APIKEY_PUBLIC,
   process.env.MJ_APIKEY_PRIVATE,
@@ -11,20 +11,68 @@ const sendEventInviteEmail = async (
   eventLink,
   isCoHost = false,
 ) => {
-  // Vérifier que les informations requises sont présentes
   if (!user || !guest || !event || !eventLink) {
+    console.error("Missing required data for sending the email.");
     return;
   }
+
   const eventLinkWithQuery = `${eventLink}?email=${encodeURIComponent(
     guest.email,
   )}`;
+  const imageUrl =
+    event.initialMedia?.[0]?.url || "https://via.placeholder.com/600x200"; // Image par défaut
+  const formattedDate = new Date(event.details.date).toLocaleDateString(
+    undefined,
+    {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    },
+  );
+
+  // Génération du header et du subject
+  const { subject, header } = getEmailMeta("invite", event);
+
+  // Contenu spécifique de l'email
+  const content = `
+    <p style="font-size: 16px; color: #333;">Hi ${
+      guest.username || "Guest"
+    },</p>
+    <p style="font-size: 14px; color: #333;">
+      You are invited to ${
+        isCoHost ? "co-host" : "join"
+      } the event hosted by <strong>${user.username || "Evento"}</strong>.
+    </p>
+    <ul style="list-style-type: none; padding: 0; font-size: 14px; color: #333;">
+      <li>📌 <strong>Event:</strong> ${event.title}</li>
+      <li>👤 <strong>Host:</strong> ${user.username || "Evento"}</li>
+      <li>📅 <strong>Date:</strong> ${formattedDate}</li>
+      <li>⏰ <strong>Time:</strong> ${event.details.startTime}</li>
+      <li>📍 <strong>Location:</strong> <a href="https://maps.google.com/?q=${encodeURIComponent(
+        event.details.location,
+      )}" target="_blank" style="color: #5f6fed; text-decoration: none;">
+        ${event.details.location}
+      </a></li>
+    </ul>
+    <div style="text-align: center; margin-top: 20px;">
+      <a href="${eventLinkWithQuery}" target="_blank" 
+      style="display: inline-block; padding: 10px 20px; background-color: #5b34da; color: white; text-decoration: none; border-radius: 5px; font-size: 14px;">
+        View Event Details
+      </a>
+    </div>
+  `;
+
+  // Génération de l'email complet avec le template
+  const emailContent = wrapWithTemplate(header, content, imageUrl);
+
   try {
     const request = mailjetClient.post("send", { version: "v3.1" }).request({
       Messages: [
         {
           From: {
             Email: process.env.MJ_FROM_EMAIL,
-            Name: "Evento - Your Entertaining Event Platform",
+            Name: "Evento - Your Event Platform",
           },
           To: [
             {
@@ -32,55 +80,43 @@ const sendEventInviteEmail = async (
               Name: guest.username || "Guest",
             },
           ],
-          Subject: `You're Invited to ${event.title} by ${
-            user.username || "Evento"
-          }`,
-          HTMLPart: `
-            <div style="color: #333; font-family: Arial, sans-serif; font-size: 16px; line-height: 1.4; padding: 20px; background-color: #f9f9f9; display: flex; flex-direction: column; align-items: center; gap: 10px;">
-              <img src="https://evento-media-bucket.s3.ap-southeast-2.amazonaws.com/icons/icon-512x512.png" alt="Logo" style="width: 100px; height: auto; margin-bottom: 20px;">
-              <h3 style="margin: 0;">Hi ${guest.username || "Guest"}</h3>
-              <p style="margin: 0;">You are invited to ${
-                isCoHost ? "co-host" : "join"
-              } the event by <strong>${
-            user.username || "on Evento"
-          }</strong>.</p>
-              <p>Click <a href="${eventLinkWithQuery}" target="_blank" style="text-decoration: none; color: #5f6fed;">here</a> to view the event details.</p>
-            </div>
-          `,
-
+          Subject: subject,
+          HTMLPart: emailContent,
           CustomID: "EventInvitation",
         },
       ],
     });
 
     const result = await request;
-    console.log(
-      `****************Invitation email sent to ${guest.email}:*******************`,
-      result.body,
-    );
+    console.log(`Invitation email sent to ${guest.email}:`, result.body);
   } catch (error) {
     console.error(`Error sending invitation email to ${guest.email}:`, error);
   }
 };
 const sendOTPEmail = async (email, otpCode, password = null) => {
   try {
-    const emailContent = password
+    const { subject, header } = getEmailMeta("otp", { title: "Your OTP Code" });
+
+    const content = password
       ? `
-      <h3>Your OTP Code</h3>
+      <h4>Dear User,</h4>
       <p>Use this code to verify your account: <strong>${otpCode}</strong></p>
       <p>Your generated password is: <strong>${password}</strong></p>
-      <p>Please keep this password secure or change it.</p>
+      <p>Please keep this password secure or change it after logging in.</p>
     `
       : `
-      <h3>Your OTP Code</h3>
+      <h4>Dear User,</h4>
       <p>Use this code to verify your account: <strong>${otpCode}</strong></p>
     `;
+
+    const emailContent = wrapWithTemplate(header, content);
+
     const request = mailjetClient.post("send", { version: "v3.1" }).request({
       Messages: [
         {
           From: {
             Email: process.env.MJ_FROM_EMAIL,
-            Name: "Evento - Your Enternaing Event Platform",
+            Name: "Evento - Your Event Platform",
           },
           To: [
             {
@@ -88,7 +124,7 @@ const sendOTPEmail = async (email, otpCode, password = null) => {
               Name: "User",
             },
           ],
-          Subject: "Your OTP Code",
+          Subject: subject,
           HTMLPart: emailContent,
           CustomID: "OTPVerification",
         },
@@ -101,117 +137,9 @@ const sendOTPEmail = async (email, otpCode, password = null) => {
     console.error("Error sending verification email:", error);
   }
 };
-const sendResetPasswordEmail = async (email, resetLink) => {
-  try {
-    const request = mailjet.post("send", { version: "v3.1" }).request({
-      Messages: [
-        {
-          From: {
-            Email: process.env.MJ_FROM_EMAIL,
-            Name: "Evento - Your Enternaing Event Platform",
-          },
-          To: [
-            {
-              Email: email,
-              Name: "User",
-            },
-          ],
-          Subject: "Reset your password",
-          HTMLPart: `
-            <h3>Password Reset Request</h3>
-            <p>If you requested to reset your password, click the link below:</p>
-            <a href="${resetLink}">${resetLink}</a>
-            <p>If you didn't request this, please ignore this email.</p>
-          `,
-          CustomID: "PasswordReset",
-        },
-      ],
-    });
-
-    const result = await request;
-    console.log("Password reset email sent successfully:", result.body);
-  } catch (error) {
-    console.error("Error sending reset password email:", error);
-  }
-};
-const sendBirthdayEmail = async (follower, birthdayPerson) => {
-  try {
-    const request = mailjetClient.post("send", { version: "v3.1" }).request({
-      Messages: [
-        {
-          From: {
-            Email: process.env.MJ_FROM_EMAIL,
-            Name: "Evento - Your Event Platform",
-          },
-          To: [
-            {
-              Email: follower.email,
-              Name: follower.username || "User",
-            },
-          ],
-          Subject: `It's ${
-            birthdayPerson.username || "your friend's"
-          } birthday today!`,
-          HTMLPart: `
-            <h3>Happy Birthday to ${
-              birthdayPerson.username || "Your Friend"
-            }!</h3>
-            <p>Today is a special day! Don't forget to wish <strong>${
-              birthdayPerson.username || "your friend"
-            }</strong> a happy birthday.</p>
-          `,
-          CustomID: "BirthdayReminder",
-        },
-      ],
-    });
-
-    const result = await request;
-    console.log(`Birthday email sent to ${follower.email}:`, result.body);
-  } catch (error) {
-    console.error(`Error sending birthday email to ${follower.email}:`, error);
-  }
-};
-const sendEventReminderEmailTest = async (recipient, event) => {
-  try {
-    const coHostsPart =
-      event.coHosts && event.coHosts.length > 0
-        ? `& Co-hosted by ${event.coHosts
-            .map((host) => host.username)
-            .join(", ")}`
-        : "";
-    const locationPart = event.details.location
-      ? `<li><strong>Location:</strong> ${event.details.location}</li>`
-      : "";
-
-    const emailContent = `
-          <h3>Event Reminder</h3>
-          <p>This is a reminder for the event: <strong>${event.title}</strong>, 
-          hosted by ${event.user.username} ${coHostsPart} happening tomorrow at 
-          ${event.details.startTime}.</p>
-          <p>Make sure to be there! Here are the details:</p>
-          <ul>
-            ${locationPart}
-            <li><strong>Start Time:</strong> ${event.details.startTime}</li>
-            <li><strong>Find the event at:</strong> 
-              <a href="https://www.evento-app.io/event/${event._id}" target="_blank">
-                Event Link
-              </a>
-            </li>
-          </ul>
-        `;
-
-    console.log(`EMAIL_REMINDER_TEST:`, emailContent);
-    console.log(`Event reminder email sent to ${recipient.email}:`);
-  } catch (error) {
-    console.error(
-      `Error sending event reminder email to ${recipient.email}:`,
-      error,
-    );
-  }
-};
-
 const sendEventReminderEmail = async (recipient, event) => {
   try {
+    // Génération du coHostsPart
     const coHostsPart =
       event.coHosts && event.coHosts.length > 0
         ? `& Co-hosted by ${
@@ -228,47 +156,58 @@ const sendEventReminderEmail = async (recipient, event) => {
           }`
         : "";
 
+    // Génération de locationPart
     const locationPart = event.details.location
-      ? `<li>📍<strong>Location:</strong> ${event.details.location}</li>`
+      ? `<li>📍<strong>Location:</strong> 
+      <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+        event.details.location,
+      )}" target="_blank" style="color: #5f6fed; text-decoration: none;">${
+          event.details.location
+        }</a>
+      <br />
+      <span style="font-size: 12px; color: #555;">(If the link doesn't work, copy this address: <strong>${
+        event.details.location
+      }</strong>)</span>
+    </li>`
       : "";
 
-    const emailContent = `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #f9f9f9; border: 1px solid #ddd; border-radius: 10px;">
-      <div style="background-color: #5b34da; padding: 10px 14px; border-radius: 10px 10px 0 0; text-align: center; color: white;">
-      <h3 style="text-align: center;">Evento - Event Reminder</h3>
-    </div>  
-    <div style="padding: 20px;">
-        <h4>Dear ${recipient.username}</h4>
-        <p>This is a reminder for the event: <strong>${event.title}</strong>, 
-        hosted by 
-        <strong>${
-          event.user.username
-        }</strong> ${coHostsPart}, happening tomorrow at 
-        ${event.details.startTime}.</p>
-        <p>Make sure to be there! Here are the details:</p>
-        <ul style="padding-left: 20px;">
-          ${locationPart}
-          <li>⏰<strong>Start Time:</strong> ${event.details.startTime}</li>
-        </ul>
-        <div style="text-align: center; margin-top: 20px;">
-          <div style="max-width: 100%; height: 200px; overflow: hidden; border-radius: 10px;">
-            <img src="${
-              event.initialMedia?.[0]?.url || ""
-            }" alt="event-image" style="width: 100%; height: 100%; object-fit: cover;" />
-          </div>
-        </div>
-        <div style="text-align: center; margin-top: 20px;">
-          <a href="https://www.evento-app.io/event/${
-            event._id
-          }" target="_blank" 
-          style="display: inline-block; padding: 10px 20px; background-color: #5b34da; color: white; text-decoration: none; border-radius: 5px;">
-            View Event Details
-          </a>
+    // Génération des métadonnées (sujet et header)
+    const { subject, header } = getEmailMeta("reminder", event);
+
+    // Contenu spécifique de l'email
+    const content = `
+      <p>Dear ${recipient.username},</p>
+      <p>This is a reminder for the event: <strong>${
+        event.title
+      }</strong>, hosted by 
+      <strong>${
+        event.user.username
+      }</strong> ${coHostsPart}, happening tomorrow at 
+      ${event.details.startTime}.</p>
+      <p>Make sure to be there! Here are the details:</p>
+      <ul style="padding-left: 20px;">
+        ${locationPart}
+        <li>⏰<strong>Start Time:</strong> ${event.details.startTime}</li>
+      </ul>
+      <div style="text-align: center; margin-top: 20px;">
+        <div style="max-width: 100%; height: 200px; overflow: hidden; border-radius: 10px;">
+          <img src="${
+            event.initialMedia?.[0]?.url || ""
+          }" alt="event-image" style="width: 100%; height: 100%; object-fit: cover;" />
         </div>
       </div>
+      <div style="text-align: center; margin-top: 20px;">
+        <a href="https://www.evento-app.io/event/${event._id}" target="_blank" 
+        style="display: inline-block; padding: 10px 20px; background-color: #5b34da; color: white; text-decoration: none; border-radius: 5px;">
+          View Event Details
+        </a>
       </div>
     `;
 
+    // Contenu complet de l'email avec header/footer
+    const emailContent = wrapWithTemplate(header, content);
+
+    // Envoi de l'email
     const request = mailjetClient.post("send", { version: "v3.1" }).request({
       Messages: [
         {
@@ -282,7 +221,7 @@ const sendEventReminderEmail = async (recipient, event) => {
               Name: recipient.username || "User",
             },
           ],
-          Subject: `Reminder: ${event.title} is happening tomorrow!`,
+          Subject: subject,
           HTMLPart: emailContent,
           CustomID: "EventReminder",
         },
@@ -308,12 +247,38 @@ const sendUpdateNotification = async (
   oldData = {},
 ) => {
   try {
+    // Boucle sur chaque utilisateur pour envoyer un email
     await Promise.all(
       users.map(async (user) => {
         console.log(`Sending notification email to ${user.email}`);
-        const changeDetails = buildChangeDetails(changeType, oldData, event); // Supposons une fonction pour construire les détails
+
+        // Récupération des métadonnées (sujet et header dynamiques)
+        const { subject, header } = getEmailMeta("update", event);
+
+        // Construction des détails du changement
+        const changeDetails = buildChangeDetails(changeType, oldData, event);
+        const imageUrl = event.initialMedia?.[0]?.url || "";
+        // Lien vers l'événement
         const eventLink = `https://www.evento-app.io/event/${event._id}`;
 
+        // Contenu spécifique de l'email
+        const content = `
+          <p>Dear ${user.username},</p>
+          <p>There has been an <strong>${changeType}</strong> change on the event: <strong>${event.title}</strong>.</p>
+          ${changeDetails}
+          <p>Check out the latest details on our site:</p>
+          <div style="text-align: center; margin-top: 20px;">
+            <a href="${eventLink}" target="_blank" 
+            style="display: inline-block; padding: 10px 20px; background-color: #5b34da; color: white; text-decoration: none; border-radius: 5px;">
+              View Event
+            </a>
+          </div>
+        `;
+
+        // Génération de l'email complet avec le header et le footer
+        const emailContent = wrapWithTemplate(header, content, imageUrl);
+
+        // Envoi de l'email
         const request = mailjetClient
           .post("send", { version: "v3.1" })
           .request({
@@ -329,18 +294,13 @@ const sendUpdateNotification = async (
                     Name: user.username,
                   },
                 ],
-                Subject: `Update to ${event.title}`,
-                HTMLPart: `
-              <h3>Event Update Notification</h3>
-              <p>There has been a ${changeType} to the event <strong>${event.title}</strong>.</p>
-              ${changeDetails}
-              <p>Check out the latest details on our site:</p>
-              <a href="${eventLink}" target="_blank">View Event</a>
-            `,
+                Subject: subject,
+                HTMLPart: emailContent,
                 CustomID: "EventUpdateNotification",
               },
             ],
           });
+
         const result = await request;
         console.log(`Notification sent to ${user.email} for ${changeType}`);
       }),
@@ -349,69 +309,33 @@ const sendUpdateNotification = async (
     console.error("Error sending notification emails:", error);
   }
 };
+// Fonction utilitaire pour construire les détails des changements
 function buildChangeDetails(changeType, oldData, event) {
   let changeDetails = "";
   switch (changeType) {
     case "location":
-      changeDetails = `<p>The location of the event has changed.</p>`;
+      changeDetails = `<p><strong>Location updated:</strong> The event location has changed to <strong>${event.details.location}</strong>.</p>`;
       break;
+
     case "date":
-      changeDetails = `<p>The date or time of the event has changed.</p>`;
+      changeDetails = `
+        <p><strong>Date/Time updated:</strong></p>
+        <ul>
+          <li><strong>Previous Date:</strong> ${oldData.date || "N/A"}</li>
+          <li><strong>New Date:</strong> ${event.details.date}</li>
+        </ul>
+      `;
+      break;
+    default:
+      changeDetails = `<p>There has been an update to the event details.</p>`;
       break;
   }
   return changeDetails;
 }
-const sendFeedbackEmail = async (user, feedback) => {
-  try {
-    // Vérifiez que les informations nécessaires sont présentes
-    if (!user || !feedback) {
-      console.error("feedback content is missing.");
-      return;
-    }
 
-    // Configuration de l'email à envoyer
-    const request = mailjetClient.post("send", { version: "v3.1" }).request({
-      Messages: [
-        {
-          From: {
-            Email: "franckdufournetpro@gmail.com",
-            Name: "Evento Feedback Service",
-          },
-          To: [
-            {
-              Email: "evento_app@outlook.com",
-              Name: "Evento Team",
-            },
-          ],
-          Subject: "New User Feedback Received",
-          HTMLPart: `
-            <h3>New Feedback from ${user.username}</h3>
-            <h4>User Email: ${user.email}</h4>
-            <h4>Feedback:</h4>
-            <p>${feedback}</p>
-            <p><strong>Date:</strong> ${new Date()}</p>
-          `,
-          CustomID: "UserFeedback",
-        },
-      ],
-    });
-
-    const result = await request;
-    console.log(
-      `Feedback email sent successfully to evento_app@outlook.com:`,
-      result.body,
-    );
-  } catch (error) {
-    console.error("Error sending feedback email:", error);
-  }
-};
 module.exports = {
   sendOTPEmail,
-  sendResetPasswordEmail,
   sendEventInviteEmail,
-  sendBirthdayEmail,
-  sendEventReminderEmailTest,
   sendEventReminderEmail,
   sendUpdateNotification,
-  sendFeedbackEmail,
 };

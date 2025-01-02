@@ -474,7 +474,7 @@ exports.updateEventField = async (req, res) => {
         event.details.endTime = value.endTime;
         event.details.timeSlots = value.timeSlots;
         event.details.timeZone = value.timeZone;
-        changeType = "date/time";
+        changeType = "date";
         break;
       case "coHosts":
         event.coHosts = value;
