@@ -7,6 +7,11 @@ const tempGuestSchema = new mongoose.Schema(
       type: String,
       default: () => crypto.randomBytes(32).toString("hex"),
     },
+    preferences: {
+      receiveEventUpdates: { type: Boolean, default: true },
+      receiveReminders: { type: Boolean, default: true },
+      receiveInvites: { type: Boolean, default: true },
+    },
     invitations: [
       {
         eventId: {

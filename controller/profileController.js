@@ -607,13 +607,7 @@ exports.getPreferences = async (req, res) => {
     if (user) {
       return res.status(200).json({ preferences: user.preferences });
     } else if (tempGuest) {
-      return res.status(200).json({
-        preferences: {
-          receiveEventUpdates: true,
-          receiveReminders: true,
-          receiveInvites: true,
-        },
-      });
+      return res.status(200).json({ preferences: tempGuest.preferences });
     } else {
       return res
         .status(404)
@@ -640,7 +634,8 @@ exports.updatePreferences = async (req, res) => {
     const tempGuest = await Models.tempGuestModel.findOne({
       unsubscribeToken: token,
     });
-
+    console.log("user", user);
+    console.log("tempGuest", tempGuest);
     if (user) {
       user.preferences = preferences;
       await user.save();
@@ -648,7 +643,7 @@ exports.updatePreferences = async (req, res) => {
         .status(200)
         .json({ message: "Preferences updated successfully." });
     } else if (tempGuest) {
-      // Sauvegarder les préférences pour un `TempGuest`
+      await tempGuest.updateOne({ preferences });
       return res
         .status(200)
         .json({ message: "Preferences updated successfully." });
