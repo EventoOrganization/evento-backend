@@ -11,5 +11,6 @@ router.get(
 );
 router.put("/updateProfile", authenticateJWT, profileController.updateProfile);
 router.get("/userProfile/:userId", profileController.getUserProfileById);
-router.put("/updateUserPreferences", profileController.updateUserPreferences);
+router.get("/getPreferences", profileController.getPreferences);
+router.put("/updatePreferences", profileController.updatePreferences);
 module.exports = router;

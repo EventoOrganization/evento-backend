@@ -169,6 +169,8 @@ exports.addGuests = async (req, res) => {
               _id: guestId,
               username: guestUser.username,
               email: guestUser.email,
+              unsubscribeToken: guestUser.unsubscribeToken,
+              preferences: guestUser.preferences,
             };
             await sendEventInviteEmail(user, guestInfo, event, eventLink);
           }
@@ -205,6 +207,8 @@ exports.addGuests = async (req, res) => {
           _id: tempGuest._id,
           username: tempGuest.username,
           email: tempGuest.email,
+          unsubscribeToken: tempGuest.unsubscribeToken,
+          preferences: tempGuest.preferences,
         };
         await sendEventInviteEmail(user, guestInfo, event, eventLink);
       }

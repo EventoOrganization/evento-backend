@@ -15,7 +15,7 @@ const sendEventInviteEmail = async (
     console.error("Missing required data for sending the email.");
     return;
   }
-
+  console.log("eventUser", guest);
   const eventLinkWithQuery = `${eventLink}?email=${encodeURIComponent(
     guest.email,
   )}`;
@@ -64,7 +64,12 @@ const sendEventInviteEmail = async (
   `;
 
   // Génération de l'email complet avec le template
-  const emailContent = wrapWithTemplate(header, content, imageUrl);
+  const emailContent = wrapWithTemplate(
+    header,
+    content,
+    imageUrl,
+    guest.unsubscribeToken,
+  );
 
   try {
     const request = mailjetClient.post("send", { version: "v3.1" }).request({
@@ -205,7 +210,12 @@ const sendEventReminderEmail = async (recipient, event) => {
     `;
 
     // Contenu complet de l'email avec header/footer
-    const emailContent = wrapWithTemplate(header, content);
+    const emailContent = wrapWithTemplate(
+      header,
+      content,
+      "",
+      user.unsubscribeToken,
+    );
 
     // Envoi de l'email
     const request = mailjetClient.post("send", { version: "v3.1" }).request({
@@ -276,7 +286,12 @@ const sendUpdateNotification = async (
         `;
 
         // Génération de l'email complet avec le header et le footer
-        const emailContent = wrapWithTemplate(header, content, imageUrl);
+        const emailContent = wrapWithTemplate(
+          header,
+          content,
+          imageUrl,
+          user.unsubscribeToken,
+        );
 
         // Envoi de l'email
         const request = mailjetClient

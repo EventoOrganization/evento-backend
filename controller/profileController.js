@@ -163,7 +163,6 @@ exports.getLoggedUserProfile = async (req, res) => {
       .json({ status: false, message: "Internal server error" });
   }
 };
-
 exports.getUserProfileById = async (req, res) => {
   console.log("Inside getUserProfileById", req.params.userId);
   try {
@@ -299,7 +298,6 @@ exports.getUserProfileById = async (req, res) => {
       .json({ status: false, message: "Internal server error" });
   }
 };
-
 exports.updateProfile = async (req, res) => {
   console.log("Received req.body:", req.body);
 
@@ -593,23 +591,74 @@ exports.updateProfile = async (req, res) => {
     }
   }
 };
-exports.updateUserPreferences = async (req, res) => {
-  const { preferences } = req.body;
-  const userId = req.user.id;
+exports.getPreferences = async (req, res) => {
+  const { token } = req.query;
+
+  if (!token) {
+    return res.status(400).json({ message: "Token is required." });
+  }
 
   try {
-    const user = await User.findById(userId);
+    const user = await Models.userModel.findOne({ unsubscribeToken: token });
+    const tempGuest = await Models.tempGuestModel.findOne({
+      unsubscribeToken: token,
+    });
 
-    if (!user) {
-      return res.status(404).json({ message: "User not found." });
+    if (user) {
+      return res.status(200).json({ preferences: user.preferences });
+    } else if (tempGuest) {
+      return res.status(200).json({
+        preferences: {
+          receiveEventUpdates: true,
+          receiveReminders: true,
+          receiveInvites: true,
+        },
+      });
+    } else {
+      return res
+        .status(404)
+        .json({ message: "No user or temp guest found for this token." });
     }
+  } catch (error) {
+    console.error("Error fetching preferences:", error);
+    res.status(500).json({ message: "Server error." });
+  }
+};
 
-    user.preferences = { ...user.preferences, ...preferences };
-    await user.save();
+exports.updatePreferences = async (req, res) => {
+  const { token, preferences } = req.body;
 
-    res.status(200).json({ message: "Preferences updated successfully." });
+  if (!token || !preferences) {
+    return res
+      .status(400)
+      .json({ message: "Token and preferences are required." });
+  }
+
+  try {
+    // Rechercher dans les modèles `User` et `TempGuest`
+    const user = await Models.userModel.findOne({ unsubscribeToken: token });
+    const tempGuest = await Models.tempGuestModel.findOne({
+      unsubscribeToken: token,
+    });
+
+    if (user) {
+      user.preferences = preferences;
+      await user.save();
+      return res
+        .status(200)
+        .json({ message: "Preferences updated successfully." });
+    } else if (tempGuest) {
+      // Sauvegarder les préférences pour un `TempGuest`
+      return res
+        .status(200)
+        .json({ message: "Preferences updated successfully." });
+    } else {
+      return res
+        .status(404)
+        .json({ message: "No user or temp guest found for this token." });
+    }
   } catch (error) {
     console.error("Error updating preferences:", error);
-    res.status(500).json({ message: "Failed to update preferences." });
+    res.status(500).json({ message: "Server error." });
   }
 };

@@ -7,8 +7,8 @@ const headerTemplate = (header) => `
   </div>
 `;
 
-// Template pour le footer
-const footerTemplate = `
+// Template pour le footer avec le token dynamique
+const footerTemplate = (unsubscribeToken) => `
   <div style="padding: 20px; text-align: center; background-color: #f9f9f9; font-size: 12px; color: #777; border-top: 1px solid #ddd;">
     <p style="margin: 0; font-size: 14px; color: #333;">This email was sent by Evento - Your Event Platform.</p>
     <p style="margin: 5px 0;">Need help? Contact us at <a href="mailto:evento_app@outlook.com" style="color: #5f6fed;">evento_app@outlook.com</a>.</p>
@@ -19,7 +19,7 @@ const footerTemplate = `
     <div style="margin-top: 20px; font-size: 12px; color: #999;">
       <p style="margin: 0;">You are receiving this email because you have an account with Evento or subscribed to our updates.</p>
       <p style="margin: 0;">
-        <a href="https://www.evento-app.io/unsubscribe" style="color: #5f6fed; text-decoration: none;">Unsubscribe</a> | 
+        <a href="https://www.evento-app.io/unsubscribe?token=${unsubscribeToken}" style="color: #5f6fed; text-decoration: none;">Unsubscribe</a> | 
         <a href="https://www.evento-app.io/privacy" style="color: #5f6fed; text-decoration: none;">Privacy Policy</a>
       </p>
     </div>
@@ -37,14 +37,19 @@ const eventImageTemplate = (imageUrl) => `
   </div>
 `;
 // Fonction pour envelopper le contenu principal avec le header et le footer
-const wrapWithTemplate = (header, content, imageUrl = "") => `
+const wrapWithTemplate = (
+  header,
+  content,
+  imageUrl = "",
+  unsubscribeToken = "",
+) => `
   <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #fff; border: 1px solid #ddd; border-radius: 10px;">
     ${headerTemplate(header)}
     <div style="padding: 20px;">
       ${content}
       ${imageUrl ? eventImageTemplate(imageUrl) : ""}
     </div>
-    ${footerTemplate}
+    ${footerTemplate(unsubscribeToken)}
   </div>
 `;
 
