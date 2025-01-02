@@ -21,6 +21,11 @@ const userSchema = new mongoose.Schema(
       lowercase: true,
       trim: true,
     },
+    preferences: {
+      receiveEventUpdates: { type: Boolean, default: true },
+      receiveReminders: { type: Boolean, default: true },
+      receiveInvites: { type: Boolean, default: true },
+    },
     email_verified: { type: String, default: false },
     countryCode: { type: String, default: "+" },
     phoneNumber: { type: String, default: "" },
