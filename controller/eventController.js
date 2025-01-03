@@ -2,8 +2,8 @@ const Event = require("../models/eventModel");
 const Models = require("../models");
 const helper = require("../helper/helper");
 const mongoose = require("mongoose");
-// const cronSchedule1 = "1 0 * * *";
-const cronSchedule1 = "*/5 * * * *";
+const cronSchedule1 = "1 0 * * *";
+// const cronSchedule1 = "*/5 * * * *";
 const TempGuest = require("../models/tempGuestModel");
 const schedule = require("node-schedule");
 
