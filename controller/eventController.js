@@ -17,11 +17,16 @@ const {
 
 schedule.scheduleJob(cronSchedule1, async function () {
   try {
-    console.log("Connecting to MongoDB...");
-    await mongoose.connect(process.env.MONGO_URI, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-    });
+    console.log("Checking MongoDB connection...");
+    if (mongoose.connection.readyState === 0) {
+      console.log("No active MongoDB connection. Connecting...");
+      await mongoose.connect(process.env.MONGO_URI, {
+        useNewUrlParser: true,
+        useUnifiedTopology: true,
+      });
+    } else {
+      console.log("MongoDB connection already active.");
+    }
 
     const oneDayBefore = moment.utc().add(1, "days").startOf("day");
     const endOfDay = moment.utc().add(1, "days").endOf("day");
@@ -51,7 +56,6 @@ schedule.scheduleJob(cronSchedule1, async function () {
           continue;
         }
 
-        // Fetch users with "isGoing" status
         const goingStatuses = await Models.eventStatusSchema
           .find({
             eventId: event._id,
@@ -92,12 +96,6 @@ schedule.scheduleJob(cronSchedule1, async function () {
   } catch (error) {
     console.error("Error in the scheduled job:", error);
   } finally {
-    console.log("Disconnecting from MongoDB...");
-    try {
-      await mongoose.disconnect();
-    } catch (disconnectError) {
-      console.error("Error disconnecting from MongoDB:", disconnectError);
-    }
     console.log("Job finished.");
   }
 });
