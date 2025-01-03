@@ -214,7 +214,7 @@ const sendEventReminderEmail = async (recipient, event) => {
       header,
       content,
       "",
-      user.unsubscribeToken,
+      recipient.unsubscribeToken,
     );
 
     // Envoi de l'email

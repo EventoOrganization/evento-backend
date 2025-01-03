@@ -634,8 +634,6 @@ exports.updatePreferences = async (req, res) => {
     const tempGuest = await Models.tempGuestModel.findOne({
       unsubscribeToken: token,
     });
-    console.log("user", user);
-    console.log("tempGuest", tempGuest);
     if (user) {
       user.preferences = preferences;
       await user.save();
