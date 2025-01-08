@@ -1,5 +1,7 @@
 const mailjet = require("node-mailjet");
 const { wrapWithTemplate, getEmailMeta } = require("../helper/emailTemplates");
+const { toZonedTime } = require("date-fns-tz");
+const { format } = require("date-fns");
 const mailjetClient = mailjet.apiConnect(
   process.env.MJ_APIKEY_PUBLIC,
   process.env.MJ_APIKEY_PRIVATE,
@@ -324,28 +326,160 @@ const sendUpdateNotification = async (
     console.error("Error sending notification emails:", error);
   }
 };
-// Fonction utilitaire pour construire les détails des changements
 function buildChangeDetails(changeType, oldData, event) {
   let changeDetails = "";
+
   switch (changeType) {
     case "location":
       changeDetails = `<p><strong>Location updated:</strong> The event location has changed to <strong>${event.details.location}</strong>.</p>`;
       break;
 
     case "date":
+      // Fonction pour mettre en évidence les changements dynamiquement
+      const highlightChanges = (oldValue, newValue, type) => {
+        if (oldValue === newValue) {
+          return oldValue; // Pas de changement
+        }
+        // Mise en rouge pour "Previous Date" et en vert pour "New Date"
+        return type === "previous"
+          ? `<span style="color: red;">${oldValue}</span>`
+          : `<span style="color: green;">${newValue}</span>`;
+      };
+
+      // Formatage et surlignage des dates et heures
+      const previousStartDate = formatDateOnly(oldData.date);
+      const newStartDate = formatDateOnly(event.details.date);
+
+      const previousEndDate = formatDateOnly(oldData.endDate);
+      const newEndDate = formatDateOnly(event.details.endDate);
+
+      const previousStartTime = highlightChanges(
+        formatTimeOnly(oldData.startTime),
+        formatTimeOnly(event.details.startTime),
+        "previous",
+      );
+      const newStartTime = highlightChanges(
+        formatTimeOnly(oldData.startTime),
+        formatTimeOnly(event.details.startTime),
+        "new",
+      );
+
+      const previousEndTime =
+        oldData.endTime &&
+        highlightChanges(
+          formatTimeOnly(oldData.endTime),
+          formatTimeOnly(event.details.endTime),
+          "previous",
+        );
+      const newEndTime =
+        event.details.endTime &&
+        highlightChanges(
+          formatTimeOnly(oldData.endTime),
+          formatTimeOnly(event.details.endTime),
+          "new",
+        );
+
+      const previousTimeZone = highlightChanges(
+        oldData.timeZone,
+        event.details.timeZone,
+        "previous",
+      );
+      const newTimeZone = highlightChanges(
+        oldData.timeZone,
+        event.details.timeZone,
+        "new",
+      );
+
+      // Construction des lignes
+      const previousDateLine =
+        previousStartDate === previousEndDate
+          ? `${highlightChanges(previousStartDate, newStartDate, "previous")} ${
+              previousEndTime
+                ? `from ${previousStartTime} to ${previousEndTime}`
+                : `at ${previousStartTime}`
+            } (GMT ${previousTimeZone})`
+          : `${highlightChanges(
+              previousStartDate,
+              newStartDate,
+              "previous",
+            )} to ${highlightChanges(
+              previousEndDate,
+              newEndDate,
+              "previous",
+            )} ${
+              previousEndTime
+                ? `from ${previousStartTime} to ${previousEndTime}`
+                : `at ${previousStartTime}`
+            } (GMT ${previousTimeZone})`;
+
+      const newDateLine =
+        newStartDate === newEndDate
+          ? `${highlightChanges(previousStartDate, newStartDate, "new")} ${
+              newEndTime
+                ? `from ${newStartTime} to ${newEndTime}`
+                : `at ${newStartTime}`
+            } (GMT ${newTimeZone})`
+          : `${highlightChanges(
+              previousStartDate,
+              newStartDate,
+              "new",
+            )} to ${highlightChanges(previousEndDate, newEndDate, "new")} ${
+              newEndTime
+                ? `from ${newStartTime} to ${newEndTime}`
+                : `at ${newStartTime}`
+            } (GMT ${newTimeZone})`;
+
+      // Construction des détails avec le format mis à jour
       changeDetails = `
         <p><strong>Date/Time updated:</strong></p>
-        <ul>
-          <li><strong>Previous Date:</strong> ${oldData.date || "N/A"}</li>
-          <li><strong>New Date:</strong> ${event.details.date}</li>
+        <ul style="color: black; margin: 0; padding: 0; list-style: none; gap: 8px; display: flex; flex-direction: column;">
+          <li><strong>Previous Date:</strong> ${previousDateLine}</li>
+          <li><strong>New Date:</strong> ${newDateLine}</li>
         </ul>
       `;
       break;
+
     default:
       changeDetails = `<p>There has been an update to the event details.</p>`;
       break;
   }
+
   return changeDetails;
+}
+
+// Fonction pour formater les dates uniquement
+function formatDateOnly(date) {
+  const formattedDate = new Date(date).toLocaleDateString("en-GB", {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+
+  const day = new Date(date).getDate();
+  const daySuffix = getDaySuffix(day);
+
+  return formattedDate.replace(/(\d+)/, `${day}${daySuffix}`);
+}
+
+// Fonction pour formater les heures uniquement
+function formatTimeOnly(time) {
+  return time ? time.replace(":", ".") : "";
+}
+
+// Fonction pour obtenir le suffixe correct pour le jour
+function getDaySuffix(day) {
+  if (day > 3 && day < 21) return "th"; // Cas 4-20
+  switch (day % 10) {
+    case 1:
+      return "st"; // 1st, 21st
+    case 2:
+      return "nd"; // 2nd, 22nd
+    case 3:
+      return "rd"; // 3rd, 23rd
+    default:
+      return "th"; // Par défaut
+  }
 }
 
 module.exports = {

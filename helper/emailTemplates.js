@@ -9,7 +9,7 @@ const headerTemplate = (header) => `
 
 // Template pour le footer avec le token dynamique
 const footerTemplate = (unsubscribeToken) => `
-  <div style="padding: 20px; text-align: center; background-color: #f9f9f9; font-size: 12px; color: #777; border-top: 1px solid #ddd;">
+  <div style="padding: 20px; text-align: center; background-color: #f9f9f9; font-size: 12px; color: #777; border-top: 1px solid #ddd; border-radius: 0 0 10px 10px;">
     <p style="margin: 0; font-size: 14px; color: #333;">This email was sent by Evento - Your Event Platform.</p>
     <p style="margin: 5px 0;">Need help? Contact us at <a href="mailto:evento_app@outlook.com" style="color: #5f6fed;">evento_app@outlook.com</a>.</p>
     <div style="margin-top: 15px;">

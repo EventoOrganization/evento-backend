@@ -7,3 +7,5 @@ node_modules/
 .eslintcache
 createAdmin.js
 /testEventReminderJob.js
+/test-date.js
+/test-module.js
