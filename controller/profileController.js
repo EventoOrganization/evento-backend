@@ -168,6 +168,7 @@ exports.getUserProfileById = async (req, res) => {
   try {
     const userId = new ObjectId(req.params.userId);
 
+    // Récupérer les informations de l'utilisateur
     const userInfo = await User.findById(userId)
       .select(
         "firstName lastName username email profileImage bio URL socialLinks interests address",
@@ -181,7 +182,7 @@ exports.getUserProfileById = async (req, res) => {
         .json({ status: false, message: "User not found." });
     }
 
-    // Fetch event statuses for the user (isGoing, isFavourite)
+    // Récupérer les statuts d'événement pour l'utilisateur (isGoing, isFavourite)
     const eventStatuses = await Models.eventStatusSchema.find({ userId });
     const attendEventsIds = eventStatuses
       .filter((es) => es.status === "isGoing")
@@ -191,7 +192,7 @@ exports.getUserProfileById = async (req, res) => {
       .filter((es) => es.status === "isFavourite")
       .map((es) => es.eventId.toString());
 
-    // Fetch all events related to the user
+    // Récupérer tous les événements liés à l'utilisateur
     const allEvents = await Event.find({
       $and: [
         { eventType: "public" },
@@ -214,7 +215,7 @@ exports.getUserProfileById = async (req, res) => {
       })
       .exec();
 
-    // Enrich the events with user-specific status (isGoing, isFavourite, isHosted)
+    // Enrichir les événements avec le statut utilisateur (isGoing, isFavourite, isHosted, isCoHost)
     const enrichedEvents = allEvents.map((event) => {
       const isHosted =
         event.user && event.user._id.toString() === userId.toString(); // Host case
@@ -233,7 +234,7 @@ exports.getUserProfileById = async (req, res) => {
       };
     });
 
-    // Separate the events into upcoming and past based on their end date
+    // Filtrer les événements à venir et passés
     const upcomingEvents = enrichedEvents.filter((event) => {
       const isUpcoming = new Date(event.details.endDate) >= new Date();
       const isGoing = event.isGoing;
@@ -246,31 +247,44 @@ exports.getUserProfileById = async (req, res) => {
 
       const eventEndDate = new Date(event.details.endDate);
       const today = startOfDay(new Date());
-      // Vérifier si l'événement est terminé (la journée complète)
       return isAfter(today, eventEndDate) && event.isGoing;
     });
+
     const pastEventsHosted = enrichedEvents.filter((event) => {
       if (!event.details?.endDate) return false;
 
       const eventEndDate = new Date(event.details.endDate);
       const today = startOfDay(new Date());
-      // Vérifier si l'événement est terminé (la journée complète)
       return isAfter(today, eventEndDate) && event.isHosted;
     });
 
+    // Récupérer les utilisateurs suivis (following) et les suiveurs (followers)
     const followingUsers = await Models.userFollowModel
       .find({ follower: userId })
       .select("following")
       .exec();
-    const followingUserIds = followingUsers.map((follow) => follow.following);
+    const followingUserIds = followingUsers.map((follow) =>
+      follow.following.toString(),
+    );
 
-    let countTotalEventIAttended =
+    const followerUsers = await Models.userFollowModel
+      .find({ following: userId })
+      .select("follower")
+      .exec();
+    const followerUserIds = followerUsers.map((follow) =>
+      follow.follower.toString(),
+    );
+
+    // Compter le total des événements auxquels l'utilisateur a participé
+    const countTotalEventIAttended =
       await Models.eventStatusSchema.countDocuments({
         userId: userId,
         status: "isGoing",
       });
 
     userInfo._doc.totalEventAttended = countTotalEventIAttended;
+
+    // Filtrer les événements hébergés
     const hostedEvents = enrichedEvents.filter(
       (event) =>
         (event.isHosted || event.isCoHost) &&
@@ -278,7 +292,8 @@ exports.getUserProfileById = async (req, res) => {
           (pastEvent) => pastEvent._id.toString() === event._id.toString(),
         ),
     );
-    // Structure the response
+
+    // Structure de la réponse
     return res.status(200).json({
       status: true,
       message: "User profile fetched successfully",
@@ -289,6 +304,7 @@ exports.getUserProfileById = async (req, res) => {
         pastEventsHosted,
         hostedEvents,
         followingUserIds,
+        followerUserIds, // Inclure les followerUserIds
       },
     });
   } catch (error) {
@@ -298,6 +314,7 @@ exports.getUserProfileById = async (req, res) => {
       .json({ status: false, message: "Internal server error" });
   }
 };
+
 exports.updateProfile = async (req, res) => {
   console.log("Received req.body:", req.body);
 

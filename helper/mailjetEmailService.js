@@ -342,8 +342,8 @@ function buildChangeDetails(changeType, oldData, event) {
         }
         // Mise en rouge pour "Previous Date" et en vert pour "New Date"
         return type === "previous"
-          ? `<span style="color: red;">${oldValue}</span>`
-          : `<span style="color: green;">${newValue}</span>`;
+          ? `<span>${oldValue}</span>`
+          : `<span>${newValue}</span>`;
       };
 
       // Formatage et surlignage des dates et heures
@@ -433,8 +433,7 @@ function buildChangeDetails(changeType, oldData, event) {
       changeDetails = `
         <p><strong>Date/Time updated:</strong></p>
         <ul style="color: black; margin: 0; padding: 0; list-style: none; gap: 8px; display: flex; flex-direction: column;">
-          <li><strong>Previous Date:</strong> ${previousDateLine}</li>
-          <li><strong>New Date:</strong> ${newDateLine}</li>
+          <li>${newDateLine}</li>
         </ul>
       `;
       break;
