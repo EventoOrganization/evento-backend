@@ -10,6 +10,7 @@ const { sendOTPEmail } = require("../helper/mailjetEmailService");
 const { token } = require("morgan");
 exports.quickSignup = async (req, res) => {
   const { username, email } = req.body;
+
   try {
     // Vérifier si l'email ou le username existe déjà
     const existingUserEmail = await User.findOne({ email });
@@ -22,10 +23,10 @@ exports.quickSignup = async (req, res) => {
 
     const normalizedUsername = username
       .toLowerCase()
-      .normalize("NFD") // Décompose les caractères accentués (ex: é -> e)
-      .replace(/[\u0300-\u036f]/g, "") // Supprimer les diacritiques (accents)
-      .replace(/\s+/g, "") // Supprimer tous les espaces
-      .replace(/[^a-z]/g, ""); // Supprimer tous les caractères non alphabétiques
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/\s+/g, "")
+      .replace(/[^a-z]/g, "");
 
     const existingUserUsername = await User.findOne({
       usernameNormalized: normalizedUsername,
@@ -49,6 +50,7 @@ exports.quickSignup = async (req, res) => {
       }
       return password;
     };
+
     const password = generateRandomPassword();
     const otpCode = Math.floor(100000 + Math.random() * 900000);
     const otpExpires = Date.now() + 10 * 60 * 1000;
@@ -66,6 +68,7 @@ exports.quickSignup = async (req, res) => {
     await newUser.save();
 
     let profileImage = "";
+
     // Étape 2 : Upload de l'image si elle existe
     if (req.files && req.files.profileImage) {
       const file = req.files.profileImage;
@@ -93,6 +96,24 @@ exports.quickSignup = async (req, res) => {
       }
     }
 
+    // Étape 4 : Si l'utilisateur existait comme tempGuest, le mettre à jour
+    const tempGuest = await Models.tempGuestModel.findOne({ email });
+    if (tempGuest) {
+      tempGuest.status = "registered";
+      tempGuest.registeredAt = Date.now();
+      tempGuest.convertedBy = tempGuest.invitations[0]?.invitedBy || null;
+      await tempGuest.save();
+
+      // Mettre à jour les événements où ce tempGuest était invité
+      await Models.eventModel.updateMany(
+        { tempGuests: tempGuest._id },
+        {
+          $push: { guests: newUser._id },
+          $pull: { tempGuests: tempGuest._id },
+        },
+      );
+    }
+
     // Envoi de l'OTP
     await sendOTPEmail(email, otpCode, password);
 
@@ -112,6 +133,7 @@ exports.quickSignup = async (req, res) => {
     res.status(500).json({ error: "Failed to create account." });
   }
 };
+
 exports.newSignup = async (req, res) => {
   const { email, password, username } = req.body;
 

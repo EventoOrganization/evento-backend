@@ -145,22 +145,28 @@ exports.deletePostEventMedia = async (req, res) => {
 exports.addGuests = async (req, res) => {
   const eventId = req.params.id;
   const { guests, tempGuests, user } = req.body;
-  console.log("req.body", req.body);
+  console.log("Received request body:", req.body);
 
   try {
     const event = await Event.findById(eventId);
     if (!event) {
+      console.error("Event not found for ID:", eventId);
       return res.status(404).json({ message: "Event not found." });
     }
+
+    console.log("Found event:", event);
+
     const eventLink = `${process.env.CLIENT_URL}/event/${eventId}`;
     const invitedBy = user._id;
 
     // Ajout des utilisateurs existants
     if (guests && guests.length > 0) {
+      console.log("Processing existing guests:", guests);
       for (const guest of guests) {
         const guestId = guest._id || guest.id;
         if (!event.guests.includes(guestId)) {
           event.guests.push(guestId);
+          console.log(`Added guest ID: ${guestId} to event.`);
 
           const guestUser = await Models.userModel.findById(guestId);
           if (guestUser) {
@@ -171,35 +177,60 @@ exports.addGuests = async (req, res) => {
               unsubscribeToken: guestUser.unsubscribeToken,
               preferences: guestUser.preferences,
             };
+            console.log("Sending invite email to guest:", guestInfo);
             await sendEventInviteEmail(user, guestInfo, event, eventLink);
+          } else {
+            console.warn(`Guest user not found for ID: ${guestId}`);
           }
+        } else {
+          console.log(`Guest ID: ${guestId} already added to the event.`);
         }
       }
+    } else {
+      console.log("No existing guests to process.");
     }
 
     // Ajout des utilisateurs temporaires
     if (tempGuests && tempGuests.length > 0) {
+      console.log("Processing temp guests:", tempGuests);
       for (const tempGuestData of tempGuests) {
         const { email, username } = tempGuestData;
+        console.log(
+          `Processing temp guest - Email: ${email}, Username: ${username}`,
+        );
+
+        // Vérification si l'utilisateur existe déjà
         const existingUser = await Models.userModel.findOne({ email });
+        if (existingUser) {
+          console.log(`User with email ${email} already exists, skipping.`);
+          continue;
+        }
 
-        if (existingUser) continue;
-
+        // Vérification ou création d'un TempGuest
         let tempGuest = await TempGuest.findOne({ email });
         if (!tempGuest) {
+          console.log(`Creating new temp guest for email: ${email}`);
           tempGuest = new TempGuest({
             email,
             username,
             invitations: [{ eventId, invitedBy }],
           });
           await tempGuest.save();
+          console.log(`Temp guest created:`, tempGuest);
         } else {
+          console.log(`Updating existing temp guest for email: ${email}`);
           tempGuest.invitations.push({ eventId, invitedBy });
           await tempGuest.save();
+          console.log(`Temp guest updated:`, tempGuest);
         }
 
         if (!event.tempGuests.includes(tempGuest._id)) {
           event.tempGuests.push(tempGuest._id);
+          console.log(`Added temp guest ID: ${tempGuest._id} to event.`);
+        } else {
+          console.log(
+            `Temp guest ID: ${tempGuest._id} already added to the event.`,
+          );
         }
 
         const guestInfo = {
@@ -209,18 +240,24 @@ exports.addGuests = async (req, res) => {
           unsubscribeToken: tempGuest.unsubscribeToken,
           preferences: tempGuest.preferences,
         };
+        console.log("Sending invite email to temp guest:", guestInfo);
         await sendEventInviteEmail(user, guestInfo, event, eventLink);
       }
+    } else {
+      console.log("No temp guests to process.");
     }
 
     // Sauvegarder les modifications de l'événement
     await event.save();
+    console.log("Event updated and saved successfully.");
 
     // Récupérer l'événement avec les informations complètes des `tempGuests`
     const updatedEvent = await Event.findById(eventId)
       .populate("guests")
       .populate("tempGuests")
       .exec();
+
+    console.log("Updated event after adding guests:", updatedEvent);
 
     res
       .status(200)
@@ -230,6 +267,7 @@ exports.addGuests = async (req, res) => {
     res.status(500).json({ message: "Server error." });
   }
 };
+
 exports.requestToJoin = async (req, res) => {
   const { eventId } = req.params;
   const userId = req.user._id;
@@ -727,7 +765,6 @@ exports.getEventById = async (req, res) => {
       .populate("guests", "username email profileImage")
       .populate({
         path: "tempGuests",
-        match: { status: { $ne: "registered" } },
         select: "username email",
       })
       .populate({

@@ -1,4 +1,6 @@
 const mongoose = require("mongoose");
+const crypto = require("crypto");
+
 const tempGuestSchema = new mongoose.Schema(
   {
     email: { type: String, required: true, unique: true },
