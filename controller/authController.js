@@ -133,7 +133,6 @@ exports.quickSignup = async (req, res) => {
     res.status(500).json({ error: "Failed to create account." });
   }
 };
-
 exports.newSignup = async (req, res) => {
   const { email, password, username } = req.body;
 

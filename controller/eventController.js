@@ -6,7 +6,7 @@ const cronSchedule1 = "1 0 * * *";
 // const cronSchedule1 = "*/5 * * * *";
 const TempGuest = require("../models/tempGuestModel");
 const schedule = require("node-schedule");
-
+const { sendWhatsAppMessage } = require("../services/whatsappService");
 const moment = require("moment");
 // const { sendEventInviteEmail } = require("../services/sesEmailService");
 const {
@@ -14,7 +14,7 @@ const {
   sendUpdateNotification,
   sendEventReminderEmail,
 } = require("../helper/mailjetEmailService");
-
+const { sendWhatsAppInvitation } = require("../services/whatsappService");
 schedule.scheduleJob(cronSchedule1, async function () {
   try {
     console.log("Checking MongoDB connection...");
@@ -145,7 +145,6 @@ exports.deletePostEventMedia = async (req, res) => {
 exports.addGuests = async (req, res) => {
   const eventId = req.params.id;
   const { guests, tempGuests, user } = req.body;
-  console.log("Received request body:", req.body);
 
   try {
     const event = await Event.findById(eventId);
@@ -154,19 +153,15 @@ exports.addGuests = async (req, res) => {
       return res.status(404).json({ message: "Event not found." });
     }
 
-    console.log("Found event:", event);
-
     const eventLink = `${process.env.CLIENT_URL}/event/${eventId}`;
     const invitedBy = user._id;
 
-    // Ajout des utilisateurs existants
+    // Traitement des utilisateurs existants
     if (guests && guests.length > 0) {
-      console.log("Processing existing guests:", guests);
       for (const guest of guests) {
         const guestId = guest._id || guest.id;
         if (!event.guests.includes(guestId)) {
           event.guests.push(guestId);
-          console.log(`Added guest ID: ${guestId} to event.`);
 
           const guestUser = await Models.userModel.findById(guestId);
           if (guestUser) {
@@ -174,11 +169,27 @@ exports.addGuests = async (req, res) => {
               _id: guestId,
               username: guestUser.username,
               email: guestUser.email,
+              phoneNumber: guestUser.phoneNumber,
               unsubscribeToken: guestUser.unsubscribeToken,
               preferences: guestUser.preferences,
             };
-            console.log("Sending invite email to guest:", guestInfo);
-            await sendEventInviteEmail(user, guestInfo, event, eventLink);
+
+            // Envoi des notifications
+            if (guestUser.phoneNumber && guestUser.preferences.receiveInvites) {
+              await sendWhatsAppInvitation(
+                guestUser.countryCode,
+                guestUser.phoneNumber,
+                guestUser.username,
+                event.title,
+                eventLink,
+              );
+            } else if (guestUser.preferences.receiveInvites) {
+              await sendEventInviteEmail(user, guestInfo, event, eventLink);
+            } else {
+              console.log(
+                `Guest with ID ${guestId} has disabled invite notifications.`,
+              );
+            }
           } else {
             console.warn(`Guest user not found for ID: ${guestId}`);
           }
@@ -190,14 +201,11 @@ exports.addGuests = async (req, res) => {
       console.log("No existing guests to process.");
     }
 
-    // Ajout des utilisateurs temporaires
+    // Traitement des invités temporaires
     if (tempGuests && tempGuests.length > 0) {
       console.log("Processing temp guests:", tempGuests);
       for (const tempGuestData of tempGuests) {
         const { email, username } = tempGuestData;
-        console.log(
-          `Processing temp guest - Email: ${email}, Username: ${username}`,
-        );
 
         // Vérification si l'utilisateur existe déjà
         const existingUser = await Models.userModel.findOne({ email });
@@ -237,10 +245,9 @@ exports.addGuests = async (req, res) => {
           _id: tempGuest._id,
           username: tempGuest.username,
           email: tempGuest.email,
-          unsubscribeToken: tempGuest.unsubscribeToken,
-          preferences: tempGuest.preferences,
         };
-        console.log("Sending invite email to temp guest:", guestInfo);
+
+        // Envoi des notifications pour les invités temporaires
         await sendEventInviteEmail(user, guestInfo, event, eventLink);
       }
     } else {
@@ -267,7 +274,6 @@ exports.addGuests = async (req, res) => {
     res.status(500).json({ message: "Server error." });
   }
 };
-
 exports.requestToJoin = async (req, res) => {
   const { eventId } = req.params;
   const userId = req.user._id;

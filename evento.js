@@ -22,6 +22,7 @@ var profileRoutes = require("./routes/profileRoutes");
 const sesRoutes = require("./routes/sesRoutes");
 const iaRoutes = require("./routes/iaRoutes");
 const sitemapRoutes = require("./routes/sitemapRoutes");
+const whatsappRoutes = require("./routes/whatsappRoutes");
 const cors = require("cors");
 // Create an instance of the Express application
 var app = express();
@@ -130,7 +131,7 @@ app.use("/chats", chatRoutes);
 app.use("/ses", sesRoutes);
 app.use("/ia", iaRoutes);
 app.use("/sitemap", sitemapRoutes);
-
+app.use("/whatsapp", whatsappRoutes);
 // Catch 404 and forward to error handler
 app.use(function (req, res, next) {
   next(createError(404));

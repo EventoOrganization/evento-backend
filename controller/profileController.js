@@ -7,7 +7,7 @@ const User = require("../models/userModel");
 const Event = require("../models/eventModel");
 const { isAfter, startOfDay } = require("date-fns");
 const { ObjectId } = require("mongoose").Types;
-
+const { sendWhatsAppOTP } = require("../services/whatsappService");
 exports.getLoggedUserProfile = async (req, res) => {
   try {
     if (!req.user || !req.user._id) {
@@ -435,13 +435,51 @@ exports.updateProfile = async (req, res) => {
       }
       updateData.email = email;
     }
-
     // Gestion du numéro de téléphone
-    if (phoneNumber && phoneNumber !== user.phoneNumber) {
-      console.log("Updating phoneNumber:", phoneNumber);
-      updateData.phoneNumber = phoneNumber;
+    if ((countryCode && !phoneNumber) || (!countryCode && phoneNumber)) {
+      console.log(
+        "Error: countryCode and phoneNumber must be provided together.",
+      );
+      return res.status(400).json({
+        status: false,
+        message: "Both Country Code and Phone Number are required.",
+      });
     }
 
+    if (countryCode && countryCode !== user.countryCode) {
+      console.log("Updating countryCode:", countryCode);
+      updateData.countryCode = countryCode;
+    }
+    if (phoneNumber && phoneNumber !== user.phoneNumber) {
+      console.log("Updating phoneNumber:", phoneNumber);
+
+      const normalizedPhoneNumber = phoneNumber.replace(/^0+/, "");
+
+      const isPhoneNumberExist = await Models.userModel.findOne({
+        phoneNumber: normalizedPhoneNumber,
+        _id: { $ne: userId },
+      });
+
+      if (isPhoneNumberExist) {
+        console.log("Phone number already exists:", phoneNumber);
+        return res.status(409).json({
+          status: false,
+          message: "Phone number already exists. Please choose another one.",
+        });
+      }
+
+      updateData.phoneNumber = normalizedPhoneNumber;
+
+      console.log("🚀 Calling sendWhatsAppOTP...");
+      const otpResult = await sendWhatsAppOTP(req);
+      if (!otpResult.success) {
+        return res.status(500).json({
+          status: false,
+          message: otpResult.message,
+          error: otpResult.error,
+        });
+      }
+    }
     // Gestion du mot de passe
     if (password) {
       console.log("Updating password");

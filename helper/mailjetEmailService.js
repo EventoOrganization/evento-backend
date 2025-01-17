@@ -1,7 +1,5 @@
 const mailjet = require("node-mailjet");
 const { wrapWithTemplate, getEmailMeta } = require("../helper/emailTemplates");
-const { toZonedTime } = require("date-fns-tz");
-const { format } = require("date-fns");
 const mailjetClient = mailjet.apiConnect(
   process.env.MJ_APIKEY_PUBLIC,
   process.env.MJ_APIKEY_PRIVATE,
@@ -446,7 +444,6 @@ function buildChangeDetails(changeType, oldData, event) {
   return changeDetails;
 }
 
-// Fonction pour formater les dates uniquement
 function formatDateOnly(date) {
   const formattedDate = new Date(date).toLocaleDateString("en-GB", {
     weekday: "long",
@@ -461,7 +458,6 @@ function formatDateOnly(date) {
   return formattedDate.replace(/(\d+)/, `${day}${daySuffix}`);
 }
 
-// Fonction pour formater les heures uniquement
 function formatTimeOnly(time) {
   return time ? time.replace(":", ".") : "";
 }
