@@ -440,10 +440,10 @@ exports.updateProfile = async (req, res) => {
       console.log(
         "Error: countryCode and phoneNumber must be provided together.",
       );
-      return res.status(400).json({
-        status: false,
-        message: "Both Country Code and Phone Number are required.",
-      });
+      // return res.status(400).json({
+      //   status: false,
+      //   message: "Both Country Code and Phone Number are required.",
+      // });
     }
 
     if (countryCode && countryCode !== user.countryCode) {
