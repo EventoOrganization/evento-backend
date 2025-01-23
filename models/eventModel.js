@@ -22,7 +22,12 @@ const eventSchema = new Schema(
       type: Boolean,
       default: true,
     },
-
+    hiddenByUsers: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: "user",
+      },
+    ],
     restricted: {
       type: Boolean,
       default: false,
