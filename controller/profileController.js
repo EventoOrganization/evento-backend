@@ -196,23 +196,10 @@ exports.getUserProfileById = async (req, res) => {
       event._id.toString(),
     );
 
-    // Séparer les statuts valides et invalides
     const validEventStatuses = eventStatuses.filter((es) =>
       existingEventIds.includes(es.eventId.toString()),
     );
 
-    const invalidEventStatuses = eventStatuses.filter(
-      (es) => !existingEventIds.includes(es.eventId.toString()),
-    );
-
-    // Log des événements existants et supprimés
-    console.log("✅ Events that still exist:", existingEventIds);
-    console.log(
-      "❌ Events that no longer exist:",
-      invalidEventStatuses.map((es) => es.eventId.toString()),
-    );
-
-    // Utiliser uniquement les statuts valides
     const attendEventsIds = validEventStatuses
       .filter((es) => es.status === "isGoing")
       .map((es) => es.eventId.toString());
@@ -221,20 +208,27 @@ exports.getUserProfileById = async (req, res) => {
       .filter((es) => es.status === "isFavourite")
       .map((es) => es.eventId.toString());
 
-    // Récupérer tous les événements liés à l'utilisateur
+    const refusedEventsIds = validEventStatuses
+      .filter((es) => es.status === "isRefused")
+      .map((es) => es.eventId.toString());
+
     const allEvents = await Event.find({
       $and: [
         { eventType: "public" },
+        { _id: { $nin: refusedEventsIds } },
+        { hiddenByUsers: { $nin: [userId] } },
         {
           $or: [
             { guests: userId },
             { coHosts: userId },
             { user: userId },
             { _id: { $in: attendEventsIds } },
+            { _id: { $in: favouriteEventsIds } },
           ],
         },
       ],
     })
+
       .populate("interests", "_id name")
       .populate("user", "firstName lastName username profileImage")
       .populate("guests.user", "firstName lastName username profileImage")
@@ -244,7 +238,6 @@ exports.getUserProfileById = async (req, res) => {
       })
       .exec();
 
-    // Enrichir les événements avec les statuts utilisateur
     const enrichedEvents = allEvents.map((event) => {
       const isHosted =
         event.user && event.user._id.toString() === userId.toString();
@@ -253,37 +246,35 @@ exports.getUserProfileById = async (req, res) => {
         return coHostId?.toString() === userId.toString();
       });
 
+      const isGoing = attendEventsIds.includes(event._id.toString());
+      const isFavourite = favouriteEventsIds.includes(event._id.toString());
+      const isRefused = refusedEventsIds.includes(event._id.toString());
+
       return {
         ...event._doc,
-        isGoing: attendEventsIds.includes(event._id.toString()),
-        isFavourite: favouriteEventsIds.includes(event._id.toString()),
+        isGoing,
+        isFavourite,
+        isRefused,
         isHosted,
         isCoHost,
       };
     });
 
-    // Filtrer les événements à venir et passés
-    const upcomingEvents = enrichedEvents.filter((event) => {
-      const isUpcoming = new Date(event.details.endDate) >= new Date();
-      const isGoing = event.isGoing;
+    const today = new Date();
 
-      return isUpcoming && isGoing;
+    const upcomingEvents = enrichedEvents.filter((event) => {
+      if (!event.details?.endDate) return false;
+      return new Date(event.details.endDate) >= today && event.isGoing;
     });
 
     const pastEventsGoing = enrichedEvents.filter((event) => {
       if (!event.details?.endDate) return false;
-
-      const eventEndDate = new Date(event.details.endDate);
-      const today = startOfDay(new Date());
-      return isAfter(today, eventEndDate) && event.isGoing;
+      return new Date(event.details.endDate) < today && event.isGoing;
     });
 
     const pastEventsHosted = enrichedEvents.filter((event) => {
       if (!event.details?.endDate) return false;
-
-      const eventEndDate = new Date(event.details.endDate);
-      const today = startOfDay(new Date());
-      return isAfter(today, eventEndDate) && event.isHosted;
+      return new Date(event.details.endDate) < today && event.isHosted;
     });
 
     // Récupérer les utilisateurs suivis et les suiveurs
@@ -303,7 +294,6 @@ exports.getUserProfileById = async (req, res) => {
       follow.follower.toString(),
     );
 
-    // Compter le total des événements auxquels l'utilisateur a participé
     const countTotalEventIAttended =
       await Models.eventStatusSchema.countDocuments({
         userId: userId,
@@ -312,16 +302,6 @@ exports.getUserProfileById = async (req, res) => {
 
     userInfo._doc.totalEventAttended = countTotalEventIAttended;
 
-    // Filtrer les événements hébergés
-    const hostedEvents = enrichedEvents.filter(
-      (event) =>
-        (event.isHosted || event.isCoHost) &&
-        !pastEventsHosted.some(
-          (pastEvent) => pastEvent._id.toString() === event._id.toString(),
-        ),
-    );
-
-    // Structure de la réponse
     return res.status(200).json({
       status: true,
       message: "User profile fetched successfully",
@@ -330,7 +310,11 @@ exports.getUserProfileById = async (req, res) => {
         upcomingEvents,
         pastEventsGoing,
         pastEventsHosted,
-        hostedEvents,
+        hostedEvents: enrichedEvents.filter(
+          (event) => event.isHosted || event.isCoHost,
+        ),
+        favouriteEvents: enrichedEvents.filter((event) => event.isFavourite),
+        refusedEvents: enrichedEvents.filter((event) => event.isRefused),
         followingUserIds,
         followerUserIds,
       },
