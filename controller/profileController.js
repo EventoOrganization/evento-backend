@@ -168,7 +168,6 @@ exports.getUserProfileById = async (req, res) => {
   try {
     const userId = new ObjectId(req.params.userId);
 
-    // Récupérer les informations de l'utilisateur
     const userInfo = await User.findById(userId)
       .select(
         "firstName lastName username email profileImage bio URL socialLinks interests address",
@@ -182,13 +181,43 @@ exports.getUserProfileById = async (req, res) => {
         .json({ status: false, message: "User not found." });
     }
 
-    // Récupérer les statuts d'événement pour l'utilisateur (isGoing, isFavourite)
+    // Récupérer les statuts d'événement pour l'utilisateur
     const eventStatuses = await Models.eventStatusSchema.find({ userId });
-    const attendEventsIds = eventStatuses
+    console.log("Event Statuses:", eventStatuses);
+
+    const eventIds = eventStatuses.map((es) => es.eventId.toString());
+
+    // Vérifier quels événements existent encore
+    const existingEvents = await Event.find({ _id: { $in: eventIds } }).select(
+      "_id",
+    );
+
+    const existingEventIds = existingEvents.map((event) =>
+      event._id.toString(),
+    );
+
+    // Séparer les statuts valides et invalides
+    const validEventStatuses = eventStatuses.filter((es) =>
+      existingEventIds.includes(es.eventId.toString()),
+    );
+
+    const invalidEventStatuses = eventStatuses.filter(
+      (es) => !existingEventIds.includes(es.eventId.toString()),
+    );
+
+    // Log des événements existants et supprimés
+    console.log("✅ Events that still exist:", existingEventIds);
+    console.log(
+      "❌ Events that no longer exist:",
+      invalidEventStatuses.map((es) => es.eventId.toString()),
+    );
+
+    // Utiliser uniquement les statuts valides
+    const attendEventsIds = validEventStatuses
       .filter((es) => es.status === "isGoing")
       .map((es) => es.eventId.toString());
 
-    const favouriteEventsIds = eventStatuses
+    const favouriteEventsIds = validEventStatuses
       .filter((es) => es.status === "isFavourite")
       .map((es) => es.eventId.toString());
 
@@ -215,11 +244,10 @@ exports.getUserProfileById = async (req, res) => {
       })
       .exec();
 
-    // Enrichir les événements avec le statut utilisateur (isGoing, isFavourite, isHosted, isCoHost)
+    // Enrichir les événements avec les statuts utilisateur
     const enrichedEvents = allEvents.map((event) => {
       const isHosted =
-        event.user && event.user._id.toString() === userId.toString(); // Host case
-
+        event.user && event.user._id.toString() === userId.toString();
       const isCoHost = event.coHosts.some((coHost) => {
         const coHostId = coHost.userId?._id || coHost.userId;
         return coHostId?.toString() === userId.toString();
@@ -258,7 +286,7 @@ exports.getUserProfileById = async (req, res) => {
       return isAfter(today, eventEndDate) && event.isHosted;
     });
 
-    // Récupérer les utilisateurs suivis (following) et les suiveurs (followers)
+    // Récupérer les utilisateurs suivis et les suiveurs
     const followingUsers = await Models.userFollowModel
       .find({ follower: userId })
       .select("following")
@@ -304,7 +332,7 @@ exports.getUserProfileById = async (req, res) => {
         pastEventsHosted,
         hostedEvents,
         followingUserIds,
-        followerUserIds, // Inclure les followerUserIds
+        followerUserIds,
       },
     });
   } catch (error) {

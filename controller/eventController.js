@@ -541,6 +541,20 @@ exports.updateEventField = async (req, res) => {
         event.questions = value;
         event.details.createRSVP = value.length > 0 ? true : false;
         break;
+      case "hiddenByUsers":
+        if (!Array.isArray(event.hiddenByUsers)) {
+          event.hiddenByUsers = [];
+        }
+        const userId = value;
+
+        if (event.hiddenByUsers.includes(userId)) {
+          event.hiddenByUsers = event.hiddenByUsers.filter(
+            (id) => id.toString() !== userId,
+          );
+        } else {
+          event.hiddenByUsers.push(userId);
+        }
+        break;
       default:
         console.log("Invalid field specified");
         return res.status(400).json({ message: "Invalid field" });
@@ -1106,6 +1120,7 @@ exports.deleteEvent = async (req, res) => {
         _id: req.params.id,
       });
       if (eventDelete) {
+        await Models.eventStatusSchema.deleteMany({ eventId: req.params.id });
         await Models.eventAttendesUserModel.deleteMany({
           eventId: req.params.id,
         });

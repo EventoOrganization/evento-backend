@@ -58,22 +58,6 @@ router.post(
   authenticateJWT,
   eventController.updateEventStatus,
 );
-// router.post(
-//   "/attendEventStatus",
-//   authenticateJWT,
-//   eventController.attendEventStatus,
-// );
-// router.post(
-//   "/favouriteEventStatus",
-//   authenticateJWT,
-//   eventController.favouriteEventStatus,
-// );
-// router.post(
-//   "/refusedEventStatus",
-//   authenticateJWT,
-//   eventController.refusedEventStatus,
-// );
-
 // Delete events
 router.delete("/deleteEvent/:id", authenticateJWT, eventController.deleteEvent);
 
