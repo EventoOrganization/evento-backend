@@ -17,7 +17,7 @@ exports.quickSignup = async (req, res) => {
     if (existingUserEmail) {
       return res.status(409).json({
         status: false,
-        message: "Email already exists. Please choose another one.",
+        message: "You already have an account, please sign in to Respond.",
       });
     }
 

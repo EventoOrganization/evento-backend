@@ -179,7 +179,11 @@ router.get(
   authenticateJWT,
   userController.followStatusForAllUsersWithUserIdSartaj,
 );
-
+router.get(
+  "/userListWithFollowingStatusWithPagination",
+  userController.userListWithFollowingStatusWithPagination,
+);
+router.get("/getUsers", userController.getUsers);
 //--------------Socket Router------------------- not add in postman
 router.post("/saveMessage", userController.saveMessage);
 router.post("/reportUser", userController.reportUser);

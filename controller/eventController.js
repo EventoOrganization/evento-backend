@@ -994,28 +994,30 @@ exports.getUpcomingEvents = async (req, res) => {
   try {
     const userId = req.query.userId;
     const currentDate = new Date();
+    const page = parseInt(req.query.page) || 1;
+    const limit = 100;
+    const skip = (page - 1) * limit;
 
-    // Récupérer les événements publics et privés à venir
+    // 1️⃣ Récupération des statuts des événements pour le userId
+    const eventStatuses = await Models.eventStatusSchema
+      .find({})
+      .populate("userId", "username profileImage")
+      .exec();
+
+    const goingEventIds = eventStatuses
+      .filter((s) => s.status === "isGoing")
+      .map((s) => s.eventId);
+
+    // 2️⃣ Récupération des événements avec pagination
     const events = await Event.find({
       $or: [
-        { eventType: "public", "details.endDate": { $gt: currentDate } },
-        {
-          eventType: "private",
-          "details.endDate": { $gt: currentDate },
-          $or: [
-            { user: userId }, // host
-            { requested: userId },
-            { guests: userId },
-            { tempGuests: userId },
-            { coHosts: { $elemMatch: { userId: userId } } },
-          ],
-        },
+        { "details.endDate": { $gt: currentDate } },
+        { "details.date": { $gt: currentDate } },
       ],
     })
-      .sort({
-        "details.date": { $exists: true, $ne: null },
-        "details.date": 1,
-      })
+      .sort({ "details.date": 1 })
+      .skip(skip)
+      .limit(limit + 1)
       .populate("user", "username firstName lastName profileImage")
       .populate({
         path: "coHosts.userId",
@@ -1025,9 +1027,22 @@ exports.getUpcomingEvents = async (req, res) => {
       .populate("interests", "name image")
       .populate("requested", "username firstName lastName profileImage")
       .exec();
-    events.forEach((event) => {
-      console.log("eventstart:", event.details.date);
-    });
+
+    // 3️⃣ Vérifier s'il y a plus d'événements après cette page
+    const hasMore = events.length > limit;
+    if (hasMore) {
+      events.pop();
+    }
+
+    console.log(
+      "📢 Events found:",
+      events.map((e) => ({
+        id: e._id,
+        title: e.title,
+        type: e.eventType,
+      })),
+    );
+
     let enrichedEvents = events.map((event) => ({
       ...event.toObject(),
       isGoing: false,
@@ -1039,13 +1054,144 @@ exports.getUpcomingEvents = async (req, res) => {
     }));
 
     const eventIds = events.map((event) => event._id);
-    const eventStatuses = await Models.eventStatusSchema
-      .find({
-        eventId: { $in: eventIds },
-      })
-      .populate("userId", "username profileImage") // Peupler les infos de l'utilisateur
+    const relevantEventStatuses = eventStatuses.filter((s) =>
+      eventIds.includes(s.eventId),
+    );
+
+    const statusMap = {};
+    relevantEventStatuses.forEach((status) => {
+      if (!statusMap[status.eventId]) {
+        statusMap[status.eventId] = {
+          attendees: [],
+          favouritees: [],
+          refused: [],
+        };
+      }
+
+      if (status.status === "isGoing") {
+        statusMap[status.eventId].attendees.push(status.userId);
+      } else if (status.status === "isFavourite") {
+        statusMap[status.eventId].favouritees.push(status.userId);
+      } else if (status.status === "isRefused") {
+        statusMap[status.eventId].refused.push(status.userId);
+      }
+    });
+
+    if (userId) {
+      enrichedEvents = enrichedEvents.map((event) => {
+        const userStatus = statusMap[event._id] || {
+          attendees: [],
+          favouritees: [],
+          refused: [],
+        };
+
+        return {
+          ...event,
+          isGoing: userStatus.attendees.some(
+            (user) => user?._id?.toString() === userId,
+          ),
+          isFavourite: userStatus.favouritees.some(
+            (user) => user?._id?.toString() === userId,
+          ),
+          isRefused: userStatus.refused.some(
+            (user) => user?._id?.toString() === userId,
+          ),
+          attendees: userStatus.attendees || [],
+          favouritees: userStatus.favouritees || [],
+          refused: userStatus.refused || [],
+          isHosted: event?.user?._id?.toString() === userId,
+        };
+      });
+    }
+
+    // 4️⃣ Retourner les événements paginés avec `hasMore`
+    res.status(200).json({
+      success: true,
+      message: "Upcoming events retrieved successfully",
+      events: enrichedEvents,
+      hasMore,
+    });
+  } catch (error) {
+    console.error("Error in getUpcomingEvents controller:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to retrieve upcoming events",
+      error: error.message,
+    });
+  }
+};
+exports.getEvents = async (req, res) => {
+  try {
+    const { userId } = req.query;
+    const currentDate = new Date();
+    const page = parseInt(req.query.page) || 1;
+    const limit = 100;
+    const skip = (page - 1) * limit;
+
+    let eventFilters;
+
+    if (!userId) {
+      // 🌍 Mode Public : uniquement les événements publics futurs
+      eventFilters = {
+        $and: [
+          {
+            $or: [
+              { "details.endDate": { $gt: currentDate } },
+              { "details.date": { $gt: currentDate } },
+            ],
+          },
+          { eventType: "public" },
+        ],
+      };
+    } else {
+      // 🔐 Mode Authentifié : événements publics futurs + événements où `userId` est impliqué (passés et futurs)
+      eventFilters = {
+        $or: [
+          // ✅ 1. Événements publics futurs
+          {
+            $and: [
+              {
+                $or: [
+                  { "details.endDate": { $gt: currentDate } },
+                  { "details.date": { $gt: currentDate } },
+                ],
+              },
+              { eventType: "public" },
+            ],
+          },
+          // ✅ 2. Événements où `userId` est impliqué (passés et futurs)
+          { user: userId },
+          { guests: userId },
+          { "coHosts.userId": userId },
+        ],
+      };
+    }
+
+    // 📡 1️⃣ Récupération des événements
+    let events = await Event.find(eventFilters)
+      .sort({ "details.date": -1 })
+      .skip(skip)
+      .limit(limit + 1)
+      .populate("user", "username firstName lastName profileImage")
+      .populate("coHosts.userId", "username email profileImage")
+      .populate("guests", "username firstName lastName profileImage")
+      .populate("interests", "name image")
+      .populate("requested", "username firstName lastName profileImage")
       .exec();
 
+    const hasMore = events.length > limit;
+    if (hasMore) {
+      events.pop();
+    }
+
+    // 📡 2️⃣ Récupération des statuts des événements pour enrichissement
+    const eventIds = events.map((event) => event._id);
+    const eventStatuses = await Models.eventStatusSchema
+      .find({ eventId: { $in: eventIds } })
+      .populate("userId", "username profileImage")
+      .exec();
+
+    // 📊 3️⃣ Organisation des statuts des événements dans un Map
     const statusMap = {};
     eventStatuses.forEach((status) => {
       if (!statusMap[status.eventId]) {
@@ -1064,53 +1210,54 @@ exports.getUpcomingEvents = async (req, res) => {
         statusMap[status.eventId].refused.push(status.userId);
       }
     });
-    if (userId) {
-      enrichedEvents = enrichedEvents.map((event) => {
-        const userStatus = statusMap[event._id] || {
-          attendees: [],
-          favouritees: [],
-          refused: [],
-        };
 
-        const isGoing = userStatus.attendees.some(
-          (user) => user?._id?.toString() === userId,
-        );
-        const isFavourite = userStatus.favouritees.some(
-          (user) => user?._id?.toString() === userId,
-        );
-        const isRefused = userStatus.refused.some(
-          (user) => user?._id?.toString() === userId,
-        );
+    // 🔄 4️⃣ Enrichissement des événements avec les statuts
+    let enrichedEvents = events.map((event) => {
+      const userStatus = statusMap[event._id] || {
+        attendees: [],
+        favouritees: [],
+        refused: [],
+      };
 
-        const isHosted = event?.user?._id?.toString() === userId;
+      return {
+        ...event.toObject(),
+        isGoing: userId
+          ? userStatus.attendees.some(
+              (user) => user?._id?.toString() === userId,
+            )
+          : false,
+        isFavourite: userId
+          ? userStatus.favouritees.some(
+              (user) => user?._id?.toString() === userId,
+            )
+          : false,
+        isRefused: userId
+          ? userStatus.refused.some((user) => user?._id?.toString() === userId)
+          : false,
+        attendees: userStatus.attendees || [],
+        favouritees: userStatus.favouritees || [],
+        refused: userStatus.refused || [],
+        isHosted: event?.user?._id?.toString() === userId,
+      };
+    });
 
-        return {
-          ...event,
-          isGoing,
-          isFavourite,
-          isRefused,
-          attendees: userStatus.attendees || [],
-          favouritees: userStatus.favouritees || [],
-          refused: userStatus.refused || [],
-          isHosted,
-        };
-      });
-    }
-
+    // ✅ 5️⃣ Retour de la réponse
     res.status(200).json({
       success: true,
-      message: "Upcoming events retrieved successfully",
-      data: enrichedEvents,
+      message: "Events retrieved successfully",
+      events: enrichedEvents,
+      hasMore,
     });
   } catch (error) {
-    console.error("Error in getUpcomingEvents controller:", error);
+    console.error("Error in getEvents:", error);
     res.status(500).json({
       success: false,
-      message: "Failed to retrieve upcoming events",
+      message: "Failed to retrieve events",
       error: error.message,
     });
   }
 };
+
 exports.deleteEvent = async (req, res) => {
   try {
     //Fistly check created event is by logged in user or not

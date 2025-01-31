@@ -1066,24 +1066,28 @@ module.exports = {
 
   allUserListing: async (req, res) => {
     try {
-      let result = await Models.userModel.find(
-        {
-          role: { $ne: "admin" }, // Exclure les utilisateurs ayant le rôle "admin"
-        },
-        {
-          username: 1, // Inclure le champ `username`
-          firstName: 1, // Inclure le champ `firstName`
-          lastName: 1, // Inclure le champ `lastName`
-          profileImage: 1, // Inclure le champ `profileImage`
-          _id: 1, // Inclure le champ `_id`
-        },
-      );
+      const limit = parseInt(req.query.limit) || 20;
+      const page = parseInt(req.query.page) || 1;
+      const skip = (page - 1) * limit;
 
-      return helper.success(res, "All user list", result);
+      const users = await Models.userModel
+        .find({ role: { $ne: "admin" } })
+        .select("username firstName lastName profileImage _id interests")
+        .skip(skip)
+        .limit(limit);
+
+      const totalUsers = await Models.userModel.countDocuments({
+        role: { $ne: "admin" },
+      });
+
+      const hasMore = skip + limit < totalUsers;
+
+      return res.json({ users, hasMore });
     } catch (error) {
-      return res.status(401).json({ status: false, message: error.message });
+      return res.status(500).json({ status: false, message: error.message });
     }
   },
+
   createEventAndRSVPform: async (req, res) => {
     console.log("Received request body:", req.body);
     console.log("Received files", req.files);
@@ -4144,73 +4148,230 @@ module.exports = {
   },
   followStatusForUsersYouFollow: async (req, res) => {
     try {
-      let loggedInUserId = req.params.id;
+      const { id } = req.params;
+      const limit = parseInt(req.query.limit) || 300;
+      const page = parseInt(req.query.page) || 1;
+      const skip = (page - 1) * limit;
 
-      // Fetch logged-in user's interests
-      const loggedInUser = await Models.userModel.findById(loggedInUserId);
-      const loggedInUserInterests = loggedInUser.interests || [];
+      const loggedInUser = await Models.userModel
+        .findById(id)
+        .select("interests");
+      const loggedInUserInterests = loggedInUser?.interests || [];
 
-      // Get the list of users excluding the logged-in user and admins
       const userList = await Models.userModel
-        .find({
-          $and: [{ _id: { $ne: loggedInUserId } }, { role: { $ne: "admin" } }],
-        })
-        .select({
-          username: 1,
-          email: 1,
-          firstName: 1,
-          lastName: 1,
-          profileImage: 1,
-          _id: 1,
-          interests: 1,
-        });
+        .find({ _id: { $ne: id }, role: { $ne: "admin" } })
+        .select("username email firstName lastName profileImage _id interests")
+        .skip(skip)
+        .limit(limit);
 
-      const followingList = await Models.userFollowModel.find({
-        follower: loggedInUserId,
+      const totalUsers = await Models.userModel.countDocuments({
+        _id: { $ne: id },
+        role: { $ne: "admin" },
       });
+
+      const followingList = await Models.userFollowModel.find({ follower: id });
       const followersList = await Models.userFollowModel.find({
-        following: loggedInUserId,
+        following: id,
       });
 
-      // Create maps for following and followers status
-      const followingMap = new Map();
-      followingList.forEach((following) => {
-        followingMap.set(following.following.toString(), true);
-      });
-      const followersMap = new Map();
-      followersList.forEach((follower) => {
-        followersMap.set(follower.follower.toString(), true);
-      });
+      const followingMap = new Map(
+        followingList.map((f) => [f.following.toString(), true]),
+      );
+      const followersMap = new Map(
+        followersList.map((f) => [f.follower.toString(), true]),
+      );
 
-      // Calculate interest matches and build the result list
       const resultList = userList.map((user) => {
         const userId = user._id.toString();
-        const userInterests = user.interests || [];
-        const matchingInterests = loggedInUserInterests.filter((interest) =>
-          userInterests.includes(interest),
+        const matchingInterests = loggedInUserInterests.filter((i) =>
+          user.interests.includes(i),
         ).length;
-
-        let isIFollowingHim = followingMap.has(userId);
-        let isFollowingMe = followersMap.has(userId);
-
         return {
           ...user.toObject(),
-          isIFollowingHim,
-          isFollowingMe,
+          isIFollowingHim: followingMap.has(userId),
+          isFollowingMe: followersMap.has(userId),
           matchingInterests,
         };
       });
 
-      // Sort users by the number of matching interests in descending order
       resultList.sort((a, b) => b.matchingInterests - a.matchingInterests);
 
-      return helper.success(
-        res,
-        "List of users and their follow status, sorted by interest matches",
-        resultList,
-      );
+      return res.json({
+        users: resultList,
+        hasMore: skip + limit < totalUsers,
+      });
     } catch (error) {
-      return res.status(401).json({ status: false, message: error.message });
+      return res.status(500).json({ status: false, message: error.message });
+    }
+  },
+  userListWithFollowingStatusWithPagination: async (req, res) => {
+    try {
+      const { id } = req.params;
+      const limit = parseInt(req.query.limit) || 300;
+      const page = parseInt(req.query.page) || 1;
+      const skip = (page - 1) * limit;
+
+      let followingMap = new Map();
+      let followersMap = new Map();
+      let loggedInUserInterests = [];
+
+      if (id) {
+        const loggedInUser = await Models.userModel
+          .findById(id)
+          .select("interests");
+
+        loggedInUserInterests = loggedInUser?.interests || [];
+
+        const followingList = await Models.userFollowModel.find({
+          follower: id,
+        });
+        const followersList = await Models.userFollowModel.find({
+          following: id,
+        });
+
+        followingMap = new Map(
+          followingList.map((f) => [f.following.toString(), true]),
+        );
+        followersMap = new Map(
+          followersList.map((f) => [f.follower.toString(), true]),
+        );
+      }
+
+      // Filtrage des utilisateurs
+      const filter = id
+        ? { _id: { $ne: id }, role: { $ne: "admin" } }
+        : { role: { $ne: "admin" } };
+
+      const userList = await Models.userModel
+        .find(filter)
+        .select("username email firstName lastName profileImage _id interests")
+        .skip(skip)
+        .limit(limit);
+
+      const totalUsers = await Models.userModel.countDocuments(filter);
+
+      // Construction de la réponse
+      const resultList = userList.map((user) => {
+        const userId = user._id.toString();
+        const matchingInterests = id
+          ? loggedInUserInterests.filter((i) => user.interests.includes(i))
+              .length
+          : 0;
+
+        return {
+          ...user.toObject(),
+          isIFollowingHim: id ? followingMap.has(userId) : undefined, // Supprime ces champs si `id` est null
+          isFollowingMe: id ? followersMap.has(userId) : undefined,
+          matchingInterests,
+        };
+      });
+
+      resultList.sort((a, b) => b.matchingInterests - a.matchingInterests);
+
+      return res.json({
+        users: resultList,
+        hasMore: skip + limit < totalUsers,
+      });
+    } catch (error) {
+      return res.status(500).json({ status: false, message: error.message });
+    }
+  },
+  getUsers: async (req, res) => {
+    try {
+      const { userId } = req.query;
+      const limit = parseInt(req.query.limit) || 300;
+      const page = parseInt(req.query.page) || 1;
+      const skip = (page - 1) * limit;
+
+      let followingMap = new Map();
+      let followersMap = new Map();
+      let loggedInUserInterests = [];
+
+      if (userId) {
+        // Vérification de l'ID utilisateur
+        if (!mongoose.Types.ObjectId.isValid(userId)) {
+          return res.status(400).json({
+            success: false,
+            message: "Invalid userId format",
+          });
+        }
+
+        // Récupération des intérêts du user connecté
+        const loggedInUser = await Models.userModel
+          .findById(userId)
+          .select("interests");
+
+        loggedInUserInterests = Array.isArray(loggedInUser?.interests)
+          ? loggedInUser.interests
+          : [];
+
+        // Récupération des suivis et abonnés
+        const [followingList, followersList] = await Promise.all([
+          Models.userFollowModel.find({ follower: userId }),
+          Models.userFollowModel.find({ following: userId }),
+        ]);
+
+        followingMap = new Map(
+          (followingList ?? []).map((f) => [f.following.toString(), true]),
+        );
+        followersMap = new Map(
+          (followersList ?? []).map((f) => [f.follower.toString(), true]),
+        );
+      }
+
+      // 🔍 Filtre des utilisateurs (exclut les admins)
+      const filter = { role: { $ne: "admin" } };
+      if (userId) {
+        filter._id = { $ne: userId }; // Exclure l'utilisateur connecté
+      }
+
+      // 📡 Récupération des utilisateurs
+      const userList = await Models.userModel
+        .find(filter)
+        .select("username email firstName lastName profileImage _id interests")
+        .skip(skip)
+        .limit(limit);
+
+      const totalUsers = await Models.userModel.countDocuments(filter);
+
+      // 🔄 Construction de la réponse
+      const resultList = userList.map((user) => {
+        const userObj = user.toObject();
+        const userIdStr = user._id.toString();
+
+        // 🔥 Vérifie que `user.interests` est un tableau avant d'utiliser `.includes()`
+        const userInterests = Array.isArray(user.interests)
+          ? user.interests
+          : [];
+        const matchingInterests = loggedInUserInterests.filter((i) =>
+          userInterests.includes(i),
+        ).length;
+
+        return {
+          ...userObj,
+          isIFollowingHim: userId ? followingMap.has(userIdStr) : undefined,
+          isFollowingMe: userId ? followersMap.has(userIdStr) : undefined,
+          matchingInterests,
+        };
+      });
+
+      // 🔢 Tri par nombre d’intérêts communs (si un userId est passé)
+      if (userId) {
+        resultList.sort((a, b) => b.matchingInterests - a.matchingInterests);
+      }
+
+      return res.json({
+        success: true,
+        users: resultList,
+        hasMore: skip + limit < totalUsers,
+      });
+    } catch (error) {
+      console.error("Error in getUsers:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Failed to retrieve users",
+        error: error.message,
+      });
     }
   },
 

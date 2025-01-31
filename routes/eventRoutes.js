@@ -10,7 +10,7 @@ router.post("/createEvent", authenticateJWT, eventController.createEvent);
 router.get("/getEvent/:id", eventController.getEventById);
 router.get("/getRSVPAndReasons/:eventId", eventController.getRSVPAndReasons);
 router.get("/getUpcomingEvents", eventController.getUpcomingEvents);
-
+router.get("/getEvents", eventController.getEvents);
 // Update events
 router.put(
   "/updateEvent/:eventId",
