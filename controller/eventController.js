@@ -1328,3 +1328,45 @@ exports.updateEventStatus = async (req, res) => {
     });
   }
 };
+exports.removeUserFromGoing = async (req, res) => {
+  try {
+    const { eventId, userId } = req.body;
+
+    // Vérifie si l'admin est bien l'organisateur de l'événement
+    const event = await Event.findById(eventId);
+    if (!event) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Event not found" });
+    }
+
+    // Vérifie si l'utilisateur qui fait la requête est bien admin ou hôte
+    if (
+      event.user.toString() !== req.user.id &&
+      !event.coHosts.some((coHost) => coHost.userId.toString() === req.user.id)
+    ) {
+      return res.status(403).json({ success: false, message: "Unauthorized" });
+    }
+
+    // Supprime l'entrée de `eventStatusSchema`
+    const removedStatus = await Models.eventStatusSchema.findOneAndDelete({
+      eventId,
+      userId,
+      status: "isGoing",
+    });
+
+    if (!removedStatus) {
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found in Going list" });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "User removed from Going list successfully",
+    });
+  } catch (error) {
+    console.error("Error removing user from Going list:", error);
+    res.status(500).json({ success: false, message: "Internal Server Error" });
+  }
+};

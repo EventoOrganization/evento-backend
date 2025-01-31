@@ -52,6 +52,11 @@ router.put(
   authenticateJWT,
   eventController.updateGuestsAllowFriend,
 );
+router.post(
+  "/removeUserFromGoing",
+  authenticateJWT,
+  eventController.removeUserFromGoing,
+);
 // Handling Status
 router.post(
   "/updateEventStatus",
