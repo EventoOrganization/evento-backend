@@ -650,6 +650,7 @@ exports.createEvent = async (req, res) => {
       includeChat,
       createRSVP,
       coHosts,
+      limitedGuests,
     } = req.body;
 
     // Handle media for event
@@ -694,6 +695,7 @@ exports.createEvent = async (req, res) => {
       },
       initialMedia,
       guests,
+      limitedGuests,
       interests,
       questions,
       additionalField,
