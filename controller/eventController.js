@@ -555,6 +555,9 @@ exports.updateEventField = async (req, res) => {
           event.hiddenByUsers.push(userId);
         }
         break;
+      case "limitedGuests":
+        event.limitedGuests = value;
+        break;
       default:
         console.log("Invalid field specified");
         return res.status(400).json({ message: "Invalid field" });

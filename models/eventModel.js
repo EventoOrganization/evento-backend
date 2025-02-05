@@ -32,7 +32,11 @@ const eventSchema = new Schema(
       type: Boolean,
       default: false,
     },
-
+    limitedGuests: {
+      type: Number,
+      default: null,
+      min: 1,
+    },
     showUsersLists: {
       type: Boolean,
       default: true,
