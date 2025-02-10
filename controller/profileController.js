@@ -108,7 +108,13 @@ exports.getUserProfileById = async (req, res) => {
 
     // 📌 Récupérer les statuts d'événement pour l'utilisateur
     const eventStatuses = await Models.eventStatusSchema.find({ userId });
-
+    const followingUsers = await Models.userFollowModel
+      .find({ follower: userId })
+      .select("following")
+      .exec();
+    const followingUserIds = followingUsers.map((follow) =>
+      follow.following.toString(),
+    );
     const attendEventsIds = eventStatuses
       .filter((es) => es.status === "isGoing")
       .map((es) => es.eventId.toString());
@@ -189,6 +195,7 @@ exports.getUserProfileById = async (req, res) => {
       message: "User profile fetched successfully",
       data: {
         ...userInfo._doc,
+        followingUserIds,
         upcomingEvents,
         pastEventsGoing,
         pastEventsHosted,
