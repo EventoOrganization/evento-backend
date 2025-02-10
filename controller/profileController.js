@@ -168,9 +168,9 @@ exports.getUserProfileById = async (req, res) => {
     const today = new Date();
 
     const isUpcomingOrOngoing = (event) =>
-      new Date(event.details.date) > today || // 🔹 Futur
+      new Date(event.details.date) > today ||
       (new Date(event.details.date) <= today &&
-        new Date(event.details.endDate) > today); // 🔹 En cours
+        new Date(event.details.endDate) > today);
 
     const upcomingEvents = enrichedEvents.filter(
       (event) => isUpcomingOrOngoing(event) && event.isGoing,
@@ -192,9 +192,13 @@ exports.getUserProfileById = async (req, res) => {
         upcomingEvents,
         pastEventsGoing,
         pastEventsHosted,
-        hostedEvents: enrichedEvents.filter(
-          (event) => event.isHosted || event.isCoHost,
-        ),
+        hostedEvents: enrichedEvents
+          .filter(
+            (event) =>
+              (event.isHosted || event.isCoHost) && isUpcomingOrOngoing(event),
+          )
+          .sort((a, b) => new Date(a.details.date) - new Date(b.details.date)),
+
         favouriteEvents: enrichedEvents.filter((event) => event.isFavourite),
         refusedEvents: enrichedEvents.filter((event) => event.isRefused),
       },
