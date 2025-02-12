@@ -170,7 +170,7 @@ const sendFeedbackEmail = async (user, feedback) => {
   const params = {
     Source: process.env.SES_NO_REPLY_MESSAGES,
     Destination: {
-      ToAddresses: ["evento_app@outlook.com"],
+      ToAddresses: ["help@evento-app.io"],
     },
     Message: {
       Subject: {
@@ -195,7 +195,7 @@ const sendFeedbackEmail = async (user, feedback) => {
   try {
     const result = await ses.sendEmail(params).promise();
     console.log(
-      `Feedback email sent successfully to evento_app@outlook.com`,
+      `Feedback email sent successfully to help@evento-app.io`,
       result,
     );
   } catch (error) {
