@@ -115,6 +115,13 @@ exports.getUserProfileById = async (req, res) => {
     const followingUserIds = followingUsers.map((follow) =>
       follow.following.toString(),
     );
+    const followerUsers = await Models.userFollowModel
+      .find({ following: userId })
+      .select("follower")
+      .exec();
+    const followerUserIds = followerUsers.map((follow) =>
+      follow.follower.toString(),
+    );
     const attendEventsIds = eventStatuses
       .filter((es) => es.status === "isGoing")
       .map((es) => es.eventId.toString());
@@ -196,6 +203,7 @@ exports.getUserProfileById = async (req, res) => {
       data: {
         ...userInfo._doc,
         followingUserIds,
+        followerUserIds,
         upcomingEvents,
         pastEventsGoing,
         pastEventsHosted,
