@@ -1133,9 +1133,15 @@ exports.getEvents = async (req, res) => {
     const page = parseInt(req.query.page) || 1;
     const limit = 100;
     const skip = (page - 1) * limit;
-
+    const eventStatusesz = await Models.eventStatusSchema.find({ userId });
     let eventFilters;
+    const attendEventsIds = eventStatusesz
+      .filter((es) => es.status === "isGoing")
+      .map((es) => es.eventId.toString());
 
+    const favouriteEventsIds = eventStatusesz
+      .filter((es) => es.status === "isFavourite")
+      .map((es) => es.eventId.toString());
     if (!userId) {
       // 🌍 Mode Public : uniquement les événements publics futurs
       eventFilters = {
@@ -1169,6 +1175,8 @@ exports.getEvents = async (req, res) => {
           { user: userId },
           { guests: userId },
           { "coHosts.userId": userId },
+          { _id: { $in: attendEventsIds } },
+          { _id: { $in: favouriteEventsIds } },
         ],
       };
     }
