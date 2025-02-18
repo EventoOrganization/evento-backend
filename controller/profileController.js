@@ -177,7 +177,6 @@ exports.getUserProfileById = async (req, res) => {
       };
     });
 
-    // 📌 Gestion des événements passés et futurs
     const today = new Date();
 
     const isUpcomingOrOngoing = (event) =>
