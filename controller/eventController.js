@@ -101,47 +101,45 @@ schedule.scheduleJob(cronSchedule1, async function () {
 });
 exports.deletePostEventMedia = async (req, res) => {
   const { eventId } = req.params;
-  const { currentMediaIndex } = req.body;
-
-  if (!eventId || currentMediaIndex === undefined) {
-    // Ensure currentMediaIndex is not undefined
-    return res
-      .status(400)
-      .json({ message: "Missing eventId or currentMediaIndex" });
-  }
+  const { mediaUrl } = req.body;
 
   try {
-    // Fetch the event by ID
-    const event = await Event.findById(eventId);
-    if (!event) {
+    console.log("🗑️ Tentative de suppression du média :", mediaUrl);
+
+    // Récupère l'événement AVANT suppression
+    const eventBefore = await Models.eventModel.findById(eventId);
+    console.log("📋 Médias AVANT suppression :", eventBefore.postEventMedia);
+
+    // Suppression dans MongoDB avec $pull
+    const updatedEvent = await Models.eventModel
+      .findByIdAndUpdate(
+        eventId,
+        { $pull: { postEventMedia: { url: mediaUrl } } }, // Supprime par URL
+        { new: true }, // Retourne l'événement mis à jour
+      )
+      .populate("postEventMedia.userId", "username profileImage");
+
+    // Vérifie si MongoDB a bien retiré l'élément
+    console.log("✅ Médias APRÈS suppression :", updatedEvent.postEventMedia);
+
+    if (!updatedEvent) {
       return res.status(404).json({ message: "Event not found" });
     }
 
-    // Check if the currentMediaIndex is valid
-    if (
-      currentMediaIndex < 0 ||
-      currentMediaIndex >= event.postEventMedia.length
-    ) {
-      return res.status(400).json({ message: "Invalid media index" });
-    }
-
-    // Remove the media item at the given index
-    event.postEventMedia.splice(currentMediaIndex, 1);
-
-    // Save the updated event
-    await event.save();
-
-    // Success response
-    return res
-      .status(200)
-      .json({ message: "Media deleted from database successfully" });
+    res.status(200).json({
+      success: true,
+      message: "Media deleted successfully",
+      postEventMedia: updatedEvent.postEventMedia,
+    });
   } catch (error) {
-    console.error("Error deleting media from DB:", error);
-    return res
-      .status(500)
-      .json({ message: "Internal server error", error: error.message });
+    console.error("❌ Erreur suppression média :", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to delete post-event media",
+    });
   }
 };
+
 exports.addGuests = async (req, res) => {
   const eventId = req.params.id;
   const { guests, tempGuests, user } = req.body;
@@ -362,21 +360,19 @@ exports.acceptRequest = async (req, res) => {
 };
 exports.storePostEventMedia = async (req, res) => {
   const { eventId, media } = req.body;
-  const userId = req.user._id; // Supposons que l'ID de l'utilisateur soit disponible via req.user
+  const userId = req.user._id;
 
   try {
-    // Ajouter userId à chaque média
     const mediaWithUser = media.map((item) => ({
       ...item,
-      userId: userId, // Ajoute l'ID de l'utilisateur à chaque média
+      userId: userId,
     }));
 
-    // Mettre à jour l'événement avec les nouveaux médias
     const updatedEvent = await Event.findByIdAndUpdate(
       eventId,
       { $push: { postEventMedia: { $each: mediaWithUser } } },
       { new: true },
-    ).populate("postEventMedia.userId", "username profileImage"); // Récupère les infos du userId
+    ).populate("postEventMedia.userId", "username profileImage");
 
     res.status(200).json({
       success: true,
@@ -391,6 +387,7 @@ exports.storePostEventMedia = async (req, res) => {
     });
   }
 };
+
 exports.toggleUploadMedia = async (req, res) => {
   const { eventId, allow } = req.body;
   if (!eventId || typeof allow !== "boolean") {
