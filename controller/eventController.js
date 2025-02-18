@@ -558,6 +558,10 @@ exports.updateEventField = async (req, res) => {
       case "limitedGuests":
         event.limitedGuests = value;
         break;
+      case "initialMedia":
+        console.log("Updating initialMedia:", value);
+        event.initialMedia = value;
+        break;
       default:
         console.log("Invalid field specified");
         return res.status(400).json({ message: "Invalid field" });
