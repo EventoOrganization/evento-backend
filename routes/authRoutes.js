@@ -3,7 +3,7 @@ var express = require("express");
 var router = express.Router();
 var authController = require("../controller/authController");
 const authenticateJWT = require("../middleware/authentication").authenticateJWT;
-
+router.post("/validate-token", authenticateJWT, authController.validateToken);
 // all routes start with /auth
 router.post("/quick-signup", authController.quickSignup);
 router.post("/new-signup", authController.newSignup);

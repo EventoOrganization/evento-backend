@@ -551,3 +551,55 @@ exports.deleteAccount = async (req, res) => {
       .json({ message: "Server error, unable to delete account" });
   }
 };
+exports.validateToken = async (req, res) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader) {
+    return res.status(401).json({
+      success: false,
+      message: "Authorization header missing",
+    });
+  }
+
+  const token = authHeader.split(" ")[1];
+
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET_KEY);
+    console.log("🔑 ~ Token decoded:", decoded);
+
+    const existingUser = await User.findOne({
+      _id: decoded.id,
+      email: decoded.email,
+    });
+
+    if (!existingUser) {
+      return res.status(403).json({
+        success: false,
+        message: "User not found or session expired",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Token is valid",
+      user: {
+        id: existingUser._id,
+        email: existingUser.email,
+        username: existingUser.username,
+      },
+    });
+  } catch (error) {
+    console.error("JWT verification error:", error.message);
+    let message = "Invalid token";
+
+    if (error instanceof jwt.TokenExpiredError) {
+      message = "Token has expired";
+    } else if (error instanceof jwt.JsonWebTokenError) {
+      message = "Token is invalid";
+    }
+
+    return res.status(403).json({
+      success: false,
+      message: message,
+    });
+  }
+};
