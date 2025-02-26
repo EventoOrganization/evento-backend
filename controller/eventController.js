@@ -13,6 +13,7 @@ const {
   sendEventInviteEmail,
   sendUpdateNotification,
   sendEventReminderEmail,
+  sendAnnouncementEmail,
 } = require("../helper/mailjetEmailService");
 const { sendWhatsAppInvitation } = require("../services/whatsappService");
 schedule.scheduleJob(cronSchedule1, async function () {
@@ -1422,6 +1423,13 @@ exports.removeUserFromGoing = async (req, res) => {
   }
 };
 exports.createAnnouncement = async (req, res) => {
+  console.log("req.body", req.body);
+  const STATUS_MAPPING = {
+    going: "isGoing",
+    invited: "invited",
+    decline: "isRefused",
+  };
+
   try {
     const { eventId } = req.params;
     const { userId, message, receivers } = req.body;
@@ -1432,13 +1440,30 @@ exports.createAnnouncement = async (req, res) => {
         .json({ error: "User ID and message are required." });
     }
 
-    // Vérifier si l'event existe
+    // Vérification de l'event
     const event = await Event.findById(eventId);
     if (!event) {
       return res.status(404).json({ error: "Event not found." });
     }
 
-    // Créer une mise à jour / annonce
+    // Vérification de l'utilisateur qui envoie l'annonce
+    const sender = await Models.userModel.findById(userId);
+    if (!sender) {
+      return res.status(404).json({ error: "Sender not found." });
+    }
+
+    // Vérification du status uniquement si on ne passe pas par des userIds
+    const mappedStatus = receivers.status
+      ? STATUS_MAPPING[receivers.status]
+      : null;
+
+    if (!mappedStatus && !receivers.userIds?.length) {
+      return res
+        .status(400)
+        .json({ error: `Invalid status provided: ${receivers.status}` });
+    }
+
+    // Création de l'annonce
     const newAnnouncement = new Models.eventAnnouncementsSchema({
       eventId,
       senderId: userId,
@@ -1448,12 +1473,89 @@ exports.createAnnouncement = async (req, res) => {
 
     await newAnnouncement.save();
 
+    let recipients = [];
+
+    // Si on a une liste d'userIds, on récupère directement ces utilisateurs
+    if (receivers.userIds?.length > 0) {
+      recipients = await Models.userModel.find({
+        _id: { $in: receivers.userIds },
+      });
+    } else if (mappedStatus && mappedStatus !== "invited") {
+      // Sinon, si on passe par un statut
+      const eventStatuses = await Models.eventStatusSchema
+        .find({ eventId, status: mappedStatus })
+        .populate("userId")
+        .exec();
+      recipients = eventStatuses.map((es) => es.userId);
+    } else if (receivers.status === "invited") {
+      // Récupération des invités sans statut
+      const goingIds = new Set(
+        (
+          await Models.eventStatusSchema.find({ eventId, status: "isGoing" })
+        ).map((es) => es.userId.toString()),
+      );
+      const favouritedIds = new Set(
+        (
+          await Models.eventStatusSchema.find({
+            eventId,
+            status: "isFavourite",
+          })
+        ).map((es) => es.userId.toString()),
+      );
+      const refusedIds = new Set(
+        (
+          await Models.eventStatusSchema.find({ eventId, status: "isRefused" })
+        ).map((es) => es.userId.toString()),
+      );
+      recipients = [
+        ...(event.guests || []),
+        ...(event.tempGuests || []),
+      ].filter(
+        (user) =>
+          user._id &&
+          !goingIds.has(user._id.toString()) &&
+          !favouritedIds.has(user._id.toString()) &&
+          !refusedIds.has(user._id.toString()),
+      );
+
+      // 🔥 Extraire les IDs des invités
+      const recipientIds = recipients.map((user) => user._id);
+
+      // Fetch des utilisateurs complets pour avoir les emails
+      if (recipientIds.length > 0) {
+        recipients = await Models.userModel.find({
+          _id: { $in: recipientIds },
+        });
+      }
+    }
+
+    // Log des destinataires
+    console.log("✅ New Announcement Created:", newAnnouncement);
+    console.log(
+      "📩 Sending emails to:",
+      recipients.map((r) => r.email).join(", "),
+    );
+    console.log("📩 Final recipients before sending:", recipients);
+
+    recipients = Array.isArray(recipients) ? recipients : [recipients];
+
+    // Envoi des emails uniquement aux utilisateurs avec une adresse email
+    if (recipients.length > 0) {
+      await Promise.allSettled(
+        recipients
+          .filter((recipient) => recipient.email)
+          .map((recipient) =>
+            sendAnnouncementEmail(sender, recipient, event, newAnnouncement),
+          ),
+      );
+    }
+
     res.status(201).json({
       message: "Announcement created successfully",
       announcement: newAnnouncement,
     });
   } catch (error) {
-    console.error("Error creating announcement:", error);
+    console.error("❌ Error creating announcement:", error);
     res.status(500).json({ error: "Internal server error" });
   }
 };

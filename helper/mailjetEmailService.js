@@ -98,6 +98,87 @@ const sendEventInviteEmail = async (
     console.error(`Error sending invitation email to ${guest.email}:`, error);
   }
 };
+const sendAnnouncementEmail = async (user, recipient, event, announcement) => {
+  if (!user || !recipient || !event || !announcement) {
+    console.error("Missing required data for sending the email.");
+    return;
+  }
+
+  const imageUrl =
+    event.initialMedia?.[0]?.url || "https://via.placeholder.com/600x200";
+  const formattedDate = new Date(event.details.date).toLocaleDateString(
+    undefined,
+    {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    },
+  );
+
+  const subject = `New Announcement for ${event.title}`;
+  const header = `📢 Announcement from ${user.username || "Evento"}`;
+
+  const content = `
+    <p style="font-size: 16px; color: #333;">Hi,</p>
+    <p style="font-size: 14px; color: #333;">
+      <strong>${
+        user.username || "Evento"
+      }</strong> has posted a new announcement for the event:
+      <strong>${event.title}</strong>.
+    </p>
+    <p style="font-size: 14px; color: #333;">
+      <em>"${announcement.message}"</em>
+    </p>
+    <ul style="list-style-type: none; padding: 0; font-size: 14px; color: #333;">
+      <li>📌 <strong>Event:</strong> ${event.title}</li>
+      <li>👤 <strong>Host:</strong> ${user.username || "Evento"}</li>
+      <li>📅 <strong>Date:</strong> ${formattedDate}</li>
+      <li>⏰ <strong>Time:</strong> ${event.details.startTime}</li>
+      <li>📍 <strong>Location:</strong> <a href="https://maps.google.com/?q=${encodeURIComponent(
+        event.details.location,
+      )}" target="_blank" style="color: #5f6fed; text-decoration: none;">
+        ${event.details.location}
+      </a></li>
+    </ul>
+     <div style="text-align: center; margin-top: 20px;">
+      <a href="https://www.evento-app.io/event/${event._id}" target="_blank" 
+      style="display: inline-block; padding: 10px 20px; background-color: #5b34da; color: white; text-decoration: none; border-radius: 5px; font-size: 14px;">
+        View Event Details
+      </a>
+    </div>
+  `;
+
+  const emailContent = wrapWithTemplate(header, content, imageUrl);
+
+  try {
+    const request = mailjetClient.post("send", { version: "v3.1" }).request({
+      Messages: [
+        {
+          From: {
+            Email: process.env.MJ_FROM_EMAIL,
+            Name: "Evento - Your Event Platform",
+          },
+          To: [
+            {
+              Email: recipient.email,
+              Name: recipient.username || "Guest",
+            },
+          ],
+          Subject: subject,
+          HTMLPart: emailContent,
+          CustomID: "EventAnnouncement",
+        },
+      ],
+    });
+
+    const result = await request;
+    console.log(`Announcement email sent to recipient:`, result.body);
+  } catch (error) {
+    console.error(`Error sending announcement email:`, error);
+  }
+};
+
 const sendOTPEmail = async (email, otpCode, password = null) => {
   try {
     const { subject, header } = getEmailMeta("otp", { title: "Your OTP Code" });
@@ -482,4 +563,5 @@ module.exports = {
   sendEventInviteEmail,
   sendEventReminderEmail,
   sendUpdateNotification,
+  sendAnnouncementEmail,
 };
