@@ -208,7 +208,43 @@ exports.addGuests = async (req, res) => {
         // Vérification si l'utilisateur existe déjà
         const existingUser = await Models.userModel.findOne({ email });
         if (existingUser) {
-          console.log(`User with email ${email} already exists, skipping.`);
+          const guestId = existingUser._id;
+          if (!event.guests.includes(guestId)) {
+            event.guests.push(guestId);
+
+            const guestInfo = {
+              _id: guestId,
+              username: existingUser.username,
+              email: existingUser.email,
+              phoneNumber: existingUser.phoneNumber,
+              unsubscribeToken: existingUser.unsubscribeToken,
+              preferences: existingUser.preferences,
+            };
+
+            // Envoi des notifications
+            if (
+              existingUser.phoneNumber &&
+              existingUser.preferences.receiveInvites
+            ) {
+              await sendWhatsAppInvitation(
+                existingUser.countryCode,
+                existingUser.phoneNumber,
+                existingUser.username,
+                event.title,
+                eventLink,
+              );
+            } else if (existingUser.preferences.receiveInvites) {
+              await sendEventInviteEmail(user, guestInfo, event, eventLink);
+            } else {
+              console.log(
+                `User with email ${email} has disabled invite notifications.`,
+              );
+            }
+          } else {
+            console.log(
+              `User with email ${email} is already added to the event.`,
+            );
+          }
           continue;
         }
 
@@ -1309,7 +1345,6 @@ exports.updateEventStatus = async (req, res) => {
       message: "Event ID and User ID are required",
     });
   }
-
   try {
     if (!status) {
       // Suppression du statut si aucun statut n'est fourni
