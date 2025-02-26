@@ -33,6 +33,11 @@ router.patch(
   authenticateJWT,
   eventController.toggleUploadMedia,
 );
+router.post(
+  "/:eventId/createAnnouncement",
+  authenticateJWT,
+  eventController.createAnnouncement,
+);
 
 // handle Guests
 router.post(

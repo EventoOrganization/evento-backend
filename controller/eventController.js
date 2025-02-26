@@ -956,7 +956,9 @@ exports.getEventById = async (req, res) => {
     );
     // console.log("Host status:", hostStatus);
     // console.log("Co-host status:", isCoHost);
-
+    const eventAnnouncements = await Models.eventAnnouncementsSchema.find({
+      eventId,
+    });
     // Assemblage de l'événement enrichi
     const enrichedEvent = {
       ...event.toObject(),
@@ -965,6 +967,7 @@ exports.getEventById = async (req, res) => {
       attendees: enrichedAttendees,
       favouritees: enrichedFavouritees,
       refused: enrichedRefused,
+      announcements: eventAnnouncements,
       isGoing: userId
         ? attendees.some((attendee) => attendee._id.toString() === userId)
         : false,
@@ -1416,5 +1419,41 @@ exports.removeUserFromGoing = async (req, res) => {
   } catch (error) {
     console.error("Error removing user from Going list:", error);
     res.status(500).json({ success: false, message: "Internal Server Error" });
+  }
+};
+exports.createAnnouncement = async (req, res) => {
+  try {
+    const { eventId } = req.params;
+    const { userId, message, receivers } = req.body;
+
+    if (!userId || !message) {
+      return res
+        .status(400)
+        .json({ error: "User ID and message are required." });
+    }
+
+    // Vérifier si l'event existe
+    const event = await Event.findById(eventId);
+    if (!event) {
+      return res.status(404).json({ error: "Event not found." });
+    }
+
+    // Créer une mise à jour / annonce
+    const newAnnouncement = new Models.eventAnnouncementsSchema({
+      eventId,
+      senderId: userId,
+      message,
+      receivers,
+    });
+
+    await newAnnouncement.save();
+
+    res.status(201).json({
+      message: "Announcement created successfully",
+      announcement: newAnnouncement,
+    });
+  } catch (error) {
+    console.error("Error creating announcement:", error);
+    res.status(500).json({ error: "Internal server error" });
   }
 };
