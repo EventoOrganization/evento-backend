@@ -689,6 +689,7 @@ exports.createEvent = async (req, res) => {
       createRSVP,
       coHosts,
       limitedGuests,
+      showUsersLists,
     } = req.body;
 
     // Handle media for event
