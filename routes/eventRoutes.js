@@ -38,7 +38,11 @@ router.post(
   authenticateJWT,
   eventController.createAnnouncement,
 );
-
+router.delete(
+  "/announcements/:announcementId",
+  authenticateJWT,
+  eventController.deleteAnnouncement,
+);
 // handle Guests
 router.post(
   "/:eventId/requestToJoin",

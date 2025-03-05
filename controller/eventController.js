@@ -1567,3 +1567,29 @@ exports.createAnnouncement = async (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 };
+
+exports.deleteAnnouncement = async (req, res) => {
+  try {
+    const { announcementId } = req.params;
+
+    const announcement = await Models.eventAnnouncementsSchema.findById(
+      announcementId,
+    );
+    if (!announcement) {
+      return res
+        .status(404)
+        .json({ status: false, message: "Announcement not found" });
+    }
+
+    await Models.eventAnnouncementsSchema.deleteOne({ _id: announcementId });
+
+    return res
+      .status(200)
+      .json({ status: true, message: "Announcement deleted successfully" });
+  } catch (error) {
+    console.error("Error deleting announcement:", error);
+    return res
+      .status(500)
+      .json({ status: false, message: "Internal server error" });
+  }
+};
