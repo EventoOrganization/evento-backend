@@ -41,6 +41,7 @@ const eventSchema = new Schema(
       type: Boolean,
       default: true,
     },
+    googleSheetUrl: { type: String, default: "" },
     details: {
       thumbnailVideo: String,
       images: [String],

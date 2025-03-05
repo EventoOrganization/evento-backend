@@ -3,9 +3,9 @@ const Models = require("../models");
 const helper = require("../helper/helper");
 const mongoose = require("mongoose");
 const cronSchedule1 = "1 0 * * *";
-// const cronSchedule1 = "*/5 * * * *";
 const TempGuest = require("../models/tempGuestModel");
 const schedule = require("node-schedule");
+const { createGoogleSheetForEvent } = require("../utils/googleAppScript");
 const { sendWhatsAppMessage } = require("../services/whatsappService");
 const moment = require("moment");
 // const { sendEventInviteEmail } = require("../services/sesEmailService");
@@ -747,11 +747,18 @@ exports.createEvent = async (req, res) => {
     };
 
     const createdEvent = await Models.eventModel.create(objToSave);
+
+    const googleSheetUrl = await createGoogleSheetForEvent(createdEvent);
+    if (googleSheetUrl) {
+      createdEvent.googleSheetUrl = googleSheetUrl;
+      await createdEvent.save();
+    }
+
     const fullUser = await Models.userModel
       .findById(req.user._id)
       .select("_id username firstName lastName profileImage");
     if (fullUser) {
-      createdEvent.user = fullUser; // Assign the full user object instead of just the user ID
+      createdEvent.user = fullUser;
     }
     const eventLink = `${process.env.CLIENT_URL}/event/${createdEvent._id}`;
 
