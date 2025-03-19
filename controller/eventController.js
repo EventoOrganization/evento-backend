@@ -8,6 +8,7 @@ const schedule = require("node-schedule");
 const {
   createGoogleSheetForEvent,
   deleteGoogleSheetForEvent,
+  addGuestsToGoogleSheet,
 } = require("../utils/googleAppScript");
 const { sendWhatsAppMessage } = require("../services/whatsappService");
 const moment = require("moment");
@@ -161,8 +162,9 @@ exports.addGuests = async (req, res) => {
     // Traitement des utilisateurs existants
     if (guests && guests.length > 0) {
       for (const guest of guests) {
-        const guestId = guest._id || guest.id;
-        if (!event.guests.includes(guestId)) {
+        const guestId = guest._id?.toString() || guest.id?.toString();
+
+        if (!event.guests.map((id) => id.toString()).includes(guestId)) {
           event.guests.push(guestId);
 
           const guestUser = await Models.userModel.findById(guestId);
@@ -265,12 +267,21 @@ exports.addGuests = async (req, res) => {
           console.log(`Temp guest created:`, tempGuest);
         } else {
           console.log(`Updating existing temp guest for email: ${email}`);
-          tempGuest.invitations.push({ eventId, invitedBy });
-          await tempGuest.save();
+          const existingInvitation = tempGuest.invitations.some(
+            (invite) => invite.eventId.toString() === eventId,
+          );
+          if (!existingInvitation) {
+            tempGuest.invitations.push({ eventId, invitedBy });
+            await tempGuest.save();
+          }
           console.log(`Temp guest updated:`, tempGuest);
         }
 
-        if (!event.tempGuests.includes(tempGuest._id)) {
+        if (
+          !event.tempGuests
+            .map((id) => id.toString())
+            .includes(tempGuest._id.toString())
+        ) {
           event.tempGuests.push(tempGuest._id);
           console.log(`Added temp guest ID: ${tempGuest._id} to event.`);
         } else {
@@ -295,6 +306,8 @@ exports.addGuests = async (req, res) => {
     // Sauvegarder les modifications de l'événement
     await event.save();
     console.log("Event updated and saved successfully.");
+
+    await addGuestsToGoogleSheet(eventId, guests, tempGuests, invitedBy);
 
     // Récupérer l'événement avec les informations complètes des `tempGuests`
     const updatedEvent = await Event.findById(eventId)
