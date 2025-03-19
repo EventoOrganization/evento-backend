@@ -1,15 +1,15 @@
 const GOOGLE_SCRIPT_URL =
-  "https://script.google.com/macros/s/AKfycbyBvjfDKBhUGdQjJ4v3Ud9qDGaHLTf1Jp2giuWlsyplLp-0jZl0QqBGOFBUtRLkeFwLSw/exec";
+  "https://script.google.com/macros/s/AKfycbwVUiR4sFvY-O6qApqkco_ul-gCDXBmOhcdbAiL3h8YFdiZtHqKJAPGXPb-_CPI8BX-Qw/exec";
 
+// Function to create a Google Sheet for an event called "eventTitleeventId"
 const createGoogleSheetForEvent = async (event) => {
   try {
     const response = await fetch(GOOGLE_SCRIPT_URL, {
       method: "POST",
       body: JSON.stringify({
         action: "createEventSheet",
+        eventId: event._id,
         eventTitle: event.title,
-        date: event.date,
-        location: event.details.location,
       }),
       headers: { "Content-Type": "application/json" },
     });
@@ -37,15 +37,22 @@ const updateGoogleSheetRSVP = async (event, responses, rsvpStatus) => {
     headers: { "Content-Type": "application/json" },
   });
 };
-const deleteGoogleSheetForEvent = async (eventTitle) => {
-  await fetch(GOOGLE_SCRIPT_URL, {
-    method: "POST",
-    body: JSON.stringify({
-      action: "deleteEventSheet",
-      eventTitle,
-    }),
-    headers: { "Content-Type": "application/json" },
-  });
+const deleteGoogleSheetForEvent = async (eventId) => {
+  try {
+    console.log("Deleting Google Sheet for event:", eventId);
+    const response = await fetch(GOOGLE_SCRIPT_URL, {
+      method: "POST",
+      body: JSON.stringify({ action: "deleteEventSheet", eventId }),
+      headers: { "Content-Type": "application/json" },
+    });
+
+    const result = await response.json();
+    if (result.status !== "success") {
+      console.error("Error deleting Google Sheet:", result.message);
+    }
+  } catch (error) {
+    console.error("Failed to delete Google Sheet:", error);
+  }
 };
 
 module.exports = {

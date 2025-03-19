@@ -5,7 +5,10 @@ const mongoose = require("mongoose");
 const cronSchedule1 = "1 0 * * *";
 const TempGuest = require("../models/tempGuestModel");
 const schedule = require("node-schedule");
-const { createGoogleSheetForEvent } = require("../utils/googleAppScript");
+const {
+  createGoogleSheetForEvent,
+  deleteGoogleSheetForEvent,
+} = require("../utils/googleAppScript");
 const { sendWhatsAppMessage } = require("../services/whatsappService");
 const moment = require("moment");
 // const { sendEventInviteEmail } = require("../services/sesEmailService");
@@ -1321,32 +1324,40 @@ exports.getEvents = async (req, res) => {
 };
 exports.deleteEvent = async (req, res) => {
   try {
-    //Fistly check created event is by logged in user or not
     let checkEvent = await Models.eventModel.findOne({ _id: req.params.id });
-    if (checkEvent.user.toString() == req.user._id.toString()) {
-      let eventDelete = await Models.eventModel.deleteOne({
-        _id: req.params.id,
-      });
-      if (eventDelete) {
-        await Models.eventStatusSchema.deleteMany({ eventId: req.params.id });
-        await Models.eventAttendesUserModel.deleteMany({
-          eventId: req.params.id,
-        });
-        await Models.RSVPSubmission.deleteMany({ eventId: req.params.id });
-        // await Models.coHostModel.deleteOne({ eventId: req.params.id });
-        await Models.eventNotificationModel.deleteMany({
-          eventId: req.params.id,
-        });
-        await Models.groupChatModel.deleteOne({ eventId: req.params.id });
-        await Models.chatconstant.deleteMany({ groupId: req.params.id });
-        return helper.success(res, "Event delete successfuly");
-      }
+    if (!checkEvent) {
+      return helper.success(res, "Event not found");
     }
-    return helper.success(res, "This event is not created by you");
+
+    if (checkEvent.user.toString() !== req.user._id.toString()) {
+      return helper.success(res, "This event is not created by you");
+    }
+
+    // 🟢 Supprimer d'abord la Google Sheet
+    await deleteGoogleSheetForEvent(req.params.id);
+
+    // 🟢 Ensuite, supprimer l'événement et toutes les données associées
+    let eventDelete = await Models.eventModel.deleteOne({ _id: req.params.id });
+    if (eventDelete) {
+      await Models.eventStatusSchema.deleteMany({ eventId: req.params.id });
+      await Models.eventAttendesUserModel.deleteMany({
+        eventId: req.params.id,
+      });
+      await Models.RSVPSubmission.deleteMany({ eventId: req.params.id });
+      await Models.eventNotificationModel.deleteMany({
+        eventId: req.params.id,
+      });
+      await Models.groupChatModel.deleteOne({ eventId: req.params.id });
+      await Models.chatconstant.deleteMany({ groupId: req.params.id });
+    }
+
+    return helper.success(res, "Event deleted successfully");
   } catch (error) {
+    console.error("Error deleting event:", error);
     return res.status(500).json({ status: false, message: error.message });
   }
 };
+
 exports.updateEventStatus = async (req, res) => {
   const { eventId, userId, status, rsvpAnswers, reason } = req.body;
   console.log("req.body", req.body);
