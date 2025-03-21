@@ -39,7 +39,7 @@ const eventSchema = new Schema(
     },
     showUsersLists: {
       type: Boolean,
-      default: true,
+      default: false,
     },
     googleSheetUrl: { type: String, default: "" },
     details: {

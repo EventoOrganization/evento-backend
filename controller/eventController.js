@@ -612,6 +612,9 @@ exports.updateEventField = async (req, res) => {
         console.log("Updating initialMedia:", value);
         event.initialMedia = value;
         break;
+      case "requiresApproval":
+        event.requiresApproval = value;
+        break;
       default:
         console.log("Invalid field specified");
         return res.status(400).json({ message: "Invalid field" });
@@ -705,7 +708,7 @@ exports.createEvent = async (req, res) => {
       createRSVP,
       coHosts,
       limitedGuests,
-      showUsersLists,
+      requiresApproval,
     } = req.body;
 
     // Handle media for event
@@ -760,6 +763,7 @@ exports.createEvent = async (req, res) => {
             status: coHost.status || "read-only",
           }))
         : [],
+      requiresApproval,
     };
 
     const createdEvent = await Models.eventModel.create(objToSave);
