@@ -615,6 +615,24 @@ exports.updateEventField = async (req, res) => {
       case "requiresApproval":
         event.requiresApproval = value;
         break;
+      case "approvedUserIds":
+        console.log("Updating approvedUserIds:", value);
+
+        if (!mongoose.Types.ObjectId.isValid(value)) {
+          return res.status(400).json({ message: "Invalid user ID format" });
+        }
+
+        const userIdToAdd = new mongoose.Types.ObjectId(value);
+
+        if (!Array.isArray(event.approvedUserIds)) {
+          event.approvedUserIds = [];
+        }
+
+        if (!event.approvedUserIds.some((id) => id.equals(userIdToAdd))) {
+          event.approvedUserIds.push(userIdToAdd);
+        }
+
+        break;
       default:
         console.log("Invalid field specified");
         return res.status(400).json({ message: "Invalid field" });
@@ -1442,6 +1460,12 @@ exports.removeUserFromGoing = async (req, res) => {
       userId,
       status: "isGoing",
     });
+    if (event.approvedUserIds.some((id) => id.toString() === userId)) {
+      event.approvedUserIds = event.approvedUserIds.filter(
+        (id) => id.toString() !== userId,
+      );
+      await event.save();
+    }
 
     if (!removedStatus) {
       return res
