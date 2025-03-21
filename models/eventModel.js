@@ -161,6 +161,14 @@ const eventSchema = new Schema(
     ],
     coHostStatus: { type: Boolean, default: false },
     guestsAllowFriend: { type: Boolean, default: false },
+    // updated on 21/03/2025
+    requiresApproval: { type: Boolean, default: false },
+    approvedUserIds: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: "user",
+      },
+    ],
   },
   { timestamps: true },
 );
