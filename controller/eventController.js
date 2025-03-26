@@ -1492,14 +1492,18 @@ exports.createAnnouncement = async (req, res) => {
 
   try {
     const { eventId } = req.params;
-    const { userId, message, receivers } = req.body;
+    const { userId, message, receivers, type, questions = [] } = req.body;
 
     if (!userId || !message) {
       return res
         .status(400)
         .json({ error: "User ID and message are required." });
     }
-
+    if (!["info", "questionnaire"].includes(type)) {
+      return res
+        .status(400)
+        .json({ error: `Invalid announcement type: ${type}` });
+    }
     // Vérification de l'event
     const event = await Event.findById(eventId);
     if (!event) {
@@ -1522,6 +1526,21 @@ exports.createAnnouncement = async (req, res) => {
         .status(400)
         .json({ error: `Invalid status provided: ${receivers.status}` });
     }
+    if (type === "questionnaire") {
+      if (!Array.isArray(questions) || questions.length === 0) {
+        return res.status(400).json({
+          error: "A questionnaire must contain at least one question.",
+        });
+      }
+
+      for (const q of questions) {
+        if (!q.question || typeof q.question !== "string") {
+          return res
+            .status(400)
+            .json({ error: "Each question must have a text." });
+        }
+      }
+    }
 
     // Création de l'annonce
     const newAnnouncement = new Models.eventAnnouncementsSchema({
@@ -1529,6 +1548,8 @@ exports.createAnnouncement = async (req, res) => {
       senderId: userId,
       message,
       receivers,
+      type,
+      questions: type === "questionnaire" ? questions : [],
     });
 
     await newAnnouncement.save();
