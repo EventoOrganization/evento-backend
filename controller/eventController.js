@@ -144,7 +144,6 @@ exports.deletePostEventMedia = async (req, res) => {
     });
   }
 };
-
 exports.addGuests = async (req, res) => {
   const eventId = req.params.id;
   const { guests, tempGuests, user } = req.body;
@@ -440,7 +439,6 @@ exports.storePostEventMedia = async (req, res) => {
     });
   }
 };
-
 exports.toggleUploadMedia = async (req, res) => {
   const { eventId, allow } = req.body;
   if (!eventId || typeof allow !== "boolean") {
