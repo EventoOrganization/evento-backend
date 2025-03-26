@@ -370,7 +370,7 @@ const sendUpdateNotification = async (
             ],
           });
 
-        const result = await request;
+        await request;
         console.log(`Notification sent to ${user.email} for ${changeType}`);
       }),
     );

@@ -512,7 +512,7 @@ exports.unGuestUser = async (req, res) => {
 };
 exports.updateEventField = async (req, res) => {
   const { eventId } = req.params;
-  const { field, value } = req.body;
+  const { field, value, notify = false } = req.body;
   console.log("field", field, "value", value);
   if (!field || value === undefined) {
     return res.status(400).json({ message: "Missing field or value" });
@@ -638,7 +638,7 @@ exports.updateEventField = async (req, res) => {
 
     await event.save();
 
-    if (changeType) {
+    if (changeType && notify) {
       const goingStatuses = await Models.eventStatusSchema
         .find({
           eventId: eventId,
@@ -648,6 +648,8 @@ exports.updateEventField = async (req, res) => {
 
       const goingUsers = goingStatuses.map((status) => status.userId);
       await sendUpdateNotification(goingUsers, event, changeType, oldData);
+    } else if (changeType && !notify) {
+      console.log("Event updated without notification");
     }
 
     res.status(200).json({ message: `${field} updated successfully`, event });
