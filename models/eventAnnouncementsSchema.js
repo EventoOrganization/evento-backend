@@ -1,18 +1,6 @@
 const mongoose = require("mongoose");
 const Schema = mongoose.Schema;
 
-const commentSchema = new Schema({
-  userId: { type: Schema.Types.ObjectId, ref: "User", required: true },
-  content: { type: String }, // facultatif si questionnaire
-  answers: [
-    {
-      questionId: { type: Schema.Types.ObjectId },
-      answer: [String], // ou String si type text
-    },
-  ],
-  createdAt: { type: Date, default: Date.now },
-});
-
 const questionSchema = new Schema({
   question: { type: String, required: true },
   type: { type: String, enum: ["text", "multiple-choice"], default: "text" },
@@ -42,7 +30,6 @@ const eventAnnouncementsSchema = new Schema(
       userIds: [{ type: Schema.Types.ObjectId, ref: "User" }],
       status: { type: String, enum: ["going", "invited", "decline"] },
     },
-    comments: [commentSchema], // sert aussi à stocker les réponses
   },
   { timestamps: true },
 );

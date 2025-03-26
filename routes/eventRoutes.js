@@ -38,6 +38,11 @@ router.post(
   authenticateJWT,
   eventController.createAnnouncement,
 );
+router.post(
+  "/announcements/:announcementId/respond",
+  authenticateJWT,
+  eventController.submitResponse,
+);
 router.delete(
   "/announcements/:announcementId",
   authenticateJWT,
@@ -74,5 +79,16 @@ router.post(
 );
 // Delete events
 router.delete("/deleteEvent/:id", authenticateJWT, eventController.deleteEvent);
+// comments
+router.post(
+  "/:eventId/comments",
+  authenticateJWT,
+  eventController.createComment,
+);
+router.delete(
+  "/:eventId/comments/:commentId",
+  authenticateJWT,
+  eventController.deleteComment,
+);
 
 module.exports = router;

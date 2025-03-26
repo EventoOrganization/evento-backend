@@ -1,6 +1,8 @@
 const Event = require("../models/eventModel");
 const Models = require("../models");
 const helper = require("../helper/helper");
+const Comment = require("../models/commentModel");
+const AnnouncementResponse = require("../models/announcementResponse");
 const mongoose = require("mongoose");
 const cronSchedule1 = "1 0 * * *";
 const TempGuest = require("../models/tempGuestModel");
@@ -912,6 +914,10 @@ exports.getEventById = async (req, res) => {
       .populate("userId", "username email profileImage")
       .exec();
     // console.log("User statuses retrieved:", userStatuses);
+    const eventComments = await Models.commentModel
+      .find({ eventId, depth: 0 }) // on ne prend que les commentaires "racine"
+      .populate("userId", "username profileImage")
+      .sort({ createdAt: -1 });
 
     userStatuses.forEach((statusRecord) => {
       const user = statusRecord.userId;
@@ -1003,18 +1009,40 @@ exports.getEventById = async (req, res) => {
     );
     // console.log("Host status:", hostStatus);
     // console.log("Co-host status:", isCoHost);
-    const eventAnnouncements = await Models.eventAnnouncementsSchema.find({
-      eventId,
+    const eventAnnouncements = await Models.eventAnnouncementsSchema
+      .find({
+        eventId,
+      })
+      .lean();
+    const announcementResponses = await Models.announcementResponse
+      .find({
+        eventId,
+      })
+      .lean();
+    const responsesByAnnouncement = {};
+
+    announcementResponses.forEach((response) => {
+      const announcementId = response.announcementId.toString();
+      if (!responsesByAnnouncement[announcementId]) {
+        responsesByAnnouncement[announcementId] = [];
+      }
+      responsesByAnnouncement[announcementId].push(response);
     });
+    const enrichedAnnouncements = eventAnnouncements.map((announcement) => ({
+      ...announcement,
+      responses: responsesByAnnouncement[announcement._id.toString()] || [],
+    }));
+
     // Assemblage de l'événement enrichi
     const enrichedEvent = {
       ...event.toObject(),
       guests: enrichedGuests,
+      eventComments,
       tempGuests: event.tempGuests, // Sans enrichissement pour tempGuests
       attendees: enrichedAttendees,
       favouritees: enrichedFavouritees,
       refused: enrichedRefused,
-      announcements: eventAnnouncements,
+      announcements: enrichedAnnouncements,
       isGoing: userId
         ? attendees.some((attendee) => attendee._id.toString() === userId)
         : false,
@@ -1656,6 +1684,10 @@ exports.deleteAnnouncement = async (req, res) => {
 
     await Models.eventAnnouncementsSchema.deleteOne({ _id: announcementId });
 
+    await Models.announcementResponse.deleteMany({
+      announcementId: announcementId,
+    });
+
     return res
       .status(200)
       .json({ status: true, message: "Announcement deleted successfully" });
@@ -1664,5 +1696,85 @@ exports.deleteAnnouncement = async (req, res) => {
     return res
       .status(500)
       .json({ status: false, message: "Internal server error" });
+  }
+};
+exports.createComment = async (req, res) => {
+  const { eventId, content, parentId = null } = req.body;
+  const userId = req.user._id;
+
+  try {
+    const depth = parentId ? 1 : 0;
+
+    const newComment = await Comment.create({
+      eventId,
+      userId,
+      content,
+      parentId,
+      depth,
+    });
+
+    await newComment.populate("userId", "username profileImage");
+
+    res.status(201).json({
+      message: "Comment created successfully",
+      data: newComment,
+    });
+  } catch (error) {
+    console.error("Error creating comment:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+exports.deleteComment = async (req, res) => {
+  const { commentId } = req.params;
+
+  try {
+    const comment = await Comment.findById(commentId);
+
+    if (!comment) {
+      return res.status(404).json({ message: "Comment not found" });
+    }
+
+    // Soft delete version
+    comment.isDeleted = true;
+    comment.content = "[deleted]";
+    await comment.save();
+
+    // await Comment.findByIdAndDelete(commentId);
+
+    res.status(200).json({ message: "Comment deleted successfully" });
+  } catch (error) {
+    console.error("Error deleting comment:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+exports.submitResponse = async (req, res) => {
+  try {
+    const { announcementId } = req.params;
+    const { eventId, answers } = req.body;
+    const userId = req.user._id;
+
+    const existing = await AnnouncementResponse.findOne({
+      announcementId,
+      userId,
+    });
+
+    if (existing) {
+      return res.status(400).json({ error: "You already responded." });
+    }
+
+    const newResponse = await AnnouncementResponse.create({
+      eventId,
+      announcementId,
+      userId,
+      answers,
+    });
+
+    return res.status(201).json({
+      message: "Response saved",
+      data: newResponse,
+    });
+  } catch (error) {
+    console.error("❌ Error submitting response:", error);
+    return res.status(500).json({ error: "Server error" });
   }
 };
