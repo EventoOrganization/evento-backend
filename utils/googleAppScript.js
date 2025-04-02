@@ -40,7 +40,22 @@ const callGoogleScript = async (payload, url) => {
     return null;
   }
 };
+const updateGoogleSheetForEvent = async (event, action) => {
+  const eventId = event._id.toString();
+  let payload = {
+    action,
+    eventId,
+  };
+  switch (action) {
+    case "questions":
+      payload = {
+        ...payload,
+        eventQuestions: event.questions,
+      };
+  }
 
+  await callGoogleScript(payload, GOOGLE_SCRIPT_UPDATE_URL);
+};
 const createGoogleSheetForEvent = async (event) => {
   // goal is to create a sheet with 2 tabs [event infos, users]
   const eventId = event._id.toString(); // sheetTitle
@@ -127,4 +142,5 @@ module.exports = {
   createGoogleSheetForEvent,
   deleteGoogleSheetForEvent,
   addGuestsToGoogleSheet,
+  updateGoogleSheetForEvent,
 };

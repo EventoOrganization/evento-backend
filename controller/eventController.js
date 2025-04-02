@@ -11,6 +11,7 @@ const {
   createGoogleSheetForEvent,
   deleteGoogleSheetForEvent,
   addGuestsToGoogleSheet,
+  updateGoogleSheetForEvent,
 } = require("../utils/googleAppScript");
 const { sendWhatsAppMessage } = require("../services/whatsappService");
 const moment = require("moment");
@@ -683,6 +684,7 @@ exports.updateEventField = async (req, res) => {
         console.log("questions value", value);
         event.questions = value;
         event.details.createRSVP = value.length > 0 ? true : false;
+        await updateGoogleSheetForEvent(event, "questions");
         break;
       case "hiddenByUsers":
         if (!Array.isArray(event.hiddenByUsers)) {
