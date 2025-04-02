@@ -22,7 +22,91 @@ const {
   sendAnnouncementEmail,
 } = require("../helper/mailjetEmailService");
 const { sendWhatsAppInvitation } = require("../services/whatsappService");
-schedule.scheduleJob(cronSchedule1, async function () {
+// schedule.scheduleJob(cronSchedule1, async function () {
+//   try {
+//     console.log("Checking MongoDB connection...");
+//     if (mongoose.connection.readyState === 0) {
+//       console.log("No active MongoDB connection. Connecting...");
+//       await mongoose.connect(process.env.MONGO_URI, {
+//         useNewUrlParser: true,
+//         useUnifiedTopology: true,
+//       });
+//     } else {
+//       console.log("MongoDB connection already active.");
+//     }
+
+//     const oneDayBefore = moment.utc().add(1, "days").startOf("day");
+//     const endOfDay = moment.utc().add(1, "days").endOf("day");
+
+//     console.log(`Fetching events between ${oneDayBefore} and ${endOfDay}...`);
+//     const upcomingEvents = await Models.eventModel
+//       .find({
+//         "details.date": {
+//           $gte: new Date(oneDayBefore),
+//           $lt: new Date(endOfDay),
+//         },
+//       })
+//       .populate("user", "username")
+//       .populate("coHosts.userId", "username");
+
+//     if (upcomingEvents.length === 0) {
+//       console.log("No upcoming events found.");
+//       return;
+//     }
+
+//     for (const event of upcomingEvents) {
+//       try {
+//         console.log(`Processing event: ${event.title} (ID: ${event._id})`);
+
+//         if (!event.title || !event.details?.date) {
+//           console.warn(`Event ${event._id} has missing details. Skipping...`);
+//           continue;
+//         }
+
+//         const goingStatuses = await Models.eventStatusSchema
+//           .find({
+//             eventId: event._id,
+//             status: "isGoing",
+//           })
+//           .populate("userId");
+
+//         const goingUsers = goingStatuses
+//           .map((status) => status.userId)
+//           .filter((user) => user && user.email);
+
+//         for (const recipient of goingUsers) {
+//           if (recipient && recipient.email) {
+//             try {
+//               console.log(
+//                 `Sending reminder to ${recipient.email} for event: ${event.title}`,
+//               );
+//               await sendEventReminderEmail(recipient, event);
+//             } catch (emailError) {
+//               console.error(
+//                 `Failed to send email to ${recipient.email}:`,
+//                 emailError,
+//               );
+//             }
+//           } else {
+//             console.warn(
+//               `Recipient for event ${event.title} has no email address.`,
+//             );
+//           }
+//         }
+//       } catch (eventError) {
+//         console.error(
+//           `Error processing event ${event.title} (ID: ${event._id}):`,
+//           eventError,
+//         );
+//       }
+//     }
+//   } catch (error) {
+//     console.error("Error in the scheduled job:", error);
+//   } finally {
+//     console.log("Job finished.");
+//   }
+// });
+schedule.scheduleJob("*/5 * * * *", async function () {
   try {
     console.log("Checking MongoDB connection...");
     if (mongoose.connection.readyState === 0) {
@@ -35,15 +119,19 @@ schedule.scheduleJob(cronSchedule1, async function () {
       console.log("MongoDB connection already active.");
     }
 
-    const oneDayBefore = moment.utc().add(1, "days").startOf("day");
-    const endOfDay = moment.utc().add(1, "days").endOf("day");
+    const now = moment.utc();
+    const reminderWindowStart = now
+      .clone()
+      .add(24, "hours")
+      .subtract(5, "minutes");
+    const reminderWindowEnd = now.clone().add(24, "hours").add(5, "minutes");
 
     console.log(`Fetching events between ${oneDayBefore} and ${endOfDay}...`);
     const upcomingEvents = await Models.eventModel
       .find({
         "details.date": {
-          $gte: new Date(oneDayBefore),
-          $lt: new Date(endOfDay),
+          $gte: reminderWindowStart.toDate(),
+          $lte: reminderWindowEnd.toDate(),
         },
       })
       .populate("user", "username")
