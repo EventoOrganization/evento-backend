@@ -126,7 +126,6 @@ schedule.scheduleJob("*/5 * * * *", async function () {
       .subtract(5, "minutes");
     const reminderWindowEnd = now.clone().add(24, "hours").add(5, "minutes");
 
-    console.log(`Fetching events between ${oneDayBefore} and ${endOfDay}...`);
     const upcomingEvents = await Models.eventModel
       .find({
         "details.date": {
@@ -490,7 +489,13 @@ exports.acceptRequest = async (req, res) => {
     // Déplace l'utilisateur de `requested` à `guests`
     event.requested = event.requested.filter((id) => !id.equals(userId)); // Retire de `requested`
     event.guests.push(userId); // Ajoute à `guests`
+    const guestInfo = await Models.userModel
+      .findById(userId)
+      .select("username email");
+    const eventLink = `${process.env.CLIENT_URL}/event/${eventId}`;
+    await sendEventInviteEmail(req.user, guestInfo, event, eventLink); // averti le user
 
+    await addGuestsToGoogleSheet(eventId, [guestInfo], [], req.user._id);
     // Sauvegarde les modifications
     await event.save();
 
