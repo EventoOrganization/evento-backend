@@ -563,6 +563,7 @@ module.exports = {
       const data = await events
         .find({})
         .sort({ createdAt: -1 })
+        .populate("user")
         .populate("coHosts");
       // data.forEach(event => {
       //   event.coHosts.forEach(coHost => {

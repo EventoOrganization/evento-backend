@@ -21,9 +21,10 @@
             <tr>
               <th scope="col">Sr No</th>
               <th scope="col">Event Name</th>
+              <th scope="col">Host</th>
               <th scope="col">Location</th>
               <th scope="col">Start Date</th>
-              <th scope="col">End Date</th>
+              <!-- <th scope="col">End Date</th> -->
               <th scope="col">Event Type</th>
               <th scope="col">Action</th>
             </tr>
@@ -32,10 +33,14 @@
             <% data.forEach((result,i)=>{%>
               <tr>
                 <td><%= i+1%></td>
-                <td><%= result?.details.name%></td>
+                <td><%= result?.title%></td>
+                <td>
+                  <%= (result?.user?.firstName || "") %> <%= (result?.user?.lastName || "") %> <%= result?.user?.firstName && result?.user?.lastName ? "as" : "" %> <%= result?.user?.username || "No username" %>
+                </td>
+                             
                 <td><%= result?.details.location%></td>
                 <td><%= moment(result?.details.date).format("DD-MM-YYYY")%></td>
-                <td><%= moment(result?.details.endDate).format("DD-MM-YYYY")%></td>
+                <!-- <td><%= moment(result?.details.endDate).format("DD-MM-YYYY")%></td> -->
                 <td><%= result?.eventType%></td>
                 <td>
                   <a
@@ -62,7 +67,6 @@
     </div>
     </div>
   </section>
-
 </main>
 <script>
   function deletuser(id) {
@@ -94,4 +98,5 @@
       }
     });
   }
+
 </script>
