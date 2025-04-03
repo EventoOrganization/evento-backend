@@ -1,3 +1,4 @@
+const Models = require("../models");
 const GOOGLE_SCRIPT_URL =
   "https://script.google.com/macros/s/AKfycbwVUiR4sFvY-O6qApqkco_ul-gCDXBmOhcdbAiL3h8YFdiZtHqKJAPGXPb-_CPI8BX-Qw/exec";
 
@@ -52,6 +53,29 @@ const updateGoogleSheetForEvent = async (event, action) => {
         ...payload,
         eventQuestions: event.questions,
       };
+      break;
+    case "updateGuest":
+      const fullGuests = await Models.userModel
+        .find({ _id: { $in: event.guests } })
+        .select("email username firstName lastName")
+        .lean();
+
+      const fullTempGuests = await Models.tempGuestModel
+        .find({ _id: { $in: event.tempGuests } })
+        .select("email username")
+        .lean();
+      payload = {
+        ...payload,
+        timestamp: new Date().toISOString(),
+        guests: fullGuests,
+        tempGuests: fullTempGuests,
+      };
+      break;
+    case "userStatus":
+      payload = { ...payload };
+    default:
+      payload = {};
+      break;
   }
 
   await callGoogleScript(payload, GOOGLE_SCRIPT_UPDATE_URL);
@@ -78,69 +102,9 @@ const deleteGoogleSheetForEvent = async (eventId) => {
   const result = await callGoogleScript(payload, GOOGLE_SCRIPT_URL);
   return result;
 };
-const addGuestsToGoogleSheet = async (
-  eventId,
-  guests,
-  tempGuests,
-  invitedBy,
-) => {
-  console.log(
-    "Adding guests to Google Sheet Request...",
-    "eventId:",
-    eventId,
-    "guests:",
-    guests,
-    "tempGuests:",
-    tempGuests,
-    "invitedBy:",
-    invitedBy,
-  );
-  // 🕒 Génère le timestamp actuel
-  const timestamp = new Date().toLocaleString("fr-FR", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-  // 🧩 Ajoute le timestamp à chaque guest
-  const enrichedGuests = guests?.map((guest) => ({
-    ...guest,
-    timestamp,
-  }));
-
-  const enrichedTempGuests = tempGuests?.map((tempGuest) => ({
-    ...tempGuest,
-    timestamp,
-  }));
-
-  try {
-    const response = await fetch(GOOGLE_SCRIPT_UPDATE_URL, {
-      method: "POST",
-      body: JSON.stringify({
-        action: "addGuestsToSheet",
-        eventId,
-        guests: enrichedGuests,
-        tempGuests: enrichedTempGuests,
-        invitedBy,
-      }),
-      headers: { "Content-Type": "application/json" },
-    });
-
-    const result = await response.json();
-    if (result.status === "success") {
-      console.log("Guests added successfully to Google Sheet.");
-    } else {
-      console.error("Error adding guests to Google Sheet:", result.message);
-    }
-  } catch (error) {
-    console.error("Error:", error);
-  }
-};
 
 module.exports = {
   createGoogleSheetForEvent,
   deleteGoogleSheetForEvent,
-  addGuestsToGoogleSheet,
   updateGoogleSheetForEvent,
 };

@@ -10,7 +10,6 @@ const schedule = require("node-schedule");
 const {
   createGoogleSheetForEvent,
   deleteGoogleSheetForEvent,
-  addGuestsToGoogleSheet,
   updateGoogleSheetForEvent,
 } = require("../utils/googleAppScript");
 const { sendWhatsAppMessage } = require("../services/whatsappService");
@@ -396,7 +395,7 @@ exports.addGuests = async (req, res) => {
     await event.save();
     console.log("Event updated and saved successfully.");
 
-    await addGuestsToGoogleSheet(eventId, guests, tempGuests, invitedBy);
+    await updateGoogleSheetForEvent(event, "updateGuest");
 
     // Récupérer l'événement avec les informations complètes des `tempGuests`
     const updatedEvent = await Event.findById(eventId)
@@ -496,7 +495,7 @@ exports.acceptRequest = async (req, res) => {
     const eventLink = `${process.env.CLIENT_URL}/event/${eventId}`;
     await sendEventInviteEmail(req.user, guestInfo, event, eventLink); // averti le user
 
-    await addGuestsToGoogleSheet(eventId, [guestInfo], [], req.user._id);
+    await updateGoogleSheetForEvent(event, "updateGuest");
     // Sauvegarde les modifications
     await event.save();
 
@@ -592,7 +591,7 @@ exports.unGuestUser = async (req, res) => {
 
     // Save the event with the updated guests/tempGuests
     await event.save();
-
+    await updateGoogleSheetForEvent(event, "updateGuest");
     return res.status(200).json({
       status: true,
       message: "User is no longer a guest for this event",
