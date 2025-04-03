@@ -41,7 +41,7 @@ const callGoogleScript = async (payload, url) => {
     return null;
   }
 };
-const updateGoogleSheetForEvent = async (event, action) => {
+const updateGoogleSheetForEvent = async (event, action, options = {}) => {
   const eventId = event._id.toString();
   let payload = {
     action,
@@ -71,8 +71,39 @@ const updateGoogleSheetForEvent = async (event, action) => {
         tempGuests: fullTempGuests,
       };
       break;
-    case "userStatus":
-      payload = { ...payload };
+    case "updateStatus":
+      const { eventStatus } = options;
+
+      if (!eventStatus) {
+        console.warn("⚠️ updateStatus requires eventStatus in options");
+        return;
+      }
+      console.log("updateStatus eventStatus data", eventStatus);
+      const user = await Models.userModel
+        .findById(eventStatus.userId)
+        .select("username email firstName lastName")
+        .lean();
+      if (!user || !user.email) {
+        console.warn("⚠️ User not found or missing email");
+        return;
+      }
+      const isGuest =
+        event.guests?.some((id) => id.toString() === user._id.toString()) ||
+        event.tempGuests?.some((id) => id.toString() === user._id.toString());
+
+      payload = {
+        ...payload,
+        statusData: {
+          email: user.email,
+          username: user.username || "",
+          name: `${user.firstName || ""} ${user.lastName || ""}`.trim(),
+          guest: isGuest,
+          status: eventStatus.status || "",
+          reason: eventStatus.reason || "",
+          rsvpAnswers: eventStatus.rsvpAnswers || [],
+        },
+      };
+      break;
     default:
       payload = {};
       break;

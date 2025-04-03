@@ -1516,7 +1516,6 @@ exports.deleteEvent = async (req, res) => {
     return res.status(500).json({ status: false, message: error.message });
   }
 };
-
 exports.updateEventStatus = async (req, res) => {
   const { eventId, userId, status, rsvpAnswers, reason } = req.body;
   console.log("req.body", req.body);
@@ -1530,20 +1529,35 @@ exports.updateEventStatus = async (req, res) => {
   try {
     if (!status) {
       // Suppression du statut si aucun statut n'est fourni
+      const eventStatus = await Models.eventStatusSchema.findOne({
+        eventId,
+        userId,
+      });
       await Models.eventStatusSchema.deleteOne({ eventId, userId });
+
+      const eventStatusData = eventStatus
+        ? { ...eventStatus.toObject(), status: "" }
+        : { status: "" };
+      const event = await Models.eventModel.findById(eventId).lean();
+
+      await updateGoogleSheetForEvent(event, "updateStatus", {
+        userId,
+        eventStatus: eventStatusData,
+      });
+
       return res.status(200).json({
         success: true,
         message: "Event status removed successfully",
       });
     }
-
     // Mise à jour ou création du statut de l'événement
     const eventStatus = await Models.eventStatusSchema.findOneAndUpdate(
       { eventId, userId },
       { status, rsvpAnswers, reason },
       { new: true, upsert: true, runValidators: true },
     );
-
+    const event = await Models.eventModel.findById(eventId);
+    await updateGoogleSheetForEvent(event, "updateStatus", { eventStatus });
     res.status(200).json({
       success: true,
       message: "Event status updated successfully",
