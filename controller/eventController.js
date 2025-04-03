@@ -1598,6 +1598,7 @@ exports.removeUserFromGoing = async (req, res) => {
       userId,
       status: "isGoing",
     });
+
     if (event.approvedUserIds.some((id) => id.toString() === userId)) {
       event.approvedUserIds = event.approvedUserIds.filter(
         (id) => id.toString() !== userId,
@@ -1610,7 +1611,13 @@ exports.removeUserFromGoing = async (req, res) => {
         .status(404)
         .json({ success: false, message: "User not found in Going list" });
     }
-
+    const eventStatusData = removedStatus
+      ? { ...removedStatus.toObject(), status: "" }
+      : { status: "" };
+    await updateGoogleSheetForEvent(event, "updateStatus", {
+      userId,
+      eventStatus: eventStatusData,
+    });
     res.status(200).json({
       success: true,
       message: "User removed from Going list successfully",
