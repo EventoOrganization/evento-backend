@@ -42,7 +42,25 @@ const callGoogleScript = async (payload, url) => {
   }
 };
 const updateGoogleSheetForEvent = async (event, action, options = {}) => {
+  const formatTimestampForSheet = (date = new Date()) => {
+    const pad = (n) => n.toString().padStart(2, "0");
+
+    return (
+      `${pad(date.getDate())}/${pad(
+        date.getMonth() + 1,
+      )}/${date.getFullYear()} ` +
+      `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(
+        date.getSeconds(),
+      )}`
+    );
+  };
+
   const eventId = event._id.toString();
+  const formattedTimestamp = formatTimestampForSheet(
+    new Date(),
+    event.details?.timeZone || "UTC",
+  );
+
   let payload = {
     action,
     eventId,
@@ -66,7 +84,7 @@ const updateGoogleSheetForEvent = async (event, action, options = {}) => {
         .lean();
       payload = {
         ...payload,
-        timestamp: new Date().toISOString(),
+        timestamp: formattedTimestamp,
         guests: fullGuests,
         tempGuests: fullTempGuests,
       };
@@ -118,6 +136,7 @@ const updateGoogleSheetForEvent = async (event, action, options = {}) => {
       });
       payload = {
         ...payload,
+        timestamp: formattedTimestamp,
         statusData: {
           email: user.email,
           username: user.username || "",
