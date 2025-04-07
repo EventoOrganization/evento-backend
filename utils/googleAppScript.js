@@ -90,7 +90,32 @@ const updateGoogleSheetForEvent = async (event, action, options = {}) => {
       const isGuest =
         event.guests?.some((id) => id.toString() === user._id.toString()) ||
         event.tempGuests?.some((id) => id.toString() === user._id.toString());
+      console.log(
+        "🔍 Questions disponibles:",
+        event.questions.map((q) => ({
+          id: q._id.toString(),
+          label: q.question,
+        })),
+      );
 
+      console.log("📩 RSVP Answers originales:", eventStatus.rsvpAnswers);
+
+      const enrichedAnswers = (eventStatus.rsvpAnswers || []).map((ans) => {
+        const matchedQuestion = event.questions.find(
+          (q) => q._id?.toString() === ans.questionId?.toString(),
+        );
+
+        const result = {
+          question:
+            matchedQuestion?.question ||
+            `[Question inconnue: ${ans.questionId}]`,
+          answer: ans.answer,
+        };
+
+        console.log("✅ Mapped RSVP answer:", result);
+
+        return result;
+      });
       payload = {
         ...payload,
         statusData: {
@@ -100,7 +125,7 @@ const updateGoogleSheetForEvent = async (event, action, options = {}) => {
           guest: isGuest,
           status: eventStatus.status || "",
           reason: eventStatus.reason || "",
-          rsvpAnswers: eventStatus.rsvpAnswers || [],
+          rsvpAnswers: enrichedAnswers,
         },
       };
       break;

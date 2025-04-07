@@ -1561,7 +1561,10 @@ exports.updateEventStatus = async (req, res) => {
       { new: true, upsert: true, runValidators: true },
     );
     const event = await Models.eventModel.findById(eventId);
-    await updateGoogleSheetForEvent(event, "updateStatus", { eventStatus });
+    await updateGoogleSheetForEvent(event, "updateStatus", {
+      eventStatus,
+    });
+
     res.status(200).json({
       success: true,
       message: "Event status updated successfully",
