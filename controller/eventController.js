@@ -830,7 +830,13 @@ exports.createEvent = async (req, res) => {
     let initialMedia = [];
     const imageUrls = uploadedMedia
       .filter((media) => media.type === "image")
-      .map((media) => ({ url: media.url, type: "image" }));
+      .map((media) => ({
+        url: media.url,
+        thumbnailUrl: media.thumbnailUrl || null,
+        mediumUrl: media.mediumUrl || null,
+        type: "image",
+      }));
+
     const videoUrls = uploadedMedia
       .filter((media) => media.type === "video")
       .map((media) => ({ url: media.url, type: "video" }));

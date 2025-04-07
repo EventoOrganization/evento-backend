@@ -94,6 +94,8 @@ const eventSchema = new Schema(
     initialMedia: [
       {
         url: { type: String, required: true },
+        thumbnailUrl: { type: String },
+        mediumUrl: { type: String },
         type: { type: String, enum: ["image", "video"], required: true },
       },
     ],
