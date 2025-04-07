@@ -15,7 +15,6 @@ const sendEventInviteEmail = async (
     console.error("Missing required data for sending the email.");
     return;
   }
-  console.log("eventUser", guest);
   const eventLinkWithQuery = `${eventLink}?email=${encodeURIComponent(
     guest.email,
   )}`;

@@ -3,8 +3,8 @@ const GOOGLE_SCRIPT_URL =
   "https://script.google.com/macros/s/AKfycbwVUiR4sFvY-O6qApqkco_ul-gCDXBmOhcdbAiL3h8YFdiZtHqKJAPGXPb-_CPI8BX-Qw/exec";
 
 const GOOGLE_SCRIPT_UPDATE_URL =
-  "https://script.google.com/macros/s/AKfycbzxxnIe2gUYySIqAlO2Vqh9hqoQEXn_gO2jhx3UXPGxeRUsBb5wIdCWK0uEiPoCzYOSDg/exec";
-// Function to create a Google Sheet for an event called "eventTitleeventId"
+  "https://script.google.com/macros/s/AKfycbx3PF9vVEADP-rHk-7LK7FRh4SLKY6cE2anA8q1hAWihXQw4wWnyqni-5nIbMbNYAnGYA/exec";
+
 const callGoogleScript = async (payload, url) => {
   try {
     console.log("📤 Envoi à Google Script");

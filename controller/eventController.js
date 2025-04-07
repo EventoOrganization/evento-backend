@@ -403,8 +403,6 @@ exports.addGuests = async (req, res) => {
       .populate("tempGuests")
       .exec();
 
-    console.log("Updated event after adding guests:", updatedEvent);
-
     res
       .status(200)
       .json({ message: "Guests added successfully.", event: updatedEvent });
