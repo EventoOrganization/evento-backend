@@ -31,6 +31,7 @@ const allowedOrigins = [
   "https://evento-app.io", // Production
   "https://evento-web-git-dev-eventos-projects.vercel.app", // Développement
   "http://localhost:3000",
+  "http://localhost:3001",
   "https://backend.evento-app.io",
   "http://localhost:8747",
 ];
