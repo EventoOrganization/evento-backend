@@ -41,16 +41,29 @@ const callGoogleScript = async (payload, url) => {
     return null;
   }
 };
+
 const updateGoogleSheetForEvent = async (event, action, options = {}) => {
-  const formatTimestampForSheet = (date = new Date()) => {
+  const formatTimestampForSheet = (date = new Date(), offsetStr = "+00:00") => {
+    if (!offsetStr.match(/^[+-]\d{2}:\d{2}$/)) {
+      offsetStr = "+00:00";
+    }
+
+    const [sign, hours, minutes] = offsetStr
+      .match(/([+-])(\d{2}):(\d{2})/)
+      .slice(1);
+    const offsetMinutes =
+      (parseInt(hours) * 60 + parseInt(minutes)) * (sign === "+" ? 1 : -1);
+
+    const localDate = new Date(date.getTime() + offsetMinutes * 60 * 1000);
+
     const pad = (n) => n.toString().padStart(2, "0");
 
     return (
-      `${pad(date.getDate())}/${pad(
-        date.getMonth() + 1,
-      )}/${date.getFullYear()} ` +
-      `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(
-        date.getSeconds(),
+      `${pad(localDate.getDate())}/${pad(
+        localDate.getMonth() + 1,
+      )}/${localDate.getFullYear()} ` +
+      `${pad(localDate.getHours())}:${pad(localDate.getMinutes())}:${pad(
+        localDate.getSeconds(),
       )}`
     );
   };
@@ -60,6 +73,23 @@ const updateGoogleSheetForEvent = async (event, action, options = {}) => {
     new Date(),
     event.details?.timeZone || "UTC",
   );
+  const capitalize = (str) =>
+    typeof str === "string"
+      ? str.charAt(0).toUpperCase() + str.slice(1).toLowerCase()
+      : "";
+
+  const formatStatus = (status) => {
+    switch (status?.toLowerCase()) {
+      case "isgoing":
+        return "Going";
+      case "isrefused":
+        return "Refused";
+      case "isfavourite":
+        return event.eventType === "private" ? "Maybe" : "Favourite";
+      default:
+        return capitalize(status);
+    }
+  };
 
   let payload = {
     action,
@@ -91,7 +121,7 @@ const updateGoogleSheetForEvent = async (event, action, options = {}) => {
       break;
     case "updateStatus":
       const { eventStatus } = options;
-
+      const formattedStatus = formatStatus(eventStatus.status);
       if (!eventStatus) {
         console.warn("⚠️ updateStatus requires eventStatus in options");
         return;
@@ -142,7 +172,7 @@ const updateGoogleSheetForEvent = async (event, action, options = {}) => {
           username: user.username || "",
           name: `${user.firstName || ""} ${user.lastName || ""}`.trim(),
           guest: isGuest,
-          status: eventStatus.status || "",
+          status: formattedStatus || "",
           reason: eventStatus.reason || "",
           rsvpAnswers: enrichedAnswers,
         },
