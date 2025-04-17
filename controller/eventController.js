@@ -1922,6 +1922,22 @@ exports.submitResponse = async (req, res) => {
       answers,
     });
 
+    const event = await Models.eventModel.findById(eventId).lean();
+    const user = await Models.userModel.findById(userId).lean();
+    const announcement = await Models.eventAnnouncementsSchema
+      .findById(announcementId)
+      .lean();
+
+    await updateGoogleSheetForEvent(event, "announcementResponses", {
+      user,
+      announcement,
+      answers: answers.map((ans, index) => ({
+        question:
+          announcement.questions?.[index]?.question || `[Unknown Q${index}]`,
+        answer: ans.answer,
+      })),
+    });
+
     return res.status(201).json({
       message: "Response saved",
       data: newResponse,

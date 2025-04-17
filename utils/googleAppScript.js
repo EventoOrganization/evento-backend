@@ -102,6 +102,28 @@ const updateGoogleSheetForEvent = async (event, action, options = {}) => {
       };
       break;
     }
+    case "announcementResponses": {
+      const { user, answers, announcement } = options;
+      if (!user || !answers || !announcement) {
+        console.warn("⚠️ Missing user, answers or announcement in options");
+        return;
+      }
+
+      payload = {
+        ...payload,
+        timestamp: formattedTimestamp,
+        announcementResponse: {
+          email: user.email,
+          username: user.username,
+          name: `${user.firstName || ""} ${user.lastName || ""}`.trim(),
+          answers: answers.map((a) => ({
+            question: a.question,
+            answer: Array.isArray(a.answer) ? a.answer : [a.answer],
+          })),
+        },
+      };
+      break;
+    }
     case "updateGuest": {
       const fullGuests = await Models.userModel
         .find({ _id: { $in: event.guests } })
