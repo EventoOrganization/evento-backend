@@ -1522,17 +1522,20 @@ exports.deleteEvent = async (req, res) => {
 };
 exports.updateEventStatus = async (req, res) => {
   const { eventId, userId, status, rsvpAnswers, reason } = req.body;
-  console.log("req.body", req.body);
-  // Vérification des IDs requis
+  console.log("📥 Reçu dans req.body:", JSON.stringify(req.body, null, 2));
+
   if (!eventId || !userId) {
+    console.warn("❌ eventId ou userId manquant");
     return res.status(400).json({
       success: false,
       message: "Event ID and User ID are required",
     });
   }
+
   try {
     if (!status) {
-      // Suppression du statut si aucun statut n'est fourni
+      console.log("🗑️ Suppression du statut (aucun status fourni)");
+
       const eventStatus = await Models.eventStatusSchema.findOne({
         eventId,
         userId,
@@ -1542,8 +1545,10 @@ exports.updateEventStatus = async (req, res) => {
       const eventStatusData = eventStatus
         ? { ...eventStatus.toObject(), status: "" }
         : { status: "" };
+
       const event = await Models.eventModel.findById(eventId).lean();
 
+      console.log("📡 Envoi vers Google Sheet pour suppression de statut");
       await updateGoogleSheetForEvent(event, "updateStatus", {
         userId,
         eventStatus: eventStatusData,
@@ -1554,31 +1559,54 @@ exports.updateEventStatus = async (req, res) => {
         message: "Event status removed successfully",
       });
     }
-    // Mise à jour ou création du statut de l'événement
+
+    console.log("🔁 Création / mise à jour du statut...");
+    if (Array.isArray(rsvpAnswers)) {
+      for (const ans of rsvpAnswers) {
+        if (!ans.questionId || !ans.answer) {
+          console.warn("⚠️ rsvpAnswer mal formé:", ans);
+        } else {
+          console.log("✅ rsvpAnswer:", ans);
+        }
+      }
+    } else {
+      console.warn("⚠️ rsvpAnswers n'est pas un tableau !");
+    }
+
     const eventStatus = await Models.eventStatusSchema.findOneAndUpdate(
       { eventId, userId },
       { status, rsvpAnswers, reason },
       { new: true, upsert: true, runValidators: true },
     );
+
+    console.log(
+      "📦 eventStatus DB:",
+      JSON.stringify(eventStatus.toObject(), null, 2),
+    );
+
     const event = await Models.eventModel.findById(eventId);
+    console.log("📄 event:", event?.title, event?._id);
+
+    console.log("📡 Envoi vers Google Sheet...");
     await updateGoogleSheetForEvent(event, "updateStatus", {
       eventStatus,
     });
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       message: "Event status updated successfully",
       data: eventStatus,
     });
   } catch (error) {
-    console.error("Error updating event status:", error);
-    res.status(500).json({
+    console.error("❌ Error updating event status:", error);
+    return res.status(500).json({
       success: false,
       message: "An error occurred while updating the event status",
       error: error.message,
     });
   }
 };
+
 exports.removeUserFromGoing = async (req, res) => {
   try {
     const { eventId, userId } = req.body;
@@ -1706,6 +1734,15 @@ exports.createAnnouncement = async (req, res) => {
 
     await newAnnouncement.save();
 
+    // ✅ Mise à jour du Google Sheet pour les announcements
+    if (type === "questionnaire") {
+      event.announcement = questions; // nécessaire pour updateGoogleSheetForEvent
+      try {
+        await updateGoogleSheetForEvent(event, "announcementQuestions");
+      } catch (err) {
+        console.warn("⚠️ Failed to update Google Sheet for announcement:", err);
+      }
+    }
     let recipients = [];
 
     // Si on a une liste d'userIds, on récupère directement ces utilisateurs
@@ -1761,14 +1798,6 @@ exports.createAnnouncement = async (req, res) => {
         });
       }
     }
-
-    // Log des destinataires
-    console.log("✅ New Announcement Created:", newAnnouncement);
-    console.log(
-      "📩 Sending emails to:",
-      recipients.map((r) => r.email).join(", "),
-    );
-    console.log("📩 Final recipients before sending:", recipients);
 
     recipients = Array.isArray(recipients) ? recipients : [recipients];
 

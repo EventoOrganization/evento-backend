@@ -44,28 +44,21 @@ const callGoogleScript = async (payload, url) => {
 
 const updateGoogleSheetForEvent = async (event, action, options = {}) => {
   const formatTimestampForSheet = (date = new Date(), offsetStr = "+00:00") => {
-    if (!offsetStr.match(/^[+-]\d{2}:\d{2}$/)) {
-      offsetStr = "+00:00";
-    }
+    if (!offsetStr.match(/^[+-]\d{2}:\d{2}$/)) offsetStr = "+00:00";
 
     const [sign, hours, minutes] = offsetStr
       .match(/([+-])(\d{2}):(\d{2})/)
       .slice(1);
     const offsetMinutes =
       (parseInt(hours) * 60 + parseInt(minutes)) * (sign === "+" ? 1 : -1);
-
     const localDate = new Date(date.getTime() + offsetMinutes * 60 * 1000);
 
     const pad = (n) => n.toString().padStart(2, "0");
-
-    return (
-      `${pad(localDate.getDate())}/${pad(
-        localDate.getMonth() + 1,
-      )}/${localDate.getFullYear()} ` +
-      `${pad(localDate.getHours())}:${pad(localDate.getMinutes())}:${pad(
-        localDate.getSeconds(),
-      )}`
-    );
+    return `${pad(localDate.getDate())}/${pad(
+      localDate.getMonth() + 1,
+    )}/${localDate.getFullYear()} ${pad(localDate.getHours())}:${pad(
+      localDate.getMinutes(),
+    )}:${pad(localDate.getSeconds())}`;
   };
 
   const eventId = event._id.toString();
@@ -73,6 +66,7 @@ const updateGoogleSheetForEvent = async (event, action, options = {}) => {
     new Date(),
     event.details?.timeZone || "UTC",
   );
+
   const capitalize = (str) =>
     typeof str === "string"
       ? str.charAt(0).toUpperCase() + str.slice(1).toLowerCase()
@@ -91,18 +85,24 @@ const updateGoogleSheetForEvent = async (event, action, options = {}) => {
     }
   };
 
-  let payload = {
-    action,
-    eventId,
-  };
+  let payload = { action, eventId };
+
   switch (action) {
-    case "questions":
+    case "questions": {
       payload = {
         ...payload,
-        eventQuestions: event.questions,
+        RSVP: event.questions,
       };
       break;
-    case "updateGuest":
+    }
+    case "announcementQuestions": {
+      payload = {
+        ...payload,
+        announcement: event.announcement,
+      };
+      break;
+    }
+    case "updateGuest": {
       const fullGuests = await Models.userModel
         .find({ _id: { $in: event.guests } })
         .select("email username firstName lastName")
@@ -112,6 +112,7 @@ const updateGoogleSheetForEvent = async (event, action, options = {}) => {
         .find({ _id: { $in: event.tempGuests } })
         .select("email username")
         .lean();
+
       payload = {
         ...payload,
         timestamp: formattedTimestamp,
@@ -119,14 +120,16 @@ const updateGoogleSheetForEvent = async (event, action, options = {}) => {
         tempGuests: fullTempGuests,
       };
       break;
-    case "updateStatus":
+    }
+
+    case "updateStatus": {
       const { eventStatus } = options;
-      const formattedStatus = formatStatus(eventStatus.status);
       if (!eventStatus) {
         console.warn("⚠️ updateStatus requires eventStatus in options");
         return;
       }
-      console.log("updateStatus eventStatus data", eventStatus);
+
+      const formattedStatus = formatStatus(eventStatus.status);
       const user = await Models.userModel
         .findById(eventStatus.userId)
         .select("username email firstName lastName")
@@ -135,35 +138,22 @@ const updateGoogleSheetForEvent = async (event, action, options = {}) => {
         console.warn("⚠️ User not found or missing email");
         return;
       }
+
       const isGuest =
         event.guests?.some((id) => id.toString() === user._id.toString()) ||
         event.tempGuests?.some((id) => id.toString() === user._id.toString());
-      console.log(
-        "🔍 Questions disponibles:",
-        event.questions.map((q) => ({
-          id: q._id.toString(),
-          label: q.question,
-        })),
-      );
-
-      console.log("📩 RSVP Answers originales:", eventStatus.rsvpAnswers);
 
       const enrichedAnswers = (eventStatus.rsvpAnswers || []).map((ans) => {
-        const matchedQuestion = event.questions.find(
+        const matched = event.questions.find(
           (q) => q._id?.toString() === ans.questionId?.toString(),
         );
-
-        const result = {
+        return {
           question:
-            matchedQuestion?.question ||
-            `[Question inconnue: ${ans.questionId}]`,
+            matched?.question || `[Question inconnue: ${ans.questionId}]`,
           answer: ans.answer,
         };
-
-        console.log("✅ Mapped RSVP answer:", result);
-
-        return result;
       });
+
       payload = {
         ...payload,
         timestamp: formattedTimestamp,
@@ -172,12 +162,13 @@ const updateGoogleSheetForEvent = async (event, action, options = {}) => {
           username: user.username || "",
           name: `${user.firstName || ""} ${user.lastName || ""}`.trim(),
           guest: isGuest,
-          status: formattedStatus || "",
+          status: formattedStatus,
           reason: eventStatus.reason || "",
           rsvpAnswers: enrichedAnswers,
         },
       };
       break;
+    }
     default:
       payload = {};
       break;
@@ -186,10 +177,9 @@ const updateGoogleSheetForEvent = async (event, action, options = {}) => {
   await callGoogleScript(payload, GOOGLE_SCRIPT_UPDATE_URL);
 };
 const createGoogleSheetForEvent = async (event) => {
-  // goal is to create a sheet with 2 tabs [event infos, users]
-  const eventId = event._id.toString(); // sheetTitle
-  const eventTitle = event.title; // tab1 Title
-  const eventQuestions = event.questions; // dynamic tab2 columns headers
+  const eventId = event._id.toString();
+  const eventTitle = event.title;
+  const eventQuestions = event.questions;
   const payload = {
     action: "createEventSheet",
     eventId,
