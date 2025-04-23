@@ -22,90 +22,7 @@ const {
   sendAnnouncementEmail,
 } = require("../helper/mailjetEmailService");
 const { sendWhatsAppInvitation } = require("../services/whatsappService");
-// schedule.scheduleJob(cronSchedule1, async function () {
-//   try {
-//     console.log("Checking MongoDB connection...");
-//     if (mongoose.connection.readyState === 0) {
-//       console.log("No active MongoDB connection. Connecting...");
-//       await mongoose.connect(process.env.MONGO_URI, {
-//         useNewUrlParser: true,
-//         useUnifiedTopology: true,
-//       });
-//     } else {
-//       console.log("MongoDB connection already active.");
-//     }
 
-//     const oneDayBefore = moment.utc().add(1, "days").startOf("day");
-//     const endOfDay = moment.utc().add(1, "days").endOf("day");
-
-//     console.log(`Fetching events between ${oneDayBefore} and ${endOfDay}...`);
-//     const upcomingEvents = await Models.eventModel
-//       .find({
-//         "details.date": {
-//           $gte: new Date(oneDayBefore),
-//           $lt: new Date(endOfDay),
-//         },
-//       })
-//       .populate("user", "username")
-//       .populate("coHosts.userId", "username");
-
-//     if (upcomingEvents.length === 0) {
-//       console.log("No upcoming events found.");
-//       return;
-//     }
-
-//     for (const event of upcomingEvents) {
-//       try {
-//         console.log(`Processing event: ${event.title} (ID: ${event._id})`);
-
-//         if (!event.title || !event.details?.date) {
-//           console.warn(`Event ${event._id} has missing details. Skipping...`);
-//           continue;
-//         }
-
-//         const goingStatuses = await Models.eventStatusSchema
-//           .find({
-//             eventId: event._id,
-//             status: "isGoing",
-//           })
-//           .populate("userId");
-
-//         const goingUsers = goingStatuses
-//           .map((status) => status.userId)
-//           .filter((user) => user && user.email);
-
-//         for (const recipient of goingUsers) {
-//           if (recipient && recipient.email) {
-//             try {
-//               console.log(
-//                 `Sending reminder to ${recipient.email} for event: ${event.title}`,
-//               );
-//               await sendEventReminderEmail(recipient, event);
-//             } catch (emailError) {
-//               console.error(
-//                 `Failed to send email to ${recipient.email}:`,
-//                 emailError,
-//               );
-//             }
-//           } else {
-//             console.warn(
-//               `Recipient for event ${event.title} has no email address.`,
-//             );
-//           }
-//         }
-//       } catch (eventError) {
-//         console.error(
-//           `Error processing event ${event.title} (ID: ${event._id}):`,
-//           eventError,
-//         );
-//       }
-//     }
-//   } catch (error) {
-//     console.error("Error in the scheduled job:", error);
-//   } finally {
-//     console.log("Job finished.");
-//   }
-// });
 schedule.scheduleJob("*/5 * * * *", async function () {
   try {
     console.log("Checking MongoDB connection...");
@@ -119,80 +36,80 @@ schedule.scheduleJob("*/5 * * * *", async function () {
       console.log("MongoDB connection already active.");
     }
 
-    const now = moment.utc();
-    const reminderWindowStart = now
-      .clone()
-      .add(24, "hours")
-      .subtract(5, "minutes");
-    const reminderWindowEnd = now.clone().add(24, "hours").add(5, "minutes");
+    const nowUtc = moment.utc();
 
-    const upcomingEvents = await Models.eventModel
+    const potentialEvents = await Models.eventModel
       .find({
         "details.date": {
-          $gte: reminderWindowStart.toDate(),
-          $lte: reminderWindowEnd.toDate(),
+          $gte: nowUtc.clone().add(23, "hours").toDate(),
+          $lte: nowUtc.clone().add(25, "hours").toDate(),
         },
       })
       .populate("user", "username")
       .populate("coHosts.userId", "username");
 
-    if (upcomingEvents.length === 0) {
+    if (potentialEvents.length === 0) {
       console.log("No upcoming events found.");
       return;
     }
 
-    for (const event of upcomingEvents) {
+    for (const event of potentialEvents) {
       try {
-        console.log(`Processing event: ${event.title} (ID: ${event._id})`);
+        const eventDate = moment.utc(event.details.date);
+        const eventTimeZone = event.details.timeZone || "+00:00";
 
-        if (!event.title || !event.details?.date) {
-          console.warn(`Event ${event._id} has missing details. Skipping...`);
-          continue;
-        }
+        const nowInEventTZ = nowUtc.clone().utcOffset(eventTimeZone);
+        const eventLocalDate = eventDate.clone().utcOffset(eventTimeZone);
 
-        const goingStatuses = await Models.eventStatusSchema
-          .find({
-            eventId: event._id,
-            status: "isGoing",
-          })
-          .populate("userId");
+        const reminderStart = eventLocalDate
+          .clone()
+          .subtract(24, "hours")
+          .subtract(5, "minutes");
+        const reminderEnd = eventLocalDate
+          .clone()
+          .subtract(24, "hours")
+          .add(5, "minutes");
 
-        const goingUsers = goingStatuses
-          .map((status) => status.userId)
-          .filter((user) => user && user.email);
+        if (
+          nowInEventTZ.isBetween(reminderStart, reminderEnd, undefined, "[]")
+        ) {
+          console.log(
+            `⏰ Triggered reminder for event: ${event.title} (ID: ${event._id})`,
+          );
 
-        for (const recipient of goingUsers) {
-          if (recipient && recipient.email) {
+          const goingStatuses = await Models.eventStatusSchema
+            .find({ eventId: event._id, status: "isGoing" })
+            .populate("userId");
+
+          const goingUsers = goingStatuses
+            .map((status) => status.userId)
+            .filter((user) => user && user.email);
+
+          for (const recipient of goingUsers) {
             try {
               console.log(
-                `Sending reminder to ${recipient.email} for event: ${event.title}`,
+                `📧 Sending reminder to ${recipient.email} for event: ${event.title}`,
               );
               await sendEventReminderEmail(recipient, event);
             } catch (emailError) {
               console.error(
-                `Failed to send email to ${recipient.email}:`,
+                `❌ Failed to send email to ${recipient.email}:`,
                 emailError,
               );
             }
-          } else {
-            console.warn(
-              `Recipient for event ${event.title} has no email address.`,
-            );
           }
         }
       } catch (eventError) {
-        console.error(
-          `Error processing event ${event.title} (ID: ${event._id}):`,
-          eventError,
-        );
+        console.error(`⚠️ Error processing event ${event.title}:`, eventError);
       }
     }
   } catch (error) {
-    console.error("Error in the scheduled job:", error);
+    console.error("🚨 Error in the scheduled job:", error);
   } finally {
-    console.log("Job finished.");
+    console.log("✅ Job finished.");
   }
 });
+
 exports.deletePostEventMedia = async (req, res) => {
   const { eventId } = req.params;
   const { mediaUrl } = req.body;
