@@ -23,58 +23,69 @@ const {
 } = require("../helper/mailjetEmailService");
 const { sendWhatsAppInvitation } = require("../services/whatsappService");
 
+const getEventStartUtc = (details) => {
+  const baseDate = moment.utc(details.date); // ex: 2025-04-24T00:00:00Z
+  const [hour, minute] = (details.startTime || "09:00").split(":");
+  const tz = details.timeZone || "+00:00";
+
+  return baseDate
+    .clone()
+    .utcOffset(tz)
+    .set({
+      hour: Number(hour),
+      minute: Number(minute),
+      second: 0,
+      millisecond: 0,
+    })
+    .utc(); // convert back to UTC for comparison
+};
+
 schedule.scheduleJob("*/5 * * * *", async function () {
   try {
-    console.log("Checking MongoDB connection...");
+    console.log("🔄 Checking MongoDB connection...");
     if (mongoose.connection.readyState === 0) {
-      console.log("No active MongoDB connection. Connecting...");
       await mongoose.connect(process.env.MONGO_URI, {
         useNewUrlParser: true,
         useUnifiedTopology: true,
       });
-    } else {
-      console.log("MongoDB connection already active.");
     }
 
     const nowUtc = moment.utc();
 
+    // Large filter to reduce load, we’ll filter more precisely in code
     const potentialEvents = await Models.eventModel
       .find({
         "details.date": {
-          $gte: nowUtc.clone().add(23, "hours").toDate(),
-          $lte: nowUtc.clone().add(25, "hours").toDate(),
+          $gte: nowUtc.clone().subtract(1, "days").toDate(),
+          $lte: nowUtc.clone().add(2, "days").toDate(),
         },
       })
       .populate("user", "username")
       .populate("coHosts.userId", "username");
 
     if (potentialEvents.length === 0) {
-      console.log("No upcoming events found.");
+      console.log("📭 No upcoming events found.");
       return;
     }
 
     for (const event of potentialEvents) {
       try {
-        const eventDate = moment.utc(event.details.date);
-        const eventTimeZone = event.details.timeZone || "+00:00";
+        const eventStartUtc = getEventStartUtc(event.details);
 
-        const nowInEventTZ = nowUtc.clone().utcOffset(eventTimeZone);
-        const eventLocalDate = eventDate.clone().utcOffset(eventTimeZone);
-
-        const reminderStart = eventLocalDate
+        const reminderStart = eventStartUtc
           .clone()
           .subtract(24, "hours")
           .subtract(5, "minutes");
-        const reminderEnd = eventLocalDate
+        const reminderEnd = eventStartUtc
           .clone()
           .subtract(24, "hours")
           .add(5, "minutes");
 
-        if (
-          nowInEventTZ.isBetween(reminderStart, reminderEnd, undefined, "[]")
-        ) {
+        if (nowUtc.isBetween(reminderStart, reminderEnd, undefined, "[]")) {
           console.log(
-            `⏰ Triggered reminder for event: ${event.title} (ID: ${event._id})`,
+            `⏰ Triggered reminder for event: ${
+              event.title
+            } at ${eventStartUtc.toISOString()}`,
           );
 
           const goingStatuses = await Models.eventStatusSchema
