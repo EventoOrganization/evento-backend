@@ -8,7 +8,7 @@ const MessageSchema = new Schema(
       ref: "Conversation",
       required: true,
     },
-    senderId: { type: Types.ObjectId, ref: "User", required: true },
+    senderId: { type: Types.ObjectId, ref: "user", required: true },
     message: { type: String, required: true },
     messageType: { type: String, default: "text" },
   },
