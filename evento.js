@@ -102,6 +102,10 @@ app.use(
     },
   }),
 );
+app.get("/healthz", (req, res) => {
+  res.status(200).send("OK");
+});
+
 app.use((req, res, next) => {
   if (req.url == "/") {
     res.redirect("/login");
@@ -153,7 +157,13 @@ app.use(function (err, req, res, next) {
 dbConnection();
 
 // Start the server
-var port = process.env.PORT || 8747;
+if (!process.env.PORT) {
+  console.error("❌ No PORT environment variable defined. Exiting.");
+  process.exit(1);
+}
+
+var port = process.env.PORT;
+
 http.listen(port, () => {
   console.log(`Server listening on port ${port}`);
 });
