@@ -1,5 +1,4 @@
 // handlers/sendMessage.js
-const Models = require("../models");
 
 module.exports = ({ io, socket }) => {
   socket.on("send_message", async (data) => {

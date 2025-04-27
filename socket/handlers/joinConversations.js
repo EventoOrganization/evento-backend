@@ -1,4 +1,3 @@
-const Models = require("../models/index");
 // handlers/joinConversations.js
 module.exports = ({ socket }) => {
   socket.on("join_conversations", ({ conversationIds }) => {

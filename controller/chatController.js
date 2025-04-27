@@ -354,22 +354,34 @@ exports.startPrivateConversation = async (req, res) => {
 // POST /conversations
 exports.createConversations = async (req, res) => {
   const { participants, event } = req.body;
-  const conv = await Conversation.create({ participants, event });
+  const conv = await Models.conversationModel.create({ participants, event });
   // Optionnel : notifie les sockets
   io.to(participants).socketsJoin(conv._id.toString());
   res.status(201).json(conv);
 };
 // GET /conversations
 exports.fetchConversations = async (req, res) => {
-  const convs = await Conversation.find({ participants: req.query.userId })
-    .populate("participants", "username profileImage")
-    .populate("event", "title date");
-  res.json(convs);
+  const convs = await Models.conversationModel
+    .find({ participants: req.user._id })
+    .lean();
+
+  // for each conv, grab its last 10 messages
+  const withMessages = await Promise.all(
+    convs.map(async (c) => {
+      const recentMessages = await Message.find({ conversationId: c._id })
+        .sort({ createdAt: -1 })
+        .limit(10)
+        .lean();
+      return { ...c, recentMessages };
+    }),
+  );
+
+  res.json(withMessages);
 };
 // PATCH /conversations/:id
 // body { addParticipants?, removeParticipants?, event? }
 exports.updateConversations = async (req, res) => {
-  const conv = await Conversation.findById(req.params.id);
+  const conv = await Models.conversationModel.findById(req.params.id);
   if (!conv) return res.sendStatus(404);
   if (req.body.event !== undefined) conv.event = req.body.event;
   if (req.body.addParticipants)
@@ -383,7 +395,7 @@ exports.updateConversations = async (req, res) => {
 };
 // DELETE /conversations/:id
 exports.deleteConversations = async (req, res) => {
-  await Conversation.findByIdAndDelete(req.params.id);
+  await Models.conversationModel.findByIdAndDelete(req.params.id);
   io.in(req.params.id).socketsLeave(req.params.id);
   res.sendStatus(204);
 };
