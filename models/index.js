@@ -10,6 +10,7 @@ module.exports = {
   SubInterest: require("./subInterestModel"),
   feedbackModel: require("./feedbackModel"),
   commentModel: require("./commentModel"),
+  conversationModel: require("./conversationSchema"),
   announcementResponse: require("./announcementResponse"),
   // rsvpModel:require("./rsvpForm"),
   eventStatusSchema: require("./eventStatusSchema"),

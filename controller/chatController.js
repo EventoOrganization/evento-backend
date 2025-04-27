@@ -348,3 +348,42 @@ exports.startPrivateConversation = async (req, res) => {
     });
   }
 };
+// =============================================================================
+// CONVERSATIONS
+// =============================================================================
+// POST /conversations
+exports.createConversations = async (req, res) => {
+  const { participants, event } = req.body;
+  const conv = await Conversation.create({ participants, event });
+  // Optionnel : notifie les sockets
+  io.to(participants).socketsJoin(conv._id.toString());
+  res.status(201).json(conv);
+};
+// GET /conversations
+exports.fetchConversations = async (req, res) => {
+  const convs = await Conversation.find({ participants: req.query.userId })
+    .populate("participants", "username profileImage")
+    .populate("event", "title date");
+  res.json(convs);
+};
+// PATCH /conversations/:id
+// body { addParticipants?, removeParticipants?, event? }
+exports.updateConversations = async (req, res) => {
+  const conv = await Conversation.findById(req.params.id);
+  if (!conv) return res.sendStatus(404);
+  if (req.body.event !== undefined) conv.event = req.body.event;
+  if (req.body.addParticipants)
+    conv.participants.push(...req.body.addParticipants);
+  if (req.body.removeParticipants)
+    conv.participants = conv.participants.filter(
+      (p) => !req.body.removeParticipants.includes(p.toString()),
+    );
+  await conv.save();
+  res.json(conv);
+};
+// DELETE /conversations/:id
+exports.deleteConversations = async (req, res) => {
+  await Conversation.findByIdAndDelete(req.params.id);
+  io.in(req.params.id).socketsLeave(req.params.id);
+  res.sendStatus(204);
+};

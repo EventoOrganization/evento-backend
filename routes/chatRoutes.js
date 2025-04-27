@@ -29,4 +29,32 @@ router.get(
   chatController.fetchMessages,
 );
 router.post("/sendMessage", chatController.sendMessage);
+// new socketio routes 27/04/2025
+// =============================================================================
+// CONVERSATIONS
+// =============================================================================
+// Create a new conversation
+router.post(
+  "/conversations",
+  authenticateJWT,
+  chatController.createConversations,
+);
+// Get all conversations
+router.get(
+  "/conversations",
+  authenticateJWT,
+  chatController.fetchConversations,
+);
+// Update a conversation
+router.patch(
+  "/conversations/:conversationId",
+  authenticateJWT,
+  chatController.updateConversations,
+);
+// Delete a conversation
+router.delete(
+  "/conversations/:conversationId",
+  authenticateJWT,
+  chatController.deleteConversations,
+);
 module.exports = router;
