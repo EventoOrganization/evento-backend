@@ -1,4 +1,6 @@
-// Import required modules
+// ===========================================
+// 🚀 Import required modules
+// ===========================================
 var createError = require("http-errors");
 var express = require("express");
 var path = require("path");
@@ -7,14 +9,19 @@ var session = require("express-session");
 const flash = require("express-flash");
 var logger = require("morgan");
 var dbConnection = require("./.config/dbConnection");
-require("dotenv").config(); // Charge les variables d'environnement
+require("dotenv").config(); // Load environment variables
 const basemiddleware = require("./middleware/basemiddleware");
 var bodyParser = require("body-parser");
 const fileupload = require("express-fileupload");
 var expressLayouts = require("express-ejs-layouts");
+
+// ===========================================
+// 🚀 Import routers
+// ===========================================
+
 var indexRouter = require("./routes/dashBoardRoutes");
 var usersRouter = require("./routes/users");
-const cmsRoutes = require("./routes/cmsRoutes ");
+const cmsRoutes = require("./routes/cmsRoutes");
 const chatRoutes = require("./routes/chatRoutes");
 var authRoutes = require("./routes/authRoutes");
 const eventRoutes = require("./routes/eventRoutes");
@@ -23,18 +30,27 @@ const sesRoutes = require("./routes/sesRoutes");
 const iaRoutes = require("./routes/iaRoutes");
 const sitemapRoutes = require("./routes/sitemapRoutes");
 const whatsappRoutes = require("./routes/whatsappRoutes");
-const cors = require("cors");
-// Create an instance of the Express application
+
+// ===========================================
+// 🚀 Initialize Express app
+// ===========================================
 var app = express();
+
+// ===========================================
+// 🚀 Configure CORS
+// ===========================================
+const cors = require("cors");
+
 const allowedOrigins = [
-  "https://www.evento-app.io", // Production
-  "https://evento-app.io", // Production
-  "https://evento-web-git-dev-eventos-projects.vercel.app", // Développement
-  "http://localhost:3000", // Développement
-  "http://localhost:3001", // Développement
+  "https://www.evento-app.io",
+  "https://evento-app.io",
+  "https://evento-web-git-dev-eventos-projects.vercel.app",
+  "http://localhost:3000",
+  "http://localhost:3001",
   "https://backend.evento-app.io",
   "http://localhost:8747",
 ];
+
 const checkOrigin = (origin, callback) => {
   if (!origin || allowedOrigins.includes(origin)) {
     callback(null, true);
@@ -42,6 +58,7 @@ const checkOrigin = (origin, callback) => {
     callback(new Error("Not allowed by CORS"));
   }
 };
+
 const corsOptions = {
   origin: checkOrigin,
   methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
@@ -51,30 +68,57 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 app.options("*", cors(corsOptions));
-// Set up view engine
+
+// ===========================================
+// 🚀 Configure View Engine (EJS)
+// ===========================================
 app.set("views", path.join(__dirname, "views"));
 app.set("view engine", "ejs");
 
-// Configure middleware
+// ===========================================
+// 🚀 Configure Middlewares
+// ===========================================
 app.use(logger("dev"));
 app.use(express.json());
-app.use(express.text({ type: "text/plain" })); // Pour capturer les requêtes text/plain et les traiter comme texte brut
-app.use(express.urlencoded({ extended: false })); // Set extended to false
+app.use(express.text({ type: "text/plain" }));
+app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
-app.use(bodyParser.urlencoded({ extended: true })); // Use body-parser for url-encoded bodies
-app.use(bodyParser.json()); // Parse JSON bodies
+app.use(bodyParser.urlencoded({ extended: true }));
+app.use(bodyParser.json());
+app.use(fileupload());
+app.use(flash());
+app.use(basemiddleware);
+
+// ===========================================
+// 🚀 Configure Static files
+// ===========================================
+app.use(express.static(path.join(__dirname, "public")));
+
+// ===========================================
+// 🚀 Configure Layouts
+// ===========================================
+app.use(expressLayouts);
+app.set("layout", "./layout/admin_layout");
+
+// ===========================================
+// 🚀 Redirect root "/" to "/login"
+// ===========================================
 app.use((req, res, next) => {
-  req.io = io;
-  if (req.url == "/") {
+  if (req.url === "/") {
     res.redirect("/login");
     return;
   }
   next();
 });
-// Create the HTTP server
+
+// ===========================================
+// 🚀 Create HTTP server
+// ===========================================
 const http = require("http").createServer(app);
 
-// Set up Socket.IO with the HTTP server
+// ===========================================
+// 🚀 Configure Socket.IO
+// ===========================================
 const io = require("socket.io")(http, {
   cors: {
     origin: checkOrigin,
@@ -83,52 +127,45 @@ const io = require("socket.io")(http, {
   },
 });
 
-// Load the socket.io groupSocket handler
+// Attach io instance to each request
+app.use((req, res, next) => {
+  req.io = io;
+  next();
+});
+
+// Load socket.io handlers
 require("./socket/socketHandlers")(io);
-// require("./socket/groupSocket")(io);
 
-// Configure session
+// ===========================================
+// 🚀 Configure Session
+// ===========================================
 app.set("trust proxy", 1);
-
 app.use(
   session({
     secret: "secret",
     resave: true,
     saveUninitialized: true,
     cookie: {
-      maxAge: 24 * 60 * 60 * 365 * 1000,
-      // secure: true,
+      maxAge: 24 * 60 * 60 * 365 * 1000, // 1 year
       sameSite: "lax",
+      // secure: true, // Uncomment when using HTTPS
     },
   }),
 );
+
+// ===========================================
+// 🚀 Health Check Endpoint
+// ===========================================
 app.get("/healthz", (req, res) => {
   res.status(200).send("OK");
 });
 
-app.use((req, res, next) => {
-  if (req.url == "/") {
-    res.redirect("/login");
-    return;
-  }
-  next();
-});
-app.use(flash());
-app.use(basemiddleware);
-app.use(fileupload());
-
-// Serve static files
-app.use(express.static(path.join(__dirname, "public")));
-
-app.use(expressLayouts);
-app.set("layout", "./layout/admin_layout");
-
-// Set up routes
+// ===========================================
+// 🚀 Set up API Routes
+// ===========================================
 app.use("/", indexRouter);
 app.use("/users", usersRouter);
 app.use("/", cmsRoutes);
-
-//New set up routes
 app.use("/auth", authRoutes);
 app.use("/events", eventRoutes);
 app.use("/profile", profileRoutes);
@@ -137,36 +174,43 @@ app.use("/ses", sesRoutes);
 app.use("/ia", iaRoutes);
 app.use("/sitemap", sitemapRoutes);
 app.use("/whatsapp", whatsappRoutes);
-// Catch 404 and forward to error handler
+
+// ===========================================
+// 🚀 Error handling (404)
+// ===========================================
 app.use(function (req, res, next) {
   next(createError(404));
 });
 
-// Error handler
+// ===========================================
+// 🚀 Global Error handler
+// ===========================================
 app.use(function (err, req, res, next) {
-  // Set locals, only providing error in development
   res.locals.message = err.message;
   res.locals.error = req.app.get("env") === "development" ? err : {};
-
-  // Render the error page
   res.status(err.status || 500);
   res.render("error");
 });
 
-// Connect to the database
+// ===========================================
+// 🚀 Connect to the Database
+// ===========================================
 dbConnection();
 
-// Start the server
+// ===========================================
+// 🚀 Start the HTTP Server
+// ===========================================
 if (!process.env.PORT) {
   console.error("❌ No PORT environment variable defined. Exiting.");
   process.exit(1);
 }
 
 var port = process.env.PORT;
-
 http.listen(port, () => {
-  console.log(`Server listening on port ${port}`);
+  console.log(`✅ Server listening on port ${port}`);
 });
 
-// Export the app module
+// ===========================================
+// 🚀 Export Express app
+// ===========================================
 module.exports = app;
