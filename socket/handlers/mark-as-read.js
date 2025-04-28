@@ -11,14 +11,19 @@ module.exports = ({ socket }) => {
 
     await Models.conversationModel.updateOne(
       { _id: conversationId },
-      { $set: { [`readReceipts.${userId}`]: lastSeenMessageId } },
+      {
+        $set: {
+          [`readReceipts.${userId}`]: lastSeenMessageId,
+          [`unreadCounts.${userId}`]: 0, // 🔥 Reset unread count
+        },
+      },
     );
 
     console.log(
-      "[socket.on mark-as-read] 🛠 Updated conversation readReceipts!",
+      "[socket.on mark-as-read] 🛠 Updated conversation readReceipts and unreadCounts!",
     );
 
-    socket.to(conversationId).emit("read-receipt", {
+    socket.to(conversationId).emit("read_receipt", {
       conversationId,
       userId,
       lastSeenMessageId,

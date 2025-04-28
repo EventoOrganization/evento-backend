@@ -93,29 +93,48 @@ exports.createMessages = async (req, res) => {
   const senderId = req.user._id; // récupéré via JWT
 
   try {
-    // 1. Créer le message
+    // Créer le message
     const newMsg = await Models.messageSchema.create({
       conversationId,
       senderId,
       message,
     });
 
-    // 2. MAJ la conversation pour mettre à jour le lastMessage
-    await Models.conversationModel.findByIdAndUpdate(conversationId, {
-      lastMessage: newMsg._id,
-    });
+    // Update la conversation
+    const conversation = await Models.conversationModel.findById(
+      conversationId,
+    );
 
-    // 3. Notifie en socket
+    if (conversation) {
+      const update = {
+        lastMessage: newMsg._id,
+      };
+
+      // Incrémenter unreadCounts pour tous sauf sender
+      for (const participantId of conversation.participants) {
+        const idStr = participantId.toString();
+        if (idStr !== senderId.toString()) {
+          update[`unreadCounts.${idStr}`] =
+            (conversation.unreadCounts?.get(idStr) || 0) + 1;
+        }
+      }
+
+      await Models.conversationModel.updateOne(
+        { _id: conversationId },
+        { $set: update },
+      );
+    }
+
+    // Notifier en socket
     req.io.to(conversationId).emit("new_message", newMsg);
-    console.log("new_message", newMsg);
 
-    // 4. Réponds
     res.status(201).json(newMsg);
   } catch (error) {
     console.error("[createMessages] Error:", error);
     res.status(500).json({ message: "Server error" });
   }
 };
+
 // GET /messages
 exports.fetchOlderMessages = async (req, res) => {
   const { conversationId, before } = req.query;

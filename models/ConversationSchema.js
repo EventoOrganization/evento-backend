@@ -7,11 +7,8 @@ const ConversationSchema = new Schema(
     title: { type: String, default: null }, // if event => event.title
     lastMessage: { type: Types.ObjectId, ref: "Message", default: null },
 
-    readReceipts: {
-      type: Map,
-      of: Types.ObjectId,
-      default: {},
-    },
+    readReceipts: { type: Map, of: Types.ObjectId, default: {} }, // to keep track of last read message
+    unreadCounts: { type: Map, of: Number, default: {} }, // to keep track of unread messages count
   },
   { timestamps: true },
 );
