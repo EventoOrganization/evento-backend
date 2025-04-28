@@ -9,7 +9,7 @@ var session = require("express-session");
 const flash = require("express-flash");
 var logger = require("morgan");
 var dbConnection = require("./.config/dbConnection");
-require("dotenv").config(); // Load environment variables
+require("dotenv").config();
 const basemiddleware = require("./middleware/basemiddleware");
 var bodyParser = require("body-parser");
 const fileupload = require("express-fileupload");
@@ -87,7 +87,6 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 app.use(fileupload());
 app.use(flash());
-app.use(basemiddleware);
 
 // ===========================================
 // 🚀 Configure Static files
@@ -152,7 +151,7 @@ app.use(
     },
   }),
 );
-
+app.use(basemiddleware);
 // ===========================================
 // 🚀 Health Check Endpoint
 // ===========================================
