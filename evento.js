@@ -86,7 +86,6 @@ app.use(cookieParser());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 app.use(fileupload());
-app.use(flash());
 
 // ===========================================
 // 🚀 Configure Static files
@@ -151,6 +150,14 @@ app.use(
     },
   }),
 );
+// ===========================================
+// 🚀 Configure Flash messages
+// ===========================================
+app.use(flash());
+
+// ===========================================
+// 🚀 Attach basemiddleware after session and flash
+// ===========================================
 app.use(basemiddleware);
 // ===========================================
 // 🚀 Health Check Endpoint
