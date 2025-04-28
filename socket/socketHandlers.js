@@ -1,19 +1,37 @@
 // socket/socketHandlers.js
 const fs = require("fs");
 const path = require("path");
+const jwt = require("jsonwebtoken");
 
 module.exports = (io) => {
-  // Récupère tous les fichiers du dossier handlers
-  const handlersPath = path.join(__dirname, "handlers");
-  const handlerFiles = fs.readdirSync(handlersPath);
+  io.use((socket, next) => {
+    const token = socket.handshake.auth.token;
+
+    if (!token) {
+      console.error("[Socket Middleware] ❌ No token provided");
+      return next(new Error("Authentication error"));
+    }
+
+    try {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET_KEY); // Ta clé secrète serveur
+      socket.userId = decoded.id; // 👈 injecte le userId dans le socket
+      console.log("[Socket Middleware] 🔑 Authenticated user:", socket.userId);
+      next();
+    } catch (err) {
+      console.error("[Socket Middleware] ❌ Invalid token");
+      next(new Error("Authentication error"));
+    }
+  });
 
   io.on("connection", (socket) => {
-    console.log("New client connected", socket.id);
+    console.log("New client connected", socket.id, "userId:", socket.userId);
 
-    // Pour chaque fichier, on require et on exécute le handler
+    // ensuite tu appelles tes handlers comme d'habitude :
+    const handlersPath = path.join(__dirname, "handlers");
+    const handlerFiles = fs.readdirSync(handlersPath);
+
     handlerFiles.forEach((file) => {
       const handler = require(path.join(handlersPath, file));
-      // On passe { io, socket } pour que chaque handler y ait accès
       handler({ io, socket });
     });
   });

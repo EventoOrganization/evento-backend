@@ -19,6 +19,7 @@ router.get(
   authenticateJWT,
   chatController.fetchConversations,
 );
+
 // Update a conversation
 router.patch(
   "/conversations/:conversationId/leave",
@@ -35,4 +36,6 @@ router.delete(
 // MESSAGES
 // =============================================================================
 router.post("/messages", authenticateJWT, chatController.createMessages);
+router.get("/messages", authenticateJWT, chatController.fetchOlderMessages);
+
 module.exports = router;

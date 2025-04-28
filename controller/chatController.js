@@ -67,6 +67,7 @@ exports.leaveConversation = async (req, res) => {
 
   res.sendStatus(200);
 };
+
 // DELETE /conversations/:id
 exports.deleteConversations = async (req, res) => {
   const { conversationId } = req.params;
@@ -87,8 +88,6 @@ exports.deleteConversations = async (req, res) => {
 // MESSAGES
 // =============================================================================
 // POST /messages
-// controllers/messagesController.ts
-
 exports.createMessages = async (req, res) => {
   const { conversationId, message } = req.body;
   const senderId = req.user._id; // récupéré via JWT
@@ -114,6 +113,40 @@ exports.createMessages = async (req, res) => {
     res.status(201).json(newMsg);
   } catch (error) {
     console.error("[createMessages] Error:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+// GET /messages
+exports.fetchOlderMessages = async (req, res) => {
+  const { conversationId, before } = req.query;
+  const limit = 20; // Tu peux même le rendre configurable si besoin
+
+  try {
+    const messages = await Models.messageSchema
+      .find({
+        conversationId,
+        createdAt: { $lt: new Date(before) },
+      })
+      .sort({ createdAt: -1 })
+      .limit(limit)
+      .lean();
+
+    const totalRemaining = await Models.messageSchema.countDocuments({
+      conversationId,
+      createdAt: {
+        $lt:
+          messages.length > 0
+            ? messages[messages.length - 1].createdAt
+            : new Date(before),
+      },
+    });
+
+    res.json({
+      messages,
+      hasMore: totalRemaining > 0,
+    });
+  } catch (error) {
+    console.error("[fetchOlderMessages] Error:", error);
     res.status(500).json({ message: "Server error" });
   }
 };
