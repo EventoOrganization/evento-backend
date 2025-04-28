@@ -20,26 +20,33 @@ exports.createConversations = async (req, res) => {
 };
 // GET /conversations
 exports.fetchConversations = async (req, res) => {
-  const convs = await Models.conversationModel
-    .find({ participants: req.user._id })
-    .populate("participants", "username profileImage")
-    .lean();
+  try {
+    const convs = await Models.conversationModel
+      .find({ participants: req.user._id })
+      .populate("participants", "username profileImage") // Pour peupler les users
+      .populate("lastMessage")
+      .lean();
 
-  // for each conv, grab its last 10 messages
-  const withMessages = await Promise.all(
-    convs.map(async (c) => {
-      const recentMessages = await Models.messageSchema
-        .find({ conversationId: c._id })
-        .sort({ createdAt: -1 })
-        .limit(10)
-        .lean();
+    // Optionnel : charger aussi les derniers messages
+    const withMessages = await Promise.all(
+      convs.map(async (c) => {
+        const recentMessages = await Models.messageSchema
+          .find({ conversationId: c._id })
+          .sort({ createdAt: -1 })
+          .limit(10)
+          .lean();
 
-      return { ...c, recentMessages };
-    }),
-  );
+        return { ...c, recentMessages };
+      }),
+    );
 
-  res.json(withMessages);
+    res.json(withMessages);
+  } catch (error) {
+    console.error("[fetchConversations] Error:", error);
+    res.status(500).json({ message: "Server error" });
+  }
 };
+
 // PATCH /conversations/:id/leave
 exports.leaveConversation = async (req, res) => {
   const { conversationId } = req.params;
@@ -80,18 +87,33 @@ exports.deleteConversations = async (req, res) => {
 // MESSAGES
 // =============================================================================
 // POST /messages
+// controllers/messagesController.ts
+
 exports.createMessages = async (req, res) => {
   const { conversationId, message } = req.body;
-  const senderId = req.user._id; // via JWT
+  const senderId = req.user._id; // récupéré via JWT
 
-  const newMsg = await Models.messageSchema.create({
-    conversationId,
-    senderId,
-    message,
-  });
+  try {
+    // 1. Créer le message
+    const newMsg = await Models.messageSchema.create({
+      conversationId,
+      senderId,
+      message,
+    });
 
-  // Notifie via socket (instantané aux autres clients)
-  req.io.to(conversationId).emit("new_message", newMsg);
-  console.log("new_message", newMsg);
-  res.status(201).json(newMsg);
+    // 2. MAJ la conversation pour mettre à jour le lastMessage
+    await Models.conversationModel.findByIdAndUpdate(conversationId, {
+      lastMessage: newMsg._id,
+    });
+
+    // 3. Notifie en socket
+    req.io.to(conversationId).emit("new_message", newMsg);
+    console.log("new_message", newMsg);
+
+    // 4. Réponds
+    res.status(201).json(newMsg);
+  } catch (error) {
+    console.error("[createMessages] Error:", error);
+    res.status(500).json({ message: "Server error" });
+  }
 };
