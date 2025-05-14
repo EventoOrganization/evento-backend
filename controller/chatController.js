@@ -21,31 +21,58 @@ exports.createConversations = async (req, res) => {
 // GET /conversations
 exports.fetchConversations = async (req, res) => {
   try {
-    const convs = await Models.conversationModel
+    const rawConvs = await Models.conversationModel
       .find({ participants: req.user._id })
-      .populate("participants", "username profileImage") // Pour peupler les users
-      .populate("lastMessage")
       .lean();
 
-    // Optionnel : charger aussi les derniers messages
+    const activeConvs = (
+      await Promise.all(
+        rawConvs.map(async (conv) => {
+          if (!conv.eventId) {
+            return conv;
+          }
+          const evt = await Models.eventModel
+            .findById(conv.eventId)
+            .select("details.includeChat")
+            .lean();
+
+          if (evt?.details?.includeChat) {
+            return conv;
+          }
+          return null;
+        }),
+      )
+    ).filter(Boolean);
+
+    const populatedConvs = await Promise.all(
+      activeConvs.map(async (c) => {
+        const withPops = await Models.conversationModel
+          .findById(c._id)
+          .populate("participants", "username profileImage")
+          .populate("lastMessage")
+          .lean();
+        return withPops;
+      }),
+    );
+
     const withMessages = await Promise.all(
-      convs.map(async (c) => {
+      populatedConvs.map(async (c) => {
         const recentMessages = await Models.messageSchema
           .find({ conversationId: c._id })
           .sort({ createdAt: -1 })
           .limit(10)
           .lean();
-
         return { ...c, recentMessages };
       }),
     );
 
-    res.json(withMessages);
+    return res.json(withMessages);
   } catch (error) {
     console.error("[fetchConversations] Error:", error);
-    res.status(500).json({ message: "Server error" });
+    return res.status(500).json({ message: "Server error" });
   }
 };
+
 // PATCH /conversations/:id/join
 exports.joinConversation = async (req, res) => {
   try {
