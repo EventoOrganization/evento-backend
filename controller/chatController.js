@@ -46,7 +46,33 @@ exports.fetchConversations = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
+// PATCH /conversations/:id/join
+exports.joinConversation = async (req, res) => {
+  try {
+    const { conversationId } = req.params;
+    const userId = req.user._id;
 
+    const conv = await Models.conversationModel.findById(conversationId);
+    if (!conv) {
+      return res.status(404).json({ message: "Conversation not found" });
+    }
+
+    if (!conv.participants.includes(userId)) {
+      conv.participants.push(userId);
+      await conv.save();
+    }
+
+    const populated = await conv.populate(
+      "participants",
+      "username profileImage",
+    );
+
+    res.status(200).json(populated);
+  } catch (err) {
+    console.error("Error in joinConversation:", err);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
 // PATCH /conversations/:id/leave
 exports.leaveConversation = async (req, res) => {
   const { conversationId } = req.params;

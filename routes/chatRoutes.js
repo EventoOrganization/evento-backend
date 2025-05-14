@@ -22,6 +22,11 @@ router.get(
 
 // Update a conversation
 router.patch(
+  "/conversations/:conversationId/join",
+  authenticateJWT,
+  chatController.joinConversation,
+);
+router.patch(
   "/conversations/:conversationId/leave",
   authenticateJWT,
   chatController.leaveConversation,

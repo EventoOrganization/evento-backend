@@ -636,8 +636,6 @@ exports.updateEventField = async (req, res) => {
         event.requiresApproval = value;
         break;
       case "approvedUserIds":
-        console.log("Updating approvedUserIds:", value);
-
         if (!mongoose.Types.ObjectId.isValid(value)) {
           return res.status(400).json({ message: "Invalid user ID format" });
         }
@@ -651,7 +649,8 @@ exports.updateEventField = async (req, res) => {
         if (!event.approvedUserIds.some((id) => id.equals(userIdToAdd))) {
           event.approvedUserIds.push(userIdToAdd);
         }
-
+      case "includeChat":
+        event.details.includeChat = value;
         break;
       default:
         console.log("Invalid field specified");
