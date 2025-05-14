@@ -10,7 +10,7 @@ exports.createConversations = async (req, res) => {
   const { participants, event } = req.body;
   let conv = await Models.conversationModel.create({
     participants,
-    event,
+    eventId: event ? event._id : null,
     title: event ? event.title : null,
   });
 

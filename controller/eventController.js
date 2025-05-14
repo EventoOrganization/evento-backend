@@ -843,40 +843,31 @@ exports.createEvent = async (req, res) => {
       }
     }
 
-    // Step 4: Handle group chat creation if necessary
-    if (includeChat) {
-      const initialUsers = [req.user.id, ...coHosts];
-      const saveData = {
+    // Step 4: Init chat
+
+    try {
+      const participantIds = [
+        req.user._id,
+        ...createdEvent.coHosts.map((ch) => ch.userId),
+      ];
+      let conv = await Models.conversationModel.findOne({
         eventId: createdEvent._id,
-        admin: req.user._id,
-        users: initialUsers,
-        groupName: createdEvent.title,
-        image:
-          createdEvent.initialMedia.length > 0
-            ? initialMedia[0].url
-            : req.user.profileImage,
-        date: moment().format("YYYY-MM-DD"),
-        time: moment().format("LTS"),
-      };
-
-      try {
-        const createdGroupChat = await Models.groupChatModel.create(saveData);
-
-        const createdChatConstant = await Models.chatconstant.create({
-          senderId: req.user._id,
-          groupId: createdGroupChat._id,
-          groupUserIds: initialUsers,
-          lastmessage: null,
-          is_delete: 0,
-          is_favourite: 0,
-          is_block: 0,
-          unreadCount: 0,
-          date: moment().format("YYYY-MM-DD"),
-          time: moment().format("LTS"),
+      });
+      if (!conv) {
+        conv = await Models.conversationModel.create({
+          participants: participantIds,
+          eventId: createdEvent._id,
+          title: createdEvent.title,
         });
-      } catch (error) {
-        console.error("Error creating group chat or chat constant:", error);
+        console.log(
+          "Conversation created:",
+          conv._id,
+          "with participants:",
+          participantIds,
+        );
       }
+    } catch (error) {
+      console.error("Error creating group chat or chat constant:", error);
     }
 
     return res.status(201).json({
@@ -1060,7 +1051,10 @@ exports.getEventById = async (req, res) => {
       ...announcement,
       responses: responsesByAnnouncement[announcement._id.toString()] || [],
     }));
-
+    const conv =
+      (await Models.conversationModel.findOne({
+        eventId: eventId,
+      })) || {};
     // Assemblage de l'événement enrichi
     const enrichedEvent = {
       ...event.toObject(),
@@ -1082,6 +1076,7 @@ exports.getEventById = async (req, res) => {
         : false,
       isCoHost,
       isHosted: hostStatus,
+      conversation: conv,
     };
 
     // console.log("Enriched event object prepared:", enrichedEvent);
@@ -1439,7 +1434,7 @@ exports.deleteEvent = async (req, res) => {
         eventId: req.params.id,
       });
       await Models.groupChatModel.deleteOne({ eventId: req.params.id });
-      await Models.chatconstant.deleteMany({ groupId: req.params.id });
+      await Models.conversationModel.deleteMany({ eventId: req.params.id });
     }
 
     return helper.success(res, "Event deleted successfully");
