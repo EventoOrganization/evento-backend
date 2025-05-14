@@ -93,7 +93,6 @@ exports.leaveConversation = async (req, res) => {
 
   res.sendStatus(200);
 };
-
 // DELETE /conversations/:id
 exports.deleteConversations = async (req, res) => {
   const { conversationId } = req.params;
