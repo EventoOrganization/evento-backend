@@ -172,7 +172,7 @@ exports.addGuests = async (req, res) => {
       return res.status(404).json({ message: "Event not found." });
     }
 
-    const eventLink = `${process.env.CLIENT_URL}/event/${eventId}`;
+    const eventLink = `${process.env.CLIENT_URL}/events/${eventId}`;
     const invitedBy = user._id;
 
     // Traitement des utilisateurs existants
@@ -418,7 +418,7 @@ exports.acceptRequest = async (req, res) => {
     const guestInfo = await Models.userModel
       .findById(userId)
       .select("username email");
-    const eventLink = `${process.env.CLIENT_URL}/event/${eventId}`;
+    const eventLink = `${process.env.CLIENT_URL}/events/${eventId}`;
     await sendEventInviteEmail(req.user, guestInfo, event, eventLink); // averti le user
 
     await updateGoogleSheetForEvent(event, "updateGuest");
@@ -827,7 +827,7 @@ exports.createEvent = async (req, res) => {
     if (fullUser) {
       createdEvent.user = fullUser;
     }
-    const eventLink = `${process.env.CLIENT_URL}/event/${createdEvent._id}`;
+    const eventLink = `${process.env.CLIENT_URL}/events/${createdEvent._id}`;
 
     for (const coHost of createdEvent.coHosts) {
       const coHostUser = await Models.userModel.findById(coHost.userId);

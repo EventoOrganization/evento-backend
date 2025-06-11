@@ -114,7 +114,7 @@ const sendAnnouncementEmail = async (user, recipient, event, announcement) => {
       ${announcement.message}
     </p>
      <div style="text-align: center; margin-top: 20px;">
-      <a href="https://www.evento-app.io/event/${event._id}" target="_blank" 
+      <a href="https://www.evento-app.io/events/${event._id}" target="_blank" 
       style="display: inline-block; padding: 10px 20px; background-color: #5b34da; color: white; text-decoration: none; border-radius: 5px; font-size: 14px;">
         View Event Details
       </a>
@@ -255,7 +255,7 @@ const sendEventReminderEmail = async (recipient, event) => {
         </div>
       </div>
       <div style="text-align: center; margin-top: 20px;">
-        <a href="https://www.evento-app.io/event/${event._id}" target="_blank" 
+        <a href="https://www.evento-app.io/events/${event._id}" target="_blank" 
         style="display: inline-block; padding: 10px 20px; background-color: #5b34da; color: white; text-decoration: none; border-radius: 5px;">
           View Event Details
         </a>
@@ -322,7 +322,7 @@ const sendUpdateNotification = async (
         const changeDetails = buildChangeDetails(changeType, oldData, event);
         const imageUrl = event.initialMedia?.[0]?.url || "";
         // Lien vers l'événement
-        const eventLink = `https://www.evento-app.io/event/${event._id}`;
+        const eventLink = `https://www.evento-app.io/events/${event._id}`;
 
         // Contenu spécifique de l'email
         const content = `

@@ -208,7 +208,7 @@ module.exports = {
             title: "Evento Notification",
             body: notification_data.message,
             icon: notification_data.senderImage,
-            url: `https://yourwebsite.com/event/${notification_data.eventId}`,
+            url: `https://yourwebsite.com/events/${notification_data.eventId}`,
           };
 
           // Here you need to call your method to send web notification

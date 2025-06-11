@@ -49,7 +49,7 @@ router.get(
 );
 router.put("/updateEventAll", authenticateJWT, userController.updateEventALl);
 router.put("/updateEvent", authenticateJWT, userController.updateEvent);
-router.get("/event/:id", userController.getEventById);
+router.get("/events/:id", userController.getEventById);
 router.get("/evento/:id", userController.getEventoById);
 router.post(
   "/followStatusForAllUsersThatNotAddAsCoHost",
