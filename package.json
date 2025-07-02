@@ -49,6 +49,7 @@
     }
   },
   "devDependencies": {
+    "@types/bcrypt": "^5.0.2",
     "@types/body-parser": "^1.19.6",
     "@types/cookie-parser": "^1.4.9",
     "@types/cors": "^2.8.19",
@@ -58,6 +59,7 @@
     "@types/express-flash": "^0.0.5",
     "@types/express-session": "^1.18.2",
     "@types/http-errors": "^2.0.5",
+    "@types/jsonwebtoken": "^9.0.10",
     "@types/morgan": "^1.9.10",
     "@types/multer": "^2.0.0",
     "@types/node": "^24.0.10",

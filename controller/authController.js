@@ -326,57 +326,62 @@ exports.verifyEmailOTP = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
-exports.login = async (req, res) => {
-  const { email, password } = req.body;
+// exports.login = async (req, res) => {
+//   const { email, password } = req.body;
 
-  try {
-    // Recherche de l'utilisateur par email
-    const user = await User.findOne({ email });
-    if (!user) {
-      return res.status(400).json({ message: "User not found" });
-    }
+//   try {
+//     // Recherche de l'utilisateur par email
+//     const user = await User.findOne({ email });
+//     if (!user) {
+//       return res.status(400).json({ message: "User not found" });
+//     }
 
-    // Vérification du mot de passe
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) {
-      return res.status(400).json({ message: "Invalid credentials" });
-    }
-    // Génération du token JWT
-    const token = jwt.sign(
-      {
-        id: user._id,
-        username: user.username,
-        profileImage: user.profileImage,
-        email: user.email,
-      },
-      JWT_SECRET_KEY,
-      { expiresIn: "30d" },
-    );
+//     // Vérification du mot de passe
+//     const isMatch = await bcrypt.compare(password, user.password);
+//     if (!isMatch) {
+//       return res.status(400).json({ message: "Invalid credentials" });
+//     }
+//     // Génération du token JWT
+//     const secret = process.env.JWT_SECRET_KEY;
+//     if (!secret) {
+//       throw new Error("JWT_SECRET_KEY is not defined in .env");
+//     }
 
-    // Configuration du cookie sécurisé avec le token
-    res.cookie("token", token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production", // secure en production
-      sameSite: "lax",
-      maxAge: 1000 * 60 * 60 * 24 * 7, // 7 jours
-      // domain: ".evento-app.io",
-    });
-    console.log("Login successful", user);
-    res.status(200).json({
-      message: "Login successful",
-      body: {
-        _id: user._id,
-        username: user.username,
-        profileImage: user.profileImage,
-        email: user.email,
-        token,
-      },
-    });
-  } catch (error) {
-    console.error("Login error:", error);
-    res.status(500).json({ message: "Server error" });
-  }
-};
+//     const token = jwt.sign(
+//       {
+//         id: user._id,
+//         username: user.username,
+//         profileImage: user.profileImage,
+//         email: user.email,
+//       },
+//       secret,
+//       { expiresIn: "30d" },
+//     );
+
+//     // Configuration du cookie sécurisé avec le token
+//     res.cookie("token", token, {
+//       httpOnly: true,
+//       secure: process.env.NODE_ENV === "production", // secure en production
+//       sameSite: "lax",
+//       maxAge: 1000 * 60 * 60 * 24 * 7, // 7 jours
+//       // domain: ".evento-app.io",
+//     });
+//     console.log("Login successful", user);
+//     res.status(200).json({
+//       message: "Login successful",
+//       body: {
+//         _id: user._id,
+//         username: user.username,
+//         profileImage: user.profileImage,
+//         email: user.email,
+//         token,
+//       },
+//     });
+//   } catch (error) {
+//     console.error("Login error:", error);
+//     res.status(500).json({ message: "Server error" });
+//   }
+// };
 exports.logout = async (req, res) => {
   try {
     res.clearCookie("token");
@@ -553,19 +558,50 @@ exports.deleteAccount = async (req, res) => {
 };
 exports.validateToken = async (req, res) => {
   const authHeader = req.headers.authorization;
-  if (!authHeader) {
+  console.log("🛂 Received authHeader:", authHeader);
+
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
     return res.status(401).json({
       success: false,
-      message: "Authorization header missing",
+      message: "Authorization header missing or invalid",
     });
   }
 
   const token = authHeader.split(" ")[1];
 
-  try {
-    const decoded = jwt.verify(token, JWT_SECRET_KEY);
-    console.log("🔑 ~ Token decoded:", decoded);
+  if (!token || typeof token !== "string") {
+    return res.status(403).json({
+      success: false,
+      message: "Token is missing or malformed",
+    });
+  }
 
+  const secret = process.env.JWT_SECRET_KEY;
+  if (!secret) {
+    console.error("❌ JWT_SECRET_KEY is missing in environment variables");
+    return res.status(500).json({ message: "Server misconfiguration" });
+  }
+
+  let decoded;
+  try {
+    decoded = jwt.verify(token, secret);
+  } catch (error) {
+    console.error("JWT verification error:", error.message);
+    let message = "Invalid token";
+
+    if (error instanceof jwt.TokenExpiredError) {
+      message = "Token has expired";
+    } else if (error instanceof jwt.JsonWebTokenError) {
+      message = "Token is invalid";
+    }
+
+    return res.status(403).json({
+      success: false,
+      message,
+    });
+  }
+
+  try {
     const existingUser = await User.findOne({
       _id: decoded.id,
       email: decoded.email,
@@ -587,19 +623,8 @@ exports.validateToken = async (req, res) => {
         username: existingUser.username,
       },
     });
-  } catch (error) {
-    console.error("JWT verification error:", error.message);
-    let message = "Invalid token";
-
-    if (error instanceof jwt.TokenExpiredError) {
-      message = "Token has expired";
-    } else if (error instanceof jwt.JsonWebTokenError) {
-      message = "Token is invalid";
-    }
-
-    return res.status(403).json({
-      success: false,
-      message: message,
-    });
+  } catch (err) {
+    console.error("🔴 DB error during validateToken", err);
+    return res.status(500).json({ message: "Internal error" });
   }
 };

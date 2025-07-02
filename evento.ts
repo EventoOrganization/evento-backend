@@ -15,7 +15,8 @@ import createError from "http-errors";
 import logger from "morgan";
 import path from "path";
 import { Server as SocketIOServer } from "socket.io";
-import dbConnection from "./.config/dbConnection";
+import { corsOptions } from "./config/corsConfig";
+import dbConnection from "./config/dbConnection";
 import basemiddleware from "./middleware/basemiddleware";
 import mainRouter from "./routes";
 
@@ -27,21 +28,9 @@ const app = express();
 const httpServer = http.createServer(app);
 const io = new SocketIOServer(httpServer, {
   cors: {
-    origin: (origin, callback) => {
-      const allowedOrigins = [
-        "https://www.evento-app.io",
-        "https://evento-app.io",
-        "https://evento-web-git-dev-eventos-projects.vercel.app",
-        "http://localhost:3000",
-        "http://localhost:3001",
-        "https://backend.evento-app.io",
-        "http://localhost:8747",
-      ];
-      if (!origin || allowedOrigins.includes(origin)) callback(null, true);
-      else callback(new Error("Not allowed by CORS"), false);
-    },
+    origin: corsOptions.origin,
+    credentials: corsOptions.credentials,
     methods: ["GET", "POST"],
-    credentials: true,
   },
 });
 
@@ -73,8 +62,9 @@ app.set("view engine", "ejs");
 app.use(expressLayouts);
 app.set("layout", "./layout/admin_layout");
 
-app.use(cors());
-app.options("*", cors());
+app.use(cors(corsOptions));
+app.options("*", cors(corsOptions));
+
 app.set("trust proxy", 1);
 
 app.use(

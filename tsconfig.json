@@ -12,6 +12,6 @@
     "checkJs": false, // 👈 Ne les vérifie pas
     "noEmit": false // 👈 Autorise l’émission (par défaut c’est true quand tu es en projet mixte)
   },
-  "include": ["**/*.ts", "**/*.js"], // 👈 Important pour qu’il copie les JS
+  "include": ["**/*.ts", "**/*.js", "config/env.ts"], // 👈 Important pour qu’il copie les JS
   "exclude": ["node_modules", "dist"]
 }

@@ -2,7 +2,7 @@
 const fs = require("fs");
 const path = require("path");
 const jwt = require("jsonwebtoken");
-
+const { getEnv } = require("../config/env");
 module.exports = (io) => {
   io.use((socket, next) => {
     const token = socket.handshake.auth.token;
@@ -13,7 +13,8 @@ module.exports = (io) => {
     }
 
     try {
-      const decoded = jwt.verify(token, process.env.JWT_SECRET_KEY); // Ta clé secrète serveur
+      const jwtSecret = getEnv("JWT_SECRET_KEY");
+      const decoded = jwt.verify(token, jwtSecret);
       socket.userId = decoded.id; // 👈 injecte le userId dans le socket
       console.log("[Socket Middleware] 🔑 Authenticated user:", socket.userId);
       next();
