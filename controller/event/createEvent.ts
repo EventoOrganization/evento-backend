@@ -1,7 +1,7 @@
 // /controller/event/createEvent.ts
 
 // Imports
-import { Request, Response } from "express";
+import { RequestHandler } from "express";
 import { uploadFileToS3 } from "../../services/uploadFileToS3";
 import { validateCreateEventInput } from "../../validators/eventValidator";
 
@@ -19,38 +19,36 @@ interface UploadedMedia {
   mediumUrl?: string;
 }
 
-interface AuthenticatedRequest extends Request {
-  user: {
-    _id: string;
-    [key: string]: any;
-  };
-  files?:
-    | Express.Multer.File[]
-    | { [fieldname: string]: Express.Multer.File[] };
-}
-
-// Controller
-export const createEvent = async (req: AuthenticatedRequest, res: Response) => {
+export const createEvent: RequestHandler = async (req, res) => {
   console.log("📥 [createEvent] Incoming request");
+  if (typeof Number !== "function") {
+    throw new Error("Global Number object has been overridden.");
+  }
 
   try {
     console.log("🧾 req.files:", req.files);
     console.log("🧾 req.body keys:", Object.keys(req.body));
 
     const input = validateCreateEventInput(req.body);
+    console.log("🧾 input:", input);
 
     const uploadedMediaFromFiles: UploadedMedia[] = [];
 
     // Fichiers envoyés via multipart
-    if (Array.isArray(req.files)) {
+    if (req.files?.mediaFiles) {
+      const media = Array.isArray(req.files.mediaFiles)
+        ? req.files.mediaFiles
+        : [req.files.mediaFiles];
+
       console.log("🚀 Uploading media files to S3...");
-      for (const file of req.files) {
-        const ext = file.originalname.split(".").pop();
+
+      for (const file of media) {
+        const ext = file.name.split(".").pop();
         const key = `events/${Date.now()}-${Math.random()
           .toString(36)
           .slice(2)}.${ext}`;
         const url = await uploadFileToS3(
-          { data: file.buffer, mimetype: file.mimetype },
+          { data: file.data, mimetype: file.mimetype },
           key,
         );
         uploadedMediaFromFiles.push({
@@ -81,14 +79,24 @@ export const createEvent = async (req: AuthenticatedRequest, res: Response) => {
           }))
       : [];
 
+    const predefinedMedia: UploadedMedia[] = Array.isArray(
+      input.predefinedMedia,
+    )
+      ? input.predefinedMedia.map((m: any) => ({
+          url: m.url,
+          type: "image",
+        }))
+      : [];
+
     const initialMedia: UploadedMedia[] = [
       ...imageUrls,
       ...videoUrls,
       ...uploadedMediaFromFiles,
+      ...predefinedMedia,
     ];
 
     const objToSave = {
-      user: req.user._id,
+      user: req.user?._id,
       title: input.title,
       eventType: input.eventType,
       details: {
@@ -98,7 +106,10 @@ export const createEvent = async (req: AuthenticatedRequest, res: Response) => {
           coordinates:
             input.mode === "virtual"
               ? [0, 0]
-              : [Number(input.longitude), Number(input.latitude)],
+              : [
+                  parseFloat(String(input.longitude)),
+                  parseFloat(String(input.latitude)),
+                ],
         },
         mode: input.mode,
         location: input.location,
@@ -117,7 +128,9 @@ export const createEvent = async (req: AuthenticatedRequest, res: Response) => {
       initialMedia,
       guests: input.guests,
       restricted: input.restricted,
-      limitedGuests: input.limitedGuests,
+      limitedGuests: input.limitedGuests
+        ? parseInt(String(input.limitedGuests))
+        : null,
       interests: input.interests,
       questions: input.questions,
       additionalField: input.additionalField,
@@ -140,7 +153,7 @@ export const createEvent = async (req: AuthenticatedRequest, res: Response) => {
     }
 
     const fullUser = await Models.userModel
-      .findById(req.user._id)
+      .findById(req.user?._id)
       .select("_id username firstName lastName profileImage");
 
     if (fullUser) {
@@ -163,7 +176,7 @@ export const createEvent = async (req: AuthenticatedRequest, res: Response) => {
 
     try {
       const participantIds = [
-        req.user._id,
+        req.user?._id,
         ...createdEvent.coHosts.map((ch: any) => ch.userId),
       ];
       let conv = await Models.conversationModel.findOne({
@@ -180,14 +193,10 @@ export const createEvent = async (req: AuthenticatedRequest, res: Response) => {
       console.error("⚠️ Chat creation failed:", chatErr);
     }
 
-    return res.status(201).json({
-      status: true,
-      message: "Event created successfully",
-      event: createdEvent,
-    });
+    res.status(201).json({ status: true, event: createdEvent });
   } catch (error) {
     console.error("❌ Fatal error during event creation:", error);
-    return res.status((error as any).status || 500).json({
+    res.status(500).json({
       status: false,
       message: error instanceof Error ? error.message : "Internal server error",
     });

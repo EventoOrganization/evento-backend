@@ -1,34 +1,24 @@
-var express = require("express");
-var router = express.Router();
-var eventController = require("../controller/eventController");
-const authenticateJWT = require("../middleware/authentication").authenticateJWT;
-// const createEvent = require("../controller/event/createEvent");
-const upload = require("../middleware/uploadMediaFiles");
+import { Router } from "express";
+import { createEvent } from "../controller/event/createEvent";
+import * as eventController from "../controller/eventController";
+import { authenticateJWT } from "../middleware/authentication";
 
-// Create events
-router.post("/createEvent", authenticateJWT, eventController.createEvent);
-// router.post(
-//   "/create",
-//   (req, res, next) => {
-//     console.log("🔍 Step 1 - before multer");
-//     console.log("🔍 Request", req.files, req.body);
-//     next();
-//   },
-//   // upload.array("mediaFiles", 10),
+const router = Router();
 
-//   (req, res, next) => {
-//     console.log("📥 Passed multer, entering controller...");
-//     next();
-//   },
-//   createEvent.createEvent,
-// );
+// ✅ Route utilisée par ton frontend
+router.post("/create", authenticateJWT, eventController.createEvent);
 
-// Get events
+// ✅ Autre (ancienne ?) route avec suffixe
+// router.post("/createEvent", authenticateJWT, eventController.createEvent);
+router.post("/createEvent", authenticateJWT, createEvent);
+
+// 📦 Récupération d’un event
 router.get("/getEvent/:id", eventController.getEventById);
 router.get("/getRSVPAndReasons/:eventId", eventController.getRSVPAndReasons);
 router.get("/getUpcomingEvents", eventController.getUpcomingEvents);
 router.get("/getEvents", eventController.getEvents);
-// Update events
+
+// ✏️ Update
 router.put(
   "/updateEvent/:eventId",
   authenticateJWT,
@@ -44,12 +34,15 @@ router.delete(
   authenticateJWT,
   eventController.deletePostEventMedia,
 );
-// toggle allowed postEventMedia
+
+// 🔁 Toggle
 router.patch(
   "/toggle-upload-media",
   authenticateJWT,
   eventController.toggleUploadMedia,
 );
+
+// 📣 Announcements
 router.post(
   "/:eventId/createAnnouncement",
   authenticateJWT,
@@ -65,7 +58,8 @@ router.delete(
   authenticateJWT,
   eventController.deleteAnnouncement,
 );
-// handle Guests
+
+// 👥 Guests
 router.post(
   "/:eventId/requestToJoin",
   authenticateJWT,
@@ -88,15 +82,18 @@ router.post(
   authenticateJWT,
   eventController.removeUserFromGoing,
 );
-// Handling Status
+
+// 🟢 Status
 router.post(
   "/updateEventStatus",
   authenticateJWT,
   eventController.updateEventStatus,
 );
-// Delete events
+
+// 🗑️ Delete
 router.delete("/deleteEvent/:id", authenticateJWT, eventController.deleteEvent);
-// comments
+
+// 💬 Comments
 router.post(
   "/:eventId/comments",
   authenticateJWT,
@@ -108,4 +105,4 @@ router.delete(
   eventController.deleteComment,
 );
 
-module.exports = router;
+export default router;

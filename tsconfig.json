@@ -8,6 +8,7 @@
     "esModuleInterop": true,
     "resolveJsonModule": true,
     "skipLibCheck": true,
+    "typeRoots": ["./types", "./node_modules/@types"],
     "allowJs": true, // 👈 Autorise les fichiers JS
     "checkJs": false, // 👈 Ne les vérifie pas
     "noEmit": false // 👈 Autorise l’émission (par défaut c’est true quand tu es en projet mixte)

@@ -11,6 +11,10 @@ module.exports = {
   authenticateJWT: async (req, res, next) => {
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      console.warn(
+        "[Auth] Missing or malformed Authorization header",
+        authHeader,
+      );
       return res.status(401).json({
         success: false,
         message: "Authorization header missing or invalid",
@@ -28,6 +32,7 @@ module.exports = {
       });
 
       if (!existingUser) {
+        console.warn("[Auth] User not found or session expired:", decoded);
         return res.status(403).json({
           success: false,
           message: "User not found or session expired",
