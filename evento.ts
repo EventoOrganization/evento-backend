@@ -1,0 +1,142 @@
+// ===========================================
+// 🚀 Core Setup
+// ===========================================
+import bodyParser from "body-parser";
+import cookieParser from "cookie-parser";
+import cors from "cors";
+import dotenv from "dotenv";
+import express, { NextFunction, Request, Response } from "express";
+import expressLayouts from "express-ejs-layouts";
+import fileUpload from "express-fileupload";
+import flash from "express-flash";
+import session from "express-session";
+import http from "http";
+import createError from "http-errors";
+import logger from "morgan";
+import path from "path";
+import { Server as SocketIOServer } from "socket.io";
+import dbConnection from "./.config/dbConnection";
+import basemiddleware from "./middleware/basemiddleware";
+import mainRouter from "./routes";
+
+// ===========================================
+// 🚀 App + HTTP + Socket.IO
+// ===========================================
+dotenv.config();
+const app = express();
+const httpServer = http.createServer(app);
+const io = new SocketIOServer(httpServer, {
+  cors: {
+    origin: (origin, callback) => {
+      const allowedOrigins = [
+        "https://www.evento-app.io",
+        "https://evento-app.io",
+        "https://evento-web-git-dev-eventos-projects.vercel.app",
+        "http://localhost:3000",
+        "http://localhost:3001",
+        "https://backend.evento-app.io",
+        "http://localhost:8747",
+      ];
+      if (!origin || allowedOrigins.includes(origin)) callback(null, true);
+      else callback(new Error("Not allowed by CORS"), false);
+    },
+    methods: ["GET", "POST"],
+    credentials: true,
+  },
+});
+
+// Attach Socket.IO to requests
+interface IRequest extends Request {
+  io: SocketIOServer;
+}
+
+app.use((req: Request, res: Response, next: NextFunction) => {
+  (req as IRequest).io = io;
+  next();
+});
+
+// ===========================================
+// 🚀 Middleware Config
+// ===========================================
+app.use(logger("dev"));
+app.use(express.json());
+app.use(express.text({ type: "text/plain" }));
+app.use(express.urlencoded({ extended: false }));
+app.use(cookieParser());
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: true }));
+app.use(fileUpload());
+app.use(express.static(path.join(__dirname, "public")));
+
+app.set("views", path.join(__dirname, "views"));
+app.set("view engine", "ejs");
+app.use(expressLayouts);
+app.set("layout", "./layout/admin_layout");
+
+app.use(cors());
+app.options("*", cors());
+app.set("trust proxy", 1);
+
+app.use(
+  session({
+    secret: "secret",
+    resave: true,
+    saveUninitialized: true,
+    cookie: {
+      maxAge: 365 * 24 * 60 * 60 * 1000,
+      sameSite: "lax",
+    },
+  }),
+);
+app.use(flash());
+app.use(basemiddleware);
+
+// ===========================================
+// 🚀 Routes
+// ===========================================
+app.get("/healthz", (_req, res) => {
+  res.status(200).send("OK");
+});
+
+app.use((req, res, next) =>
+  req.url === "/" ? res.redirect("/login") : next(),
+);
+
+app.use(mainRouter);
+
+// ===========================================
+// 🚀 Socket.IO
+// ===========================================
+require("./socket/socketHandlers")(io);
+
+// ===========================================
+// 🚀 Errors
+// ===========================================
+app.use((req, _res, next) => next(createError(404)));
+
+app.use((err: any, req: Request, res: Response, _next: NextFunction) => {
+  console.error("🔥 Global error:", err.stack || err.message);
+  res.status(err.status || 500);
+  res.render("error", {
+    message: err.message,
+    error: process.env.NODE_ENV === "development" ? err : {},
+  });
+});
+
+app.use((err: any, req: Request, res: Response, _next: NextFunction) => {
+  res.status(500).json({ message: err.message || "Unhandled error" });
+});
+
+// ===========================================
+// 🚀 Launch
+// ===========================================
+dbConnection();
+const port = process.env.PORT;
+if (!port) {
+  console.error("❌ No PORT defined. Exiting.");
+  process.exit(1);
+}
+
+httpServer.listen(port, () => {
+  console.log(`✅ Server listening on port ${port}`);
+});

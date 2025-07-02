@@ -1,6 +1,8 @@
-var express = require("express");
-var router = express.Router();
-var dashBoardController = require("../controller/dashboardController");
+// 📁 routes/dashBoardRoutes.ts
+import { Router, Request, Response, NextFunction } from "express";
+import dashBoardController from "../controller/dashboardController";
+
+const router = Router();
 
 router.get("/dashboard", dashBoardController.dashboard);
 router.get("/login", dashBoardController.login);
@@ -44,4 +46,5 @@ router.post("/deleteContactUs", dashBoardController.delete_contactUs);
 router.get("/report", dashBoardController.getReport);
 router.post("/deleteReportedUser", dashBoardController.deleteuser);
 router.post("/blockUser", dashBoardController.blockUser);
-module.exports = router;
+
+export default router;

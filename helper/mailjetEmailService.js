@@ -1,9 +1,17 @@
-const mailjet = require("node-mailjet");
 const { wrapWithTemplate, getEmailMeta } = require("../helper/emailTemplates");
-const mailjetClient = mailjet.apiConnect(
-  process.env.MJ_APIKEY_PUBLIC,
-  process.env.MJ_APIKEY_PRIVATE,
-);
+const mailjet = require("node-mailjet");
+
+const getMailjetClient = () => {
+  if (!process.env.MJ_APIKEY_PUBLIC || !process.env.MJ_APIKEY_PRIVATE) {
+    console.warn("🚫 Missing Mailjet API keys in environment.");
+    return null;
+  }
+  return mailjet.apiConnect(
+    process.env.MJ_APIKEY_PUBLIC,
+    process.env.MJ_APIKEY_PRIVATE,
+  );
+};
+
 const sendEventInviteEmail = async (
   user,
   guest,
@@ -69,9 +77,10 @@ const sendEventInviteEmail = async (
     imageUrl,
     guest.unsubscribeToken,
   );
-
+  const client = getMailjetClient();
+  if (!client) return;
   try {
-    const request = mailjetClient.post("send", { version: "v3.1" }).request({
+    const request = client.post("send", { version: "v3.1" }).request({
       Messages: [
         {
           From: {
@@ -124,7 +133,9 @@ const sendAnnouncementEmail = async (user, recipient, event, announcement) => {
   const emailContent = wrapWithTemplate(header, content, imageUrl);
 
   try {
-    const request = mailjetClient.post("send", { version: "v3.1" }).request({
+    const client = getMailjetClient();
+    if (!client) return;
+    const request = client.post("send", { version: "v3.1" }).request({
       Messages: [
         {
           From: {
@@ -168,8 +179,9 @@ const sendOTPEmail = async (email, otpCode, password = null) => {
     `;
 
     const emailContent = wrapWithTemplate(header, content);
-
-    const request = mailjetClient.post("send", { version: "v3.1" }).request({
+    const client = getMailjetClient();
+    if (!client) return;
+    const request = client.post("send", { version: "v3.1" }).request({
       Messages: [
         {
           From: {
@@ -269,9 +281,10 @@ const sendEventReminderEmail = async (recipient, event) => {
       "",
       recipient.unsubscribeToken,
     );
-
+    const client = getMailjetClient();
+    if (!client) return;
     // Envoi de l'email
-    const request = mailjetClient.post("send", { version: "v3.1" }).request({
+    const request = client.post("send", { version: "v3.1" }).request({
       Messages: [
         {
           From: {
@@ -345,29 +358,28 @@ const sendUpdateNotification = async (
           imageUrl,
           user.unsubscribeToken,
         );
-
+        const client = getMailjetClient();
+        if (!client) return;
         // Envoi de l'email
-        const request = mailjetClient
-          .post("send", { version: "v3.1" })
-          .request({
-            Messages: [
-              {
-                From: {
-                  Email: process.env.MJ_FROM_EMAIL,
-                  Name: "Evento Notifications",
-                },
-                To: [
-                  {
-                    Email: user.email,
-                    Name: user.username,
-                  },
-                ],
-                Subject: subject,
-                HTMLPart: emailContent,
-                CustomID: "EventUpdateNotification",
+        const request = client.post("send", { version: "v3.1" }).request({
+          Messages: [
+            {
+              From: {
+                Email: process.env.MJ_FROM_EMAIL,
+                Name: "Evento Notifications",
               },
-            ],
-          });
+              To: [
+                {
+                  Email: user.email,
+                  Name: user.username,
+                },
+              ],
+              Subject: subject,
+              HTMLPart: emailContent,
+              CustomID: "EventUpdateNotification",
+            },
+          ],
+        });
 
         await request;
         console.log(`Notification sent to ${user.email} for ${changeType}`);

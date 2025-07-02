@@ -1,25 +1,37 @@
 const webPush = require("web-push");
 
-// Configure les détails VAPID avec les clés d'environnement
-webPush.setVapidDetails(
-  "mailto:help@evento-app.io",
-  process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
-  process.env.VAPID_PRIVATE_KEY,
-);
+let canSendPush = true;
 
-// Fonction pour envoyer une notification
+if (
+  !process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ||
+  !process.env.VAPID_PRIVATE_KEY
+) {
+  console.warn("🚫 VAPID keys are missing, push notifications are disabled.");
+  canSendPush = false;
+} else {
+  webPush.setVapidDetails(
+    "mailto:help@evento-app.io",
+    process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
+    process.env.VAPID_PRIVATE_KEY,
+  );
+}
+
 const sendNotification = async (subscription, payload) => {
+  if (!canSendPush) {
+    console.log("⛔ Push disabled: no VAPID keys.");
+    return;
+  }
+
   try {
     const response = await webPush.sendNotification(subscription, payload);
-    console.log("Notification envoyée avec succès :", response);
+    console.log("✅ Notification sent:", response);
     return response;
   } catch (error) {
-    console.error("Erreur lors de l'envoi de la notification :", error);
+    console.error("❌ Push failed:", error);
     throw new Error("Notification push failed");
   }
 };
 
-// Export des fonctions pour être utilisées ailleurs
 module.exports = {
   sendNotification,
 };

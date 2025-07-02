@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "CommonJS",
+    "rootDir": "./",
+    "outDir": "./dist",
+    "strict": true,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "allowJs": true, // 👈 Autorise les fichiers JS
+    "checkJs": false, // 👈 Ne les vérifie pas
+    "noEmit": false // 👈 Autorise l’émission (par défaut c’est true quand tu es en projet mixte)
+  },
+  "include": ["**/*.ts", "**/*.js"], // 👈 Important pour qu’il copie les JS
+  "exclude": ["node_modules", "dist"]
+}
