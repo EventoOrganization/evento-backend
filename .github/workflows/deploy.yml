@@ -24,6 +24,9 @@ jobs:
       - name: Build TypeScript
         run: npm run build
 
+      - name: Check views in dist
+        run: ls -la dist/views || echo "⚠️ No views found in dist!"
+
       - name: Archive dist + other required files
         run: |
           mkdir deploy
