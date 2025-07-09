@@ -109,6 +109,9 @@ const userSchema = new mongoose.Schema(
         lastUsed: { type: Date, default: Date.now },
       },
     ],
+    stripe: {
+      accountId: { type: String, default: null },
+    },
   },
   { timestamps: true },
 );

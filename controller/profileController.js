@@ -95,7 +95,7 @@ exports.getUserProfileById = async (req, res) => {
     // 📌 Récupérer les infos de l'utilisateur
     const userInfo = await User.findById(userId)
       .select(
-        "firstName lastName username email profileImage bio URL socialLinks interests address",
+        "firstName lastName username email profileImage bio URL socialLinks interests address stripe",
       )
       .populate("interests", "_id name")
       .exec();
