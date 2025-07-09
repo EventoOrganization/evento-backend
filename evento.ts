@@ -19,6 +19,7 @@ import { corsOptions } from "./config/corsConfig";
 import dbConnection from "./config/dbConnection";
 import basemiddleware from "./middleware/basemiddleware";
 import mainRouter from "./routes";
+import stripeRoutes from "./routes/stripeRoutes";
 
 // ===========================================
 // 🚀 App + HTTP + Socket.IO
@@ -43,6 +44,8 @@ app.use((req: Request, res: Response, next: NextFunction) => {
   (req as IRequest).io = io;
   next();
 });
+
+app.use("/stripe", stripeRoutes);
 
 // ===========================================
 // 🚀 Middleware Config

@@ -43,14 +43,23 @@ export const createEvent: RequestHandler = async (req, res) => {
       console.log("🚀 Uploading media files to S3...");
 
       for (const file of media) {
-        const ext = file.name.split(".").pop();
+        if (typeof file.name !== "string") {
+          console.warn("⚠️ Invalid file.name on AWS:", file.name);
+          continue;
+        }
+
+        const ext = file.name.includes(".")
+          ? file.name.split(".").pop()
+          : "bin";
         const key = `events/${Date.now()}-${Math.random()
           .toString(36)
           .slice(2)}.${ext}`;
+
         const url = await uploadFileToS3(
           { data: file.data, mimetype: file.mimetype },
           key,
         );
+
         uploadedMediaFromFiles.push({
           url,
           type: file.mimetype.startsWith("video") ? "video" : "image",

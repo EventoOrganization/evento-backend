@@ -1,7 +1,9 @@
-var express = require("express");
-var router = express.Router();
-var chatController = require("../controller/chatController");
-const authenticateJWT = require("../middleware/authentication").authenticateJWT;
+import express, { Router } from "express";
+import { createMessage } from "../controller/chat/createMessage";
+import chatController from "../controller/chatController";
+import { authenticateJWT } from "../middleware/authentication";
+
+const router: Router = express.Router();
 
 // new socketio routes 27/04/2025
 // =============================================================================
@@ -13,6 +15,7 @@ router.post(
   authenticateJWT,
   chatController.createConversations,
 );
+
 // Get all conversations
 router.get(
   "/conversations",
@@ -31,16 +34,19 @@ router.patch(
   authenticateJWT,
   chatController.leaveConversation,
 );
+
 // Delete a conversation
 router.delete(
   "/conversations/:conversationId",
   authenticateJWT,
   chatController.deleteConversations,
 );
+
 // =============================================================================
 // MESSAGES
 // =============================================================================
-router.post("/messages", authenticateJWT, chatController.createMessages);
+// router.post("/messages", authenticateJWT, chatController.createMessages);
+router.post("/messages", authenticateJWT, createMessage);
 router.get("/messages", authenticateJWT, chatController.fetchOlderMessages);
 
-module.exports = router;
+export default router;

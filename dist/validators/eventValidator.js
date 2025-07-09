@@ -48,6 +48,7 @@ function validateCreateEventInput(body) {
         endTime: body.endTime || null,
         description: body.description?.trim() || "",
         uploadedMedia: parseJsonSafe(body.uploadedMedia, []),
+        predefinedMedia: parseJsonSafe(body.predefinedMedia, []),
         interests: parseJsonSafe(body.interests, []),
         questions: parseJsonSafe(body.questions, []),
         additionalField: parseJsonSafe(body.additionalField, []),

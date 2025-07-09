@@ -118,7 +118,7 @@ exports.leaveConversation = async (req, res) => {
   // Quitter la room socket
   req.io.socketsLeave(conversationId);
 
-  res.sendStatus(200);
+  res.status(200).json({ success: true });
 };
 // DELETE /conversations/:id
 exports.deleteConversations = async (req, res) => {

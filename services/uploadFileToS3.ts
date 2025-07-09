@@ -1,17 +1,22 @@
 import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 
+const { AWS_REGION, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, S3_BUCKET_NAME } =
+  process.env;
+
 if (
-  !process.env.AWS_REGION ||
-  !process.env.AWS_ACCESS_KEY_ID ||
-  !process.env.AWS_SECRET_ACCESS_KEY
+  !AWS_REGION ||
+  !AWS_ACCESS_KEY_ID ||
+  !AWS_SECRET_ACCESS_KEY ||
+  !S3_BUCKET_NAME
 ) {
-  throw new Error("AWS environment variables are not set");
+  throw new Error("AWS environment variables are not set properly");
 }
+
 const s3 = new S3Client({
-  region: process.env.AWS_REGION,
+  region: AWS_REGION,
   credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+    accessKeyId: AWS_ACCESS_KEY_ID,
+    secretAccessKey: AWS_SECRET_ACCESS_KEY,
   },
 });
 
@@ -20,21 +25,29 @@ interface File {
   mimetype: string;
 }
 
-export const uploadFileToS3 = async (file: File, key: string) => {
+export const uploadFileToS3 = async (
+  file: File,
+  key: string,
+): Promise<string> => {
+  if (!file || !file.data || !file.mimetype || !key) {
+    throw new Error("Invalid file or key provided to uploadFileToS3");
+  }
+
+  const sanitizedKey = key.replace(/^\/*/, "").replace(/\s+/g, "_");
+
+  const uploadParams = {
+    Bucket: S3_BUCKET_NAME,
+    Key: sanitizedKey,
+    Body: file.data,
+    ContentType: file.mimetype,
+  };
+
   try {
-    const uploadParams = {
-      Bucket: process.env.S3_BUCKET_NAME,
-      Key: key, // chemin complet dans le bucket S3
-      Body: file.data, // le fichier en lui-même
-      ContentType: file.mimetype, // type MIME du fichier
-    };
-
     const data = await s3.send(new PutObjectCommand(uploadParams));
-    console.log("Success", data);
-
-    return `https://${process.env.S3_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`;
+    console.log("✅ Uploaded to S3:", sanitizedKey, data.$metadata);
+    return `https://${S3_BUCKET_NAME}.s3.${AWS_REGION}.amazonaws.com/${sanitizedKey}`;
   } catch (err) {
-    console.error("Error uploading to S3:", err);
+    console.error("❌ Error uploading to S3:", err);
     throw err;
   }
 };
