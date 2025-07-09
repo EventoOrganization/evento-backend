@@ -1,28 +1,44 @@
-name: Deploy to Elastic Beanstalk
+name: Deploy evento-backend to Elastic Beanstalk
 
 on:
   push:
     branches:
-      - main # Ou la branche que vous souhaitez suivre
+      - main
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
+    defaults:
+      run:
+        working-directory: ./evento-backend
+
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3 # Version mise à jour
+        uses: actions/checkout@v3
 
       - name: Set up Node.js
-        uses: actions/setup-node@v3 # Version mise à jour
+        uses: actions/setup-node@v3
         with:
-          node-version: "20" # Utilisation de Node.js 20
+          node-version: "20"
+          cache: "pnpm"
+
+      - name: Install pnpm
+        run: npm install -g pnpm
 
       - name: Install dependencies
-        run: npm install
+        run: pnpm install
 
-      - name: Archive project files
-        run: zip -r deploy.zip * .[^.]* # Créez un fichier ZIP contenant le projet
+      - name: Build project
+        run: pnpm build
+
+      - name: Archive dist + other required files
+        run: |
+          mkdir deploy
+          cp -r dist deploy/
+          cp package.json package-lock.json .env deploy/ || true
+          cd deploy
+          zip -r ../deploy.zip .
 
       - name: Deploy to Elastic Beanstalk
         env:
@@ -31,11 +47,12 @@ jobs:
           AWS_REGION: "ap-southeast-2"
           S3_BUCKET_NAME: "evento-media-bucket"
         run: |
-          # Chargez le fichier ZIP dans un dossier "builds" dans le bucket S3
           aws s3 cp deploy.zip s3://$S3_BUCKET_NAME/builds/deploy-${{ github.sha }}.zip
+          aws elasticbeanstalk create-application-version \
+            --application-name "evento-backend" \
+            --version-label ${{ github.sha }} \
+            --source-bundle S3Bucket=$S3_BUCKET_NAME,S3Key=builds/deploy-${{ github.sha }}.zip
 
-          # Créez une nouvelle version dans Elastic Beanstalk à partir du fichier ZIP stocké dans S3
-          aws elasticbeanstalk create-application-version --application-name "evento-backend" --version-label ${{ github.sha }} --source-bundle S3Bucket=$S3_BUCKET_NAME,S3Key=builds/deploy-${{ github.sha }}.zip
-
-          # Déployez cette nouvelle version dans Elastic Beanstalk
-          aws elasticbeanstalk update-environment --environment-name "Evento-backend-env" --version-label ${{ github.sha }}
+          aws elasticbeanstalk update-environment \
+            --environment-name "Evento-backend-env" \
+            --version-label ${{ github.sha }}

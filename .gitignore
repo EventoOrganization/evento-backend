@@ -1,12 +1,18 @@
-/node_modules
-/.env
-/public/images
-.eslintcache
-node_modules/
+# Build output
+/dist
+
+# Environnement
 .env
+
+# Cache
 .eslintcache
+
+# Local only files
 createAdmin.js
-/testEventReminderJob.js
-/test-date.js
-/test-module.js
-/testWhatsapp.js
+testEventReminderJob.js
+test-date.js
+test-module.js
+testWhatsapp.js
+
+# Node modules
+/node_modules
