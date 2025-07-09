@@ -15,6 +15,7 @@ import createError from "http-errors";
 import logger from "morgan";
 import path from "path";
 import { Server as SocketIOServer } from "socket.io";
+
 import { corsOptions } from "./config/corsConfig";
 import dbConnection from "./config/dbConnection";
 import basemiddleware from "./middleware/basemiddleware";
@@ -27,6 +28,7 @@ import stripeRoutes from "./routes/stripeRoutes";
 dotenv.config();
 const app = express();
 const httpServer = http.createServer(app);
+
 const io = new SocketIOServer(httpServer, {
   cors: {
     origin: corsOptions.origin,
@@ -35,20 +37,23 @@ const io = new SocketIOServer(httpServer, {
   },
 });
 
-// Attach Socket.IO to requests
+// Attach Socket.IO to req
 interface IRequest extends Request {
   io: SocketIOServer;
 }
-
-app.use((req: Request, res: Response, next: NextFunction) => {
+app.use((req: Request, _res: Response, next: NextFunction) => {
   (req as IRequest).io = io;
   next();
 });
 
-app.use("/stripe", stripeRoutes);
+// ===========================================
+// 🛡️ CORS (⚠️ placer avant tout le reste)
+// ===========================================
+app.use(cors(corsOptions));
+app.options("*", cors(corsOptions)); // Preflight
 
 // ===========================================
-// 🚀 Middleware Config
+// ⚙️ Middleware
 // ===========================================
 app.use(logger("dev"));
 app.use(express.json());
@@ -65,9 +70,6 @@ app.set("view engine", "ejs");
 app.use(expressLayouts);
 app.set("layout", "./layout/admin_layout");
 
-app.use(cors(corsOptions));
-app.options("*", cors(corsOptions));
-
 app.set("trust proxy", 1);
 
 app.use(
@@ -81,43 +83,47 @@ app.use(
     },
   }),
 );
+
 app.use(flash());
 app.use(basemiddleware);
 
 // ===========================================
-// 🚀 Routes
+// 🧾 Routes
 // ===========================================
-app.get("/healthz", (_req, res) => {
+app.use("/stripe", stripeRoutes);
+app.get("/healthz", (_req, res, next) => {
   res.status(200).send("OK");
+  next();
 });
-
 app.use((req, res, next) =>
   req.url === "/" ? res.redirect("/login") : next(),
 );
-
 app.use(mainRouter);
 
 // ===========================================
-// 🚀 Socket.IO
+// 🔌 Socket.IO
 // ===========================================
 require("./socket/socketHandlers")(io);
 
 // ===========================================
-// 🚀 Errors
+// ❌ Error Handling
 // ===========================================
 app.use((req, _res, next) => next(createError(404)));
 
 app.use((err: any, req: Request, res: Response, _next: NextFunction) => {
   console.error("🔥 Global error:", err.stack || err.message);
-  res.status(err.status || 500);
-  res.render("error", {
-    message: err.message,
-    error: process.env.NODE_ENV === "development" ? err : {},
-  });
-});
 
-app.use((err: any, req: Request, res: Response, _next: NextFunction) => {
-  res.status(500).json({ message: err.message || "Unhandled error" });
+  if (req.headers.accept?.includes("application/json")) {
+    res
+      .status(err.status || 500)
+      .json({ message: err.message || "Unhandled error" });
+  } else {
+    res.status(err.status || 500);
+    res.render("error", {
+      message: err.message,
+      error: process.env.NODE_ENV === "development" ? err : {},
+    });
+  }
 });
 
 // ===========================================
