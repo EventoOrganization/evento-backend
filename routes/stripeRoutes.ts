@@ -1,10 +1,8 @@
 import express, { raw } from "express";
-import {
-  createStripeAccount,
-  getStripeAccountStatus,
-} from "../controller/stripe/connect";
+import { getStripeAccountStatus } from "../controller/stripe/connect";
 import { webhookHandler } from "../controller/stripe/webhook";
 import { authenticateJWT } from "../middleware/authentication";
+import { createOrResumeStripeOnboarding } from "../controller/stripe/create";
 
 const router = express.Router();
 
@@ -15,5 +13,9 @@ router.get("/webhook/check", (_, res) => {
 });
 
 router.get("/me/stripe-account", authenticateJWT, getStripeAccountStatus);
-router.post("/me/stripe-account", authenticateJWT, createStripeAccount);
+router.post(
+  "/me/stripe-account",
+  authenticateJWT,
+  createOrResumeStripeOnboarding,
+);
 export default router;

@@ -4,6 +4,7 @@ const helper = require("../helper/helper");
 const Models = require("../models/index");
 const mongoose = require("mongoose");
 const User = require("../models/userModel");
+const { StripeAccount } = require("../models/stripeAccount");
 const Event = require("../models/eventModel");
 const { isAfter, startOfDay } = require("date-fns");
 const { ObjectId } = require("mongoose").Types;
@@ -27,6 +28,9 @@ exports.getLoggedUserProfile = async (req, res) => {
       console.error("User not found in the database for ID:", req.user._id);
       return res.status(404).json({ status: false, message: "User not found" });
     }
+    const stripeAccounts = await StripeAccount.find({
+      userId: req.user._id,
+    }).lean();
 
     const followingUsers = await Models.userFollowModel
       .find({ follower: req.user._id })
@@ -76,6 +80,7 @@ exports.getLoggedUserProfile = async (req, res) => {
       message: "Profile retrieved successfully",
       data: {
         ...userInfo._doc,
+        stripeAccounts,
         followingUserIds: existingFollowingUsers,
         followerUserIds,
       },

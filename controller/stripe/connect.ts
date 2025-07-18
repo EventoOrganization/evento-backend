@@ -23,27 +23,3 @@ export const getStripeAccountStatus: RequestHandler = async (
     detailsSubmitted: account.details_submitted,
   });
 };
-
-export const createStripeAccount = async (req: Request, res: Response) => {
-  const user = req.user;
-
-  const account = await stripe.accounts.create({
-    type: "express",
-    email: user?.email,
-    capabilities: {
-      transfers: { requested: true },
-    },
-  });
-
-  const accountLink = await stripe.accountLinks.create({
-    account: account.id,
-    refresh_url: `${process.env.CLIENT_URL}/onboarding/refresh`,
-    return_url: `${process.env.CLIENT_URL}/onboarding/complete`,
-    type: "account_onboarding",
-  });
-
-  // 💾 Enregistre account.id → user.stripeAccountId en DB
-  // await updateUserStripeAccountId(user.id, account.id);
-
-  res.json({ onboardingUrl: accountLink.url });
-};

@@ -1,4 +1,3 @@
-// socket/socketHandlers.js
 const fs = require("fs");
 const path = require("path");
 const jwt = require("jsonwebtoken");
@@ -15,8 +14,7 @@ module.exports = (io) => {
     try {
       const jwtSecret = getEnv("JWT_SECRET_KEY");
       const decoded = jwt.verify(token, jwtSecret);
-      socket.userId = decoded.id; // 👈 injecte le userId dans le socket
-      console.log("[Socket Middleware] 🔑 Authenticated user:", socket.userId);
+      socket.userId = decoded.id;
       next();
     } catch (err) {
       console.error("[Socket Middleware] ❌ Invalid token");
@@ -25,9 +23,6 @@ module.exports = (io) => {
   });
 
   io.on("connection", (socket) => {
-    console.log("New client connected", socket.id, "userId:", socket.userId);
-
-    // ensuite tu appelles tes handlers comme d'habitude :
     const handlersPath = path.join(__dirname, "handlers");
     const handlerFiles = fs.readdirSync(handlersPath);
 

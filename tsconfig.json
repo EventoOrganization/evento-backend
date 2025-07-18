@@ -8,11 +8,11 @@
     "esModuleInterop": true,
     "resolveJsonModule": true,
     "skipLibCheck": true,
-    "typeRoots": ["./types", "./node_modules/@types"],
     "allowJs": true,
     "checkJs": false,
-    "noEmit": false
+    "noEmit": false,
+    "typeRoots": ["./types/global", "./node_modules/@types"]
   },
-  "include": ["**/*.ts", "**/*.js", "config/env.ts"],
+  "include": ["**/*.ts", "**/*.js", "config/env.ts", "types/**/*.d.ts"],
   "exclude": ["node_modules", "dist"]
 }

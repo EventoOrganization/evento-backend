@@ -141,8 +141,6 @@ module.exports = {
       logData.token = token;
       delete logData.password;
 
-      console.log("User login successful:");
-      // console.log("Setting token in cookie:", token);
       res.cookie("token", token, {
         httpOnly: true,
         // secure: process.env.NODE_ENV === "production",

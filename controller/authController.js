@@ -558,7 +558,6 @@ exports.deleteAccount = async (req, res) => {
 };
 exports.validateToken = async (req, res) => {
   const authHeader = req.headers.authorization;
-  console.log("🛂 Received authHeader:", authHeader);
 
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
     return res.status(401).json({
