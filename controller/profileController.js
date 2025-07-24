@@ -30,6 +30,7 @@ exports.getLoggedUserProfile = async (req, res) => {
     }
     const stripeAccounts = await StripeAccount.find({
       userId: req.user._id,
+      deletedAt: null,
     }).lean();
 
     const followingUsers = await Models.userFollowModel

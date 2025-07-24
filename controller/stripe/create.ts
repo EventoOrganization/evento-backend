@@ -55,8 +55,8 @@ export const createOrResumeStripeOnboarding = async (
 
     const accountLink = await stripe.accountLinks.create({
       account: accountId!,
-      refresh_url: `${process.env.CLIENT_URL}/onboarding/refresh`,
-      return_url: `${process.env.CLIENT_URL}/onboarding/complete`,
+      refresh_url: `${process.env.CLIENT_URL}/profile/settings`,
+      return_url: `${process.env.CLIENT_URL}/profile/settings/onboarding`,
       type: "account_onboarding",
     });
 

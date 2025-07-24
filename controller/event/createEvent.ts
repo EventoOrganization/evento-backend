@@ -150,6 +150,19 @@ export const createEvent: RequestHandler = async (req, res) => {
           }))
         : [],
       requiresApproval: input.requiresApproval,
+      ticketing: input.ticketing
+        ? {
+            enabled: !!input.ticketing.enabled,
+            totalTickets: parseInt(String(input.ticketing.totalTickets || 0)),
+            remainingTickets: parseInt(
+              String(input.ticketing.totalTickets || 0),
+            ), // au début = total
+            price: parseInt(String(input.ticketing.price || 0)), // en centimes
+            currency: input.ticketing.currency || "eur",
+            payoutStripeAccountId:
+              input.ticketing.payoutStripeAccountId || undefined,
+          }
+        : undefined,
     };
 
     console.log("💾 Saving event to database...");

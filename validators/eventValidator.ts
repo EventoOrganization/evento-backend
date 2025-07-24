@@ -20,7 +20,24 @@ export function validateCreateEventInput(body: any) {
     if (!body.latitude || !body.longitude)
       errors.push("Missing 'latitude' or 'longitude'");
   }
-
+  const rawTicketing = parseJsonSafe(body.ticketing, {
+    enabled: false,
+    totalTickets: 0,
+    price: 0,
+    currency: "eur",
+    payoutStripeAccountId: null,
+  });
+  if (rawTicketing.enabled) {
+    if (!rawTicketing.totalTickets || rawTicketing.totalTickets <= 0) {
+      errors.push("Ticketing enabled but missing valid totalTickets");
+    }
+    if (!rawTicketing.price || rawTicketing.price <= 0) {
+      errors.push("Ticketing enabled but missing valid price");
+    }
+    if (!rawTicketing.currency) {
+      errors.push("Ticketing enabled but missing currency");
+    }
+  }
   if (errors.length > 0) {
     const error = new Error(`Validation error: ${errors.join(", ")}`);
     (error as any).status = 400;
@@ -58,5 +75,12 @@ export function validateCreateEventInput(body: any) {
     UrlLink: body.UrlLink?.trim() || "",
     UrlTitle: body.UrlTitle?.trim() || "",
     timeZone: body.timeZone?.trim() || "",
+    ticketing: {
+      enabled: !!rawTicketing.enabled,
+      totalTickets: Number(rawTicketing.totalTickets || 0),
+      price: Number(rawTicketing.price || 0),
+      currency: rawTicketing.currency || "eur",
+      payoutStripeAccountId: rawTicketing.payoutStripeAccountId || undefined,
+    },
   };
 }

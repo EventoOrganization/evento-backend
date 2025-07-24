@@ -47,15 +47,23 @@ app.use((req: Request, _res: Response, next: NextFunction) => {
 });
 
 // ===========================================
-// 🛡️ CORS (⚠️ placer avant tout le reste)
+// ✅ Stripe Webhook DOIT être monté AVANT tout parsing JSON
 // ===========================================
-app.use(cors(corsOptions));
-app.options("*", cors(corsOptions)); // Preflight
+// Ici express.raw est géré directement dans stripeRoutes
+app.use("/stripe", stripeRoutes);
 
 // ===========================================
-// ⚙️ Middleware
+// 🛡️ CORS (doit venir tôt mais après Stripe webhook)
+// ===========================================
+app.use(cors(corsOptions));
+app.options("*", cors(corsOptions));
+
+// ===========================================
+// ⚙️ Middleware global pour toutes les autres routes
 // ===========================================
 app.use(logger("dev"));
+
+// Ces parseurs NE DOIVENT PAS être appliqués avant le webhook
 app.use(express.json());
 app.use(express.text({ type: "text/plain" }));
 app.use(express.urlencoded({ extended: false }));
@@ -63,6 +71,7 @@ app.use(cookieParser());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(fileUpload());
+
 app.use(express.static(path.join(__dirname, "public")));
 app.set("views", path.join(__dirname, "views"));
 app.set("view engine", "ejs");
@@ -87,16 +96,18 @@ app.use(flash());
 app.use(basemiddleware);
 
 // ===========================================
-// 🧾 Routes
+// 🧾 Routes classiques
 // ===========================================
-app.use("/stripe", stripeRoutes);
 app.get("/healthz", (_req, res, next) => {
   res.status(200).send("OK");
   next();
 });
+
+// Redirection racine
 app.use((req, res, next) =>
   req.url === "/" ? res.redirect("/login") : next(),
 );
+
 app.use(mainRouter);
 
 // ===========================================
@@ -129,12 +140,7 @@ app.use((err: any, req: Request, res: Response, _next: NextFunction) => {
 // 🚀 Launch
 // ===========================================
 dbConnection();
-const port = process.env.PORT;
-if (!port) {
-  console.error("❌ No PORT defined. Exiting.");
-  process.exit(1);
-}
-
+const port = process.env.PORT || 8080;
 httpServer.listen(port, () => {
   console.log(`✅ Server listening on port ${port}`);
 });

@@ -13,9 +13,12 @@ const stripeAccountSchema = new Schema(
     chargesEnabled: { type: Boolean, default: false },
     payoutsEnabled: { type: Boolean, default: false },
     lastSync: { type: Date, default: null },
+    deletedAt: { type: Date, default: null },
   },
   { timestamps: true },
 );
+
+stripeAccountSchema.index({ deletedAt: 1 });
 
 export const StripeAccount =
   mongoose.models.StripeAccount ||

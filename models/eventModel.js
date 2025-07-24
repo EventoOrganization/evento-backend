@@ -171,6 +171,23 @@ const eventSchema = new Schema(
         ref: "user",
       },
     ],
+    ticketing: {
+      enabled: { type: Boolean, default: false }, // ✅ active ou non la billetterie
+      totalTickets: { type: Number, default: 0 }, // ✅ combien dispo
+      remainingTickets: { type: Number, default: 0 }, // ✅ combien encore dispo
+      price: { type: Number, default: 0 }, // ✅ prix en centimes (5000 = 50€)
+      currency: { type: String, default: "eur" }, // ✅ devise
+      payoutStripeAccountId: { type: String }, // ✅ à qui sera reversé (l’accountId du user)
+    },
+
+    soldTickets: [
+      {
+        buyerId: { type: Schema.Types.ObjectId, ref: "user" }, // ✅ qui a acheté
+        stripePaymentIntent: { type: String }, // ✅ ID du paiement Stripe
+        quantity: { type: Number, default: 1 }, // ✅ combien acheté
+        purchasedAt: { type: Date, default: Date.now },
+      },
+    ],
   },
   { timestamps: true },
 );
