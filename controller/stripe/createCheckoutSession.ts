@@ -37,12 +37,19 @@ export const createCheckoutSession: RequestHandler = async (
     mode: "payment",
     payment_intent_data: {
       application_fee_amount: Math.round(amount * feeRate),
-      transfer_data: { destination: event.ticketing.payoutStripeAccountId! },
+      transfer_data: {
+        destination: event.ticketing.payoutStripeAccountId!,
+      },
     },
-    success_url: `${clientUrl}/events/${eventId}/success?session_id={CHECKOUT_SESSION_ID}`,
+    success_url: `${clientUrl}/events/${eventId}/buy-ticket`,
     cancel_url: `${clientUrl}/events/${eventId}`,
-  });
-
+    metadata: {
+      eventId,
+      buyerId: req.user?._id?.toString() ?? "",
+      quantity: String(quantity),
+    },
+  } as Stripe.Checkout.SessionCreateParams);
+  console.log("session", session);
   res.json({ sessionUrl: session.url });
   return;
 };

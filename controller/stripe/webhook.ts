@@ -1,8 +1,12 @@
 import { RequestHandler } from "express";
 import Stripe from "stripe";
 import { StripeAccount } from "../../models/stripeAccount";
+import { SoldTicketsType } from "../../types/event/soldTickets";
+import { updateGoogleSheetForEvent } from "../../utils/googleAppScript";
 const Event = require("../../models/eventModel");
-
+const TempGuest = require("../../models/tempGuestModel");
+const User = require("../../models/userModel");
+const Models = require("../../models");
 const stripe = new Stripe(process.env.STRIPE_SECRET!, {
   apiVersion: "2025-06-30.basil",
 });
@@ -65,13 +69,19 @@ export const webhookHandler: RequestHandler = async (req, res) => {
 
       case "checkout.session.completed": {
         const session = event.data.object as Stripe.Checkout.Session;
-
         const eventId = session.metadata?.eventId;
         const buyerId = session.metadata?.buyerId;
+        const quantity = parseInt(session.metadata?.quantity || "1");
         const paymentIntentId = session.payment_intent as string;
 
-        if (!eventId || !buyerId) {
-          console.warn("⚠️ Missing metadata in checkout.session.completed");
+        console.log("📦 Stripe checkout.session.completed received");
+        console.log("🎫 Quantity in session:", quantity);
+        console.log("🧾 Session Metadata:", session.metadata);
+
+        if (!eventId || !buyerId || !paymentIntentId) {
+          console.warn(
+            "⚠️ Missing metadata or paymentIntent in checkout.session.completed",
+          );
           break;
         }
 
@@ -81,31 +91,154 @@ export const webhookHandler: RequestHandler = async (req, res) => {
           break;
         }
 
-        // ✅ update sold tickets
-        const newSoldTicket = {
+        const buyer = await User.findById(buyerId);
+        if (!buyer) {
+          console.error(`❌ Buyer user not found: ${buyerId}`);
+          break;
+        }
+
+        const paymentIntent = await stripe.paymentIntents.retrieve(
+          paymentIntentId,
+          {
+            expand: ["latest_charge"],
+          },
+        );
+
+        const totalPaid = paymentIntent.amount_received;
+        const currency = paymentIntent.currency;
+        const appFee = paymentIntent.application_fee_amount ?? 0;
+
+        console.log("🧾 PaymentIntent:", {
+          id: paymentIntent.id,
+          total: totalPaid,
+          currency,
+          app_fee: appFee,
+        });
+
+        console.log(
+          `💰 Payment details: ${totalPaid / 100} ${currency?.toUpperCase()}`,
+        );
+        console.log(
+          `🏦 Application fee: ${appFee / 100} ${currency?.toUpperCase()}`,
+        );
+        console.log(
+          `💼 Net revenue for host: ${
+            (totalPaid - appFee) / 100
+          } ${currency?.toUpperCase()}`,
+        );
+
+        // Add ticket
+        eventDoc.soldTickets.push({
           buyerId,
           stripePaymentIntent: paymentIntentId,
-          quantity: 1,
-        };
+          quantity,
+        });
 
-        eventDoc.soldTickets.push(newSoldTicket);
-
-        // ✅ decrement remaining tickets if ticketing enabled
         if (
           eventDoc.ticketing.enabled &&
           eventDoc.ticketing.remainingTickets > 0
         ) {
           eventDoc.ticketing.remainingTickets = Math.max(
-            eventDoc.ticketing.remainingTickets - 1,
+            eventDoc.ticketing.remainingTickets - quantity,
             0,
           );
         }
 
-        await eventDoc.save();
+        await eventDoc.save(); // Save ticket info first
 
-        console.log(`🎟 Ticket sold for event ${eventId} to buyer ${buyerId}`);
+        // Check status
+        const existingStatus = await Models.eventStatusSchema.findOne({
+          eventId,
+          userId: buyerId,
+          status: "isGoing",
+        });
+
+        const isFirstPurchase = !eventDoc.soldTickets.some(
+          (ticket: SoldTicketsType) => ticket.buyerId.toString() === buyerId,
+        );
+
+        console.log(
+          `🔍 Buyer already marked as going? ${
+            isFirstPurchase ? "❌ No (will create)" : "✅ Yes (skip update)"
+          }`,
+        );
+
+        let eventStatus = existingStatus;
+
+        if (isFirstPurchase) {
+          console.log("🟢 First purchase by buyer. Marking as going.");
+
+          eventStatus = await Models.eventStatusSchema.findOneAndUpdate(
+            { eventId, userId: buyerId },
+            {
+              status: "isGoing",
+              rsvpAnswers: [],
+              reason: "auto-marked after ticket purchase",
+            },
+            { new: true, upsert: true, runValidators: true },
+          );
+
+          console.log("✅ Buyer marked as going:", eventStatus);
+          await updateGoogleSheetForEvent(eventDoc, "updateStatus", {
+            eventStatus,
+          });
+        } else {
+          console.log("🔁 Repeat purchase. Buyer already marked as going.");
+        }
+
+        // Create temp guests
+        const guestsToCreate = isFirstPurchase ? quantity - 1 : quantity;
+        const tempGuests: any[] = [];
+        const existingTempGuests = await TempGuest.find({
+          _id: { $in: eventDoc.tempGuests },
+          "invitations.eventId": eventId,
+          "invitations.invitedBy": buyerId,
+        });
+
+        const existingGuestCount = existingTempGuests.length;
+        console.log(
+          `👀 Buyer ${buyer.username} already had ${existingGuestCount} temp guests.`,
+        );
+
+        for (let i = 0; i < guestsToCreate; i++) {
+          const guestIndex = existingGuestCount + i + 1;
+          const guestUsername = `${buyer.username} +${guestIndex}`;
+          const guestEmail = `guest+${crypto.randomUUID()}@ezstart.app`;
+
+          const tempGuest = await TempGuest.create({
+            email: guestEmail,
+            username: guestUsername,
+            invitations: [{ eventId, invitedBy: buyerId }],
+          });
+
+          eventDoc.tempGuests.push(tempGuest._id);
+          tempGuests.push(tempGuest);
+        }
+
+        console.log("🧾 TempGuests IDs added to event:", eventDoc.tempGuests);
+        console.log(
+          `👥 ${tempGuests.length} TempGuests created for buyer ${buyerId}`,
+        );
+
+        if (tempGuests.length > 0) {
+          console.log(
+            `✅ TempGuests successfully created:`,
+            tempGuests.map((g) => ({
+              _id: g._id,
+              email: g.email,
+              username: g.username,
+            })),
+          );
+          await updateGoogleSheetForEvent(eventDoc, "updateGuest");
+        } else {
+          console.log("ℹ️ No TempGuests created (buyer only)");
+        }
+
+        await eventDoc.save(); // Save temp guests added
+
         break;
       }
+
       default:
         console.log(`ℹ️ Unhandled event type: ${event.type}`);
     }

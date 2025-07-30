@@ -161,9 +161,16 @@ const updateGoogleSheetForEvent = async (event, action, options = {}) => {
         return;
       }
 
+      // const isGuest =
+      //   event.guests?.some((id) => id.toString() === user._id.toString()) ||
+      //   event.tempGuests?.some((id) => id.toString() === user._id.toString());
+      const userIdStr = user?._id?.toString?.();
       const isGuest =
-        event.guests?.some((id) => id.toString() === user._id.toString()) ||
-        event.tempGuests?.some((id) => id.toString() === user._id.toString());
+        (!!userIdStr &&
+          Array.isArray(event.guests) &&
+          event.guests.some((id) => id?.toString?.() === userIdStr)) ||
+        (Array.isArray(event.tempGuests) &&
+          event.tempGuests.some((id) => id?.toString?.() === userIdStr));
 
       const enrichedAnswers = (eventStatus.rsvpAnswers || []).map((ans) => {
         const matched = event.questions.find(
