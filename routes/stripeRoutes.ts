@@ -1,5 +1,5 @@
 import express from "express";
-import { createOrResumeStripeOnboarding } from "../controller/stripe/create";
+import { createOrResumeStripeOnboarding } from "../controller/stripe/createOrResumeStripeOnboarding";
 import { createCheckoutSession } from "../controller/stripe/createCheckoutSession";
 import { deleteStripeAccountController } from "../controller/stripe/delete";
 import { authenticateJWT } from "../middleware/authentication";

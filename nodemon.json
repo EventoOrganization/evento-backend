@@ -1,6 +1,6 @@
 {
-  "watch": ["/"],
+  "watch": ["."],
   "ext": "ts",
-  "ignore": ["dist", "node_modules"],
+  "ignore": ["dist", "node_modules", "views", "public"],
   "exec": "ts-node evento.ts"
 }

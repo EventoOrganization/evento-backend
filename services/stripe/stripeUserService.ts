@@ -11,11 +11,9 @@ export const updateUserStripeAccount = async (
     throw new Error("Invalid userId");
   }
 
-  // On essaye de trouver un compte Stripe existant pour ce user + ce pays
   let stripeAccount = await StripeAccount.findOne({ userId, country });
 
   if (!stripeAccount) {
-    // ✅ Si aucun compte Stripe n'existe pour ce pays → en créer un
     stripeAccount = new StripeAccount({
       userId,
       country,
@@ -28,7 +26,6 @@ export const updateUserStripeAccount = async (
     return true;
   }
 
-  // ✅ Sinon, on met à jour l’existant
   Object.assign(stripeAccount, update, { lastSync: new Date() });
   await stripeAccount.save();
 
