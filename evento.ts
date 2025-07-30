@@ -16,11 +16,11 @@ import logger from "morgan";
 import path from "path";
 import { Server as SocketIOServer } from "socket.io";
 
-import { corsOptions } from "./config/corsConfig";
+import { allowedOrigins, corsOptions } from "./config/corsConfig";
 import dbConnection from "./config/dbConnection";
 import basemiddleware from "./middleware/basemiddleware";
 import mainRouter from "./routes";
-import stripeRoutes from "./routes/stripeRoutes";
+import stripeRoutesForWebhook from "./routes/stripeRoutesForWebhook";
 
 // ===========================================
 // 🚀 App + HTTP + Socket.IO
@@ -50,12 +50,25 @@ app.use((req: Request, _res: Response, next: NextFunction) => {
 // ✅ Stripe Webhook DOIT être monté AVANT tout parsing JSON
 // ===========================================
 // Ici express.raw est géré directement dans stripeRoutes
-app.use("/stripe", stripeRoutes);
+app.use("/stripe-webhook", stripeRoutesForWebhook);
 
 // ===========================================
 // 🛡️ CORS (doit venir tôt mais après Stripe webhook)
 // ===========================================
-app.use(cors(corsOptions));
+app.use(
+  cors({
+    origin: (origin, cb) => {
+      if (!origin || allowedOrigins.includes(origin)) {
+        cb(null, origin);
+      } else {
+        cb(new Error("Not allowed by CORS"));
+      }
+    },
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  }),
+);
 app.options("*", cors(corsOptions));
 
 // ===========================================
@@ -108,7 +121,7 @@ app.use((req, res, next) =>
   req.url === "/" ? res.redirect("/login") : next(),
 );
 
-app.use(mainRouter);
+app.use("/", mainRouter);
 
 // ===========================================
 // 🔌 Socket.IO

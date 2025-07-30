@@ -1,17 +1,12 @@
-import express, { raw } from "express";
+import express from "express";
 import { createOrResumeStripeOnboarding } from "../controller/stripe/create";
+import { createCheckoutSession } from "../controller/stripe/createCheckoutSession";
 import { deleteStripeAccountController } from "../controller/stripe/delete";
-import { webhookHandler } from "../controller/stripe/webhook";
 import { authenticateJWT } from "../middleware/authentication";
 
 const router = express.Router();
 
-router.post("/webhook", raw({ type: "application/json" }), webhookHandler);
-
-router.get("/webhook/check", (_, res) => {
-  res.status(200).json({ ok: true });
-});
-
+// Trigger by user
 router.post(
   "/me/stripe-account",
   authenticateJWT,
@@ -22,5 +17,5 @@ router.delete(
   authenticateJWT,
   deleteStripeAccountController,
 );
-
+router.post("/checkout/session", authenticateJWT, createCheckoutSession);
 export default router;

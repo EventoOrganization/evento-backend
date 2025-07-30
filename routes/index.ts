@@ -10,6 +10,7 @@ import iaRoutes from "./iaRoutes";
 import profileRoutes from "./profileRoutes";
 import sesRoutes from "./sesRoutes";
 import sitemapRoutes from "./sitemapRoutes";
+import stripeRoutes from "./stripeRoutes";
 import usersRoutes from "./users";
 import whatsappRoutes from "./whatsappRoutes";
 
@@ -27,5 +28,6 @@ router.use("/ses", sesRoutes);
 router.use("/ia", iaRoutes);
 router.use("/sitemap", sitemapRoutes);
 router.use("/whatsapp", whatsappRoutes);
+router.use("/stripe", stripeRoutes);
 
 export default router;

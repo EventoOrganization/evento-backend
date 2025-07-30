@@ -1,6 +1,7 @@
 import { RequestHandler } from "express";
 import Stripe from "stripe";
 import { StripeAccount } from "../../models/stripeAccount";
+const Event = require("../../models/eventModel");
 
 const stripe = new Stripe(process.env.STRIPE_SECRET!, {
   apiVersion: "2025-06-30.basil",
@@ -8,7 +9,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET!, {
 
 export const webhookHandler: RequestHandler = async (req, res) => {
   const sig = req.headers["stripe-signature"] as string;
-  const body = req.body; // doit être RAW
+  const body = req.body;
 
   let event: Stripe.Event;
 
@@ -22,7 +23,7 @@ export const webhookHandler: RequestHandler = async (req, res) => {
     const message = err instanceof Error ? err.message : "Unknown error";
     console.error("❌ Webhook signature failed:", message);
     res.status(400).send(`Webhook Error: ${message}`);
-    return; // ✅ pas de return res
+    return;
   }
 
   console.log("📡 Stripe Webhook reçu :", event.type);
@@ -62,10 +63,49 @@ export const webhookHandler: RequestHandler = async (req, res) => {
         console.log("🔄 External bank account updated", event.data.object);
         break;
 
-      case "checkout.session.completed":
-        console.log("✅ Payment completed");
-        break;
+      case "checkout.session.completed": {
+        const session = event.data.object as Stripe.Checkout.Session;
 
+        const eventId = session.metadata?.eventId;
+        const buyerId = session.metadata?.buyerId;
+        const paymentIntentId = session.payment_intent as string;
+
+        if (!eventId || !buyerId) {
+          console.warn("⚠️ Missing metadata in checkout.session.completed");
+          break;
+        }
+
+        const eventDoc = await Event.findById(eventId);
+        if (!eventDoc) {
+          console.error(`❌ Event not found for ID ${eventId}`);
+          break;
+        }
+
+        // ✅ update sold tickets
+        const newSoldTicket = {
+          buyerId,
+          stripePaymentIntent: paymentIntentId,
+          quantity: 1,
+        };
+
+        eventDoc.soldTickets.push(newSoldTicket);
+
+        // ✅ decrement remaining tickets if ticketing enabled
+        if (
+          eventDoc.ticketing.enabled &&
+          eventDoc.ticketing.remainingTickets > 0
+        ) {
+          eventDoc.ticketing.remainingTickets = Math.max(
+            eventDoc.ticketing.remainingTickets - 1,
+            0,
+          );
+        }
+
+        await eventDoc.save();
+
+        console.log(`🎟 Ticket sold for event ${eventId} to buyer ${buyerId}`);
+        break;
+      }
       default:
         console.log(`ℹ️ Unhandled event type: ${event.type}`);
     }
