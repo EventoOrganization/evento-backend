@@ -2,6 +2,8 @@ export const allowedOrigins = [
   "https://www.evento-app.io",
   "https://evento-app.io",
   "https://evento-web-git-dev-eventos-projects.vercel.app",
+  "https://evento-web-git-staging-eventos-projects.vercel.app/",
+  "https://staging.evento-app.io",
   "http://localhost:3000",
   "http://localhost:3001",
   "https://backend.evento-app.io",

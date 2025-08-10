@@ -8,7 +8,7 @@ const TempGuest = require("../../models/tempGuestModel");
 const User = require("../../models/userModel");
 const Models = require("../../models");
 const stripe = new Stripe(process.env.STRIPE_SECRET!, {
-  apiVersion: "2025-06-30.basil",
+  apiVersion: "2025-07-30.basil",
 });
 
 export const webhookHandler: RequestHandler = async (req, res) => {
