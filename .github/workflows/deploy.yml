@@ -49,5 +49,5 @@ jobs:
             --source-bundle S3Bucket=$S3_BUCKET_NAME,S3Key=builds/deploy-${{ github.sha }}.zip
 
           aws elasticbeanstalk update-environment \
-            --environment-name "Evento-backend-dev" \
+            --environment-name "Evento-backend-staging" \
             --version-label ${{ github.sha }}
