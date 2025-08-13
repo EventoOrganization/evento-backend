@@ -149,35 +149,30 @@ export const webhookHandler: RequestHandler = async (req, res) => {
           );
         }
 
-        await eventDoc.save();
-
-        const existingStatus = await Models.eventStatusSchema.findOne({
-          eventId,
-          userId: buyerId,
-          status: "isGoing",
-        });
-
+        // Vérifier si c'est le premier achat AVANT d'ajouter le nouveau ticket
         const isFirstPurchase = !eventDoc.soldTickets.some(
           (ticket: SoldTicketsType) => ticket.buyerId.toString() === buyerId,
         );
 
-        if (isFirstPurchase) {
-          const eventStatus = await Models.eventStatusSchema.findOneAndUpdate(
-            { eventId, userId: buyerId },
-            {
-              status: "isGoing",
-              rsvpAnswers: [],
-              reason: "auto-marked after ticket purchase",
-            },
-            { new: true, upsert: true, runValidators: true },
-          );
+        // Marquer l'acheteur comme "going" s'il achète des tickets
+        const eventStatus = await Models.eventStatusSchema.findOneAndUpdate(
+          { eventId, userId: buyerId },
+          {
+            status: "isGoing",
+            rsvpAnswers: [],
+            reason: "auto-marked after ticket purchase",
+          },
+          { new: true, upsert: true, runValidators: true },
+        );
 
-          await updateGoogleSheetForEvent(eventDoc, "updateStatus", {
-            eventStatus,
-          });
-        }
+        await updateGoogleSheetForEvent(eventDoc, "updateStatus", {
+          eventStatus,
+        });
 
-        const guestsToCreate = isFirstPurchase ? quantity - 1 : quantity;
+        await eventDoc.save();
+
+        // Créer des invités temporaires pour les tickets supplémentaires
+        const guestsToCreate = quantity - 1; // L'acheteur prend 1 place, les autres sont des invités
         const tempGuests: any[] = [];
         const existingTempGuests = await TempGuest.find({
           _id: { $in: eventDoc.tempGuests },
