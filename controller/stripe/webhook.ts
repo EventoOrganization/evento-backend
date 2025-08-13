@@ -14,7 +14,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET!, {
 
 export const webhookHandler: RequestHandler = async (req, res) => {
   const sig = req.headers["stripe-signature"] as string;
-  const rawBody = req.body;
+  const rawBody = req.body as Buffer;
 
   console.log("📡 Stripe Webhook received:", {
     method: req.method,
@@ -36,7 +36,7 @@ export const webhookHandler: RequestHandler = async (req, res) => {
   for (const secret of secrets) {
     try {
       event = stripe.webhooks.constructEvent(rawBody, sig, secret);
-      break; // ✅ trouvé, on arrête ici
+      break;
     } catch (err) {
       lastError = err;
     }
