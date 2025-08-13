@@ -7,13 +7,14 @@ const Event = require("../../models/eventModel");
 const TempGuest = require("../../models/tempGuestModel");
 const User = require("../../models/userModel");
 const Models = require("../../models");
+
 const stripe = new Stripe(process.env.STRIPE_SECRET!, {
   apiVersion: "2025-07-30.basil",
 });
 
 export const webhookHandler: RequestHandler = async (req, res) => {
   const sig = req.headers["stripe-signature"] as string;
-  const body = req.body;
+  const rawBody = req.body;
 
   console.log("📡 Stripe Webhook received:", {
     method: req.method,
@@ -22,25 +23,31 @@ export const webhookHandler: RequestHandler = async (req, res) => {
       "stripe-signature": sig ? "present" : "missing",
       "content-type": req.headers["content-type"],
     },
-    bodyLength: body ? body.length : 0,
   });
 
-  let event: Stripe.Event;
+  const secrets = [
+    process.env.STRIPE_WEBHOOK_SECRET_PLATFORM, // checkout.session.completed
+    process.env.STRIPE_WEBHOOK_SECRET_CONNECT, // account.updated, capability.updated
+  ].filter(Boolean) as string[];
 
-  try {
-    event = stripe.webhooks.constructEvent(
-      body,
-      sig,
-      process.env.STRIPE_WEBHOOK_SECRET!,
-    );
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    console.error("❌ Webhook signature failed:", message);
+  let event: Stripe.Event | null = null;
+  let lastError: any = null;
+
+  for (const secret of secrets) {
+    try {
+      event = stripe.webhooks.constructEvent(rawBody, sig, secret);
+      break; // ✅ trouvé, on arrête ici
+    } catch (err) {
+      lastError = err;
+    }
+  }
+
+  if (!event) {
     console.error(
-      "❌ Webhook secret:",
-      process.env.STRIPE_WEBHOOK_SECRET ? "present" : "missing",
+      "❌ Webhook signature failed for all secrets:",
+      lastError?.message,
     );
-    res.status(400).send(`Webhook Error: ${message}`);
+    res.status(400).send(`Webhook Error: ${lastError?.message}`);
     return;
   }
 
@@ -50,7 +57,6 @@ export const webhookHandler: RequestHandler = async (req, res) => {
     switch (event.type) {
       case "account.updated": {
         const account = event.data.object as Stripe.Account;
-
         console.log("🔄 Account updated:", {
           id: account.id,
           details_submitted: account.details_submitted,
@@ -89,13 +95,11 @@ export const webhookHandler: RequestHandler = async (req, res) => {
         const paymentIntentId = session.payment_intent as string;
 
         console.log("📦 Stripe checkout.session.completed received");
-        console.log("🎫 Quantity in session:", quantity);
-        console.log("🧾 Session Metadata:", session.metadata);
+        console.log("🎫 Quantity:", quantity);
+        console.log("🧾 Metadata:", session.metadata);
 
         if (!eventId || !buyerId || !paymentIntentId) {
-          console.warn(
-            "⚠️ Missing metadata or paymentIntent in checkout.session.completed",
-          );
+          console.warn("⚠️ Missing metadata or paymentIntent");
           break;
         }
 
@@ -107,7 +111,7 @@ export const webhookHandler: RequestHandler = async (req, res) => {
 
         const buyer = await User.findById(buyerId);
         if (!buyer) {
-          console.error(`❌ Buyer user not found: ${buyerId}`);
+          console.error(`❌ Buyer not found: ${buyerId}`);
           break;
         }
 
@@ -129,19 +133,6 @@ export const webhookHandler: RequestHandler = async (req, res) => {
           app_fee: appFee,
         });
 
-        console.log(
-          `💰 Payment details: ${totalPaid / 100} ${currency?.toUpperCase()}`,
-        );
-        console.log(
-          `🏦 Application fee: ${appFee / 100} ${currency?.toUpperCase()}`,
-        );
-        console.log(
-          `💼 Net revenue for host: ${
-            (totalPaid - appFee) / 100
-          } ${currency?.toUpperCase()}`,
-        );
-
-        // Add ticket
         eventDoc.soldTickets.push({
           buyerId,
           stripePaymentIntent: paymentIntentId,
@@ -158,9 +149,8 @@ export const webhookHandler: RequestHandler = async (req, res) => {
           );
         }
 
-        await eventDoc.save(); // Save ticket info first
+        await eventDoc.save();
 
-        // Check status
         const existingStatus = await Models.eventStatusSchema.findOne({
           eventId,
           userId: buyerId,
@@ -171,18 +161,8 @@ export const webhookHandler: RequestHandler = async (req, res) => {
           (ticket: SoldTicketsType) => ticket.buyerId.toString() === buyerId,
         );
 
-        console.log(
-          `🔍 Buyer already marked as going? ${
-            isFirstPurchase ? "❌ No (will create)" : "✅ Yes (skip update)"
-          }`,
-        );
-
-        let eventStatus = existingStatus;
-
         if (isFirstPurchase) {
-          console.log("🟢 First purchase by buyer. Marking as going.");
-
-          eventStatus = await Models.eventStatusSchema.findOneAndUpdate(
+          const eventStatus = await Models.eventStatusSchema.findOneAndUpdate(
             { eventId, userId: buyerId },
             {
               status: "isGoing",
@@ -192,15 +172,11 @@ export const webhookHandler: RequestHandler = async (req, res) => {
             { new: true, upsert: true, runValidators: true },
           );
 
-          console.log("✅ Buyer marked as going:", eventStatus);
           await updateGoogleSheetForEvent(eventDoc, "updateStatus", {
             eventStatus,
           });
-        } else {
-          console.log("🔁 Repeat purchase. Buyer already marked as going.");
         }
 
-        // Create temp guests
         const guestsToCreate = isFirstPurchase ? quantity - 1 : quantity;
         const tempGuests: any[] = [];
         const existingTempGuests = await TempGuest.find({
@@ -210,9 +186,6 @@ export const webhookHandler: RequestHandler = async (req, res) => {
         });
 
         const existingGuestCount = existingTempGuests.length;
-        console.log(
-          `👀 Buyer ${buyer.username} already had ${existingGuestCount} temp guests.`,
-        );
 
         for (let i = 0; i < guestsToCreate; i++) {
           const guestIndex = existingGuestCount + i + 1;
@@ -229,27 +202,11 @@ export const webhookHandler: RequestHandler = async (req, res) => {
           tempGuests.push(tempGuest);
         }
 
-        console.log("🧾 TempGuests IDs added to event:", eventDoc.tempGuests);
-        console.log(
-          `👥 ${tempGuests.length} TempGuests created for buyer ${buyerId}`,
-        );
-
         if (tempGuests.length > 0) {
-          console.log(
-            `✅ TempGuests successfully created:`,
-            tempGuests.map((g) => ({
-              _id: g._id,
-              email: g.email,
-              username: g.username,
-            })),
-          );
           await updateGoogleSheetForEvent(eventDoc, "updateGuest");
-        } else {
-          console.log("ℹ️ No TempGuests created (buyer only)");
         }
 
-        await eventDoc.save(); // Save temp guests added
-
+        await eventDoc.save();
         break;
       }
 
