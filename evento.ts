@@ -111,9 +111,8 @@ app.use(basemiddleware);
 // ===========================================
 // 🧾 Routes classiques
 // ===========================================
-app.get("/healthz", (_req, res, next) => {
+app.get("/healthz", (_req, res) => {
   res.status(200).send("OK");
-  next();
 });
 
 // Redirection racine

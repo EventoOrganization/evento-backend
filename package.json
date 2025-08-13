@@ -10,7 +10,9 @@
     "postbuild": "cpx \"views/**/*\" dist/views && cpx \"public/**/*\" dist/public",
     "dev": "pnpm start:dev",
     "typecheck": "tsc --noEmit",
-    "dev:stripe": "stripe listen --forward-to localhost:8080/stripe-webhook/"
+    "dev:stripe": "stripe listen --forward-to localhost:8080/stripe-webhook/",
+    "check:stripe": "node scripts/checkStripeConfig.js",
+    "test:webhook": "node scripts/testWebhook.js"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.635.0",

@@ -15,6 +15,16 @@ export const webhookHandler: RequestHandler = async (req, res) => {
   const sig = req.headers["stripe-signature"] as string;
   const body = req.body;
 
+  console.log("📡 Stripe Webhook received:", {
+    method: req.method,
+    url: req.url,
+    headers: {
+      "stripe-signature": sig ? "present" : "missing",
+      "content-type": req.headers["content-type"],
+    },
+    bodyLength: body ? body.length : 0,
+  });
+
   let event: Stripe.Event;
 
   try {
@@ -26,6 +36,10 @@ export const webhookHandler: RequestHandler = async (req, res) => {
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
     console.error("❌ Webhook signature failed:", message);
+    console.error(
+      "❌ Webhook secret:",
+      process.env.STRIPE_WEBHOOK_SECRET ? "present" : "missing",
+    );
     res.status(400).send(`Webhook Error: ${message}`);
     return;
   }
@@ -240,7 +254,10 @@ export const webhookHandler: RequestHandler = async (req, res) => {
       }
 
       default:
-        console.log(`ℹ️ Unhandled event type: ${event.type}`);
+        console.log(`ℹ️ Unhandled event type: ${event.type}`, {
+          eventId: event.id,
+          objectType: event.data.object.object,
+        });
     }
 
     res.status(200).json({ received: true });
